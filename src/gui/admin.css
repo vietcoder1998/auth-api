@@ -1,7 +1,9 @@
+
 body {
   font-family: sans-serif;
   margin: 0;
   background: #f7f7f7;
+  font-size: 14px;
 }
 .admin-layout {
   display: flex;
@@ -10,26 +12,28 @@ body {
 .sidebar {
   background: #222;
   color: #fff;
-  width: 220px;
+  width: 180px;
   min-height: 100vh;
-  padding: 2rem 1rem;
+  padding: 1.2rem 0.5rem;
   box-sizing: border-box;
+  font-size: 13px;
 }
 .sidebar h2 {
   margin-top: 0;
-  font-size: 1.5rem;
+  font-size: 1.1rem;
 }
 .sidebar nav {
-  margin-top: 2rem;
+  margin-top: 1.2rem;
 }
 .sidebar nav a {
   display: block;
   color: #fff;
   text-decoration: none;
-  margin-bottom: 1rem;
-  padding: 0.5rem 1rem;
+  margin-bottom: 0.7rem;
+  padding: 0.35rem 0.7rem;
   border-radius: 4px;
   transition: background 0.2s;
+  font-size: 13px;
 }
 .sidebar nav a.active,
 .sidebar nav a:hover {
@@ -37,7 +41,46 @@ body {
 }
 .main {
   flex: 1;
-  padding: 2rem;
+  padding: 1.2rem;
+  font-size: 14px;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  margin-bottom: 1.2rem;
+  font-size: 13px;
+}
+.table th, .table td {
+  border: 1px solid #eee;
+  padding: 0.5rem;
+  text-align: left;
+}
+.table th {
+  background: #f0f0f0;
+  font-size: 13px;
+}
+.token-list {
+  margin-bottom: 1.2rem;
+}
+.token-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.3rem;
+  font-size: 13px;
+}
+.token-item span {
+  flex: 1;
+}
+.token-item button {
+  margin-left: 0.7rem;
+  font-size: 13px;
+}
+input, button, select, textarea {
+  font-size: 13px;
+}
+h2, h3 {
+  font-size: 1rem;
 }
 @media (max-width: 700px) {
   .admin-layout {
@@ -46,37 +89,24 @@ body {
   .sidebar {
     width: 100%;
     min-height: auto;
-    padding: 1rem;
+    padding: 0.7rem;
+    font-size: 12px;
   }
   .main {
-    padding: 1rem;
+    padding: 0.7rem;
+    font-size: 13px;
   }
-}
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  margin-bottom: 2rem;
-}
-.table th, .table td {
-  border: 1px solid #eee;
-  padding: 0.75rem;
-  text-align: left;
-}
-.table th {
-  background: #f0f0f0;
-}
-.token-list {
-  margin-bottom: 2rem;
-}
-.token-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-.token-item span {
-  flex: 1;
-}
-.token-item button {
-  margin-left: 1rem;
+  .table th, .table td {
+    padding: 0.35rem;
+    font-size: 12px;
+  }
+  .token-item, .token-item button {
+    font-size: 12px;
+  }
+  h2, h3 {
+    font-size: 0.95rem;
+  }
+  input, button, select, textarea {
+    font-size: 12px;
+  }
 }
