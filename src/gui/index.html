@@ -75,6 +75,20 @@
           <button type="submit">Save</button>
         </form>
         <div class="result" id="mailResult"></div>
+        <h2>Mail Templates</h2>
+        <table class="table" id="mailTemplateTable">
+          <thead>
+            <tr><th>Name</th><th>Subject</th><th>Body</th><th>Active</th><th>Created</th><th>Updated</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <h2>Notification Templates</h2>
+        <table class="table" id="notificationTemplateTable">
+          <thead>
+            <tr><th>Name</th><th>Title</th><th>Body</th><th>Active</th><th>Created</th><th>Updated</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
         <h2>Config Table</h2>
         <form id="newConfigForm" style="margin-bottom:1em;">
           <input type="text" name="key" placeholder="Config Key" required />
@@ -405,6 +419,43 @@
   renderPermissions();
   renderLogs();
   fetchAndRenderConfig();
+  fetchAndRenderMailTemplates();
+  fetchAndRenderNotificationTemplates();
+  // MailTemplate display logic
+  async function fetchAndRenderMailTemplates() {
+    const tbody = document.querySelector('#mailTemplateTable tbody');
+    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    try {
+      const res = await fetch('/admin/mail-templates');
+      const templates = await res.json();
+      tbody.innerHTML = '';
+      templates.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${t.name}</td><td>${t.subject}</td><td>${t.body}</td><td>${t.active ? 'Yes' : 'No'}</td><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</td><td>${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : ''}</td>`;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      tbody.innerHTML = '<tr><td colspan="6">Error loading mail templates</td></tr>';
+    }
+  }
+
+  // NotificationTemplate display logic
+  async function fetchAndRenderNotificationTemplates() {
+    const tbody = document.querySelector('#notificationTemplateTable tbody');
+    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    try {
+      const res = await fetch('/admin/notification-templates');
+      const templates = await res.json();
+      tbody.innerHTML = '';
+      templates.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${t.name}</td><td>${t.title}</td><td>${t.body}</td><td>${t.active ? 'Yes' : 'No'}</td><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</td><td>${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : ''}</td>`;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      tbody.innerHTML = '<tr><td colspan="6">Error loading notification templates</td></tr>';
+    }
+  }
 
   // New config form logic
   document.getElementById('newConfigForm').onsubmit = async function(e) {
