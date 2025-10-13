@@ -1,26 +1,28 @@
-import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import redis from 'redis';
-import { DATABASE_URL, REDIS_URL } from '../env';
+// Update the path below to the correct location of your Redis client setup file
+import { client } from '../setup';
+import { generateToken, generateRefreshToken, validateToken } from '../service/auth.service';
+import { Request, Response } from 'express';
 const prisma = new PrismaClient();
-const redisClient = redis.createClient({ url: REDIS_URL });
-redisClient.connect();
 
 // Helper: cache token in Redis
 async function cacheToken(token: string, userId: string, expiresIn: number) {
-  await redisClient.set(`token:${token}`, userId, { EX: expiresIn });
+  await client.set(`token:${token}`, userId, { EX: expiresIn });
 }
 
 export async function login(req: Request, res: Response) {
-  // Example login logic
   const { email, password } = req.body;
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.password !== password) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  // Generate tokens (access/refresh)
-  const accessToken = `access_${user.id}_${Date.now()}`;
-  const refreshToken = `refresh_${user.id}_${Date.now()}`;
+  // Generate JWT tokens
+    const accessToken = generateToken({
+      userId: user.id,
+      email: user.email,
+      ...(user.roleId ? { role: user.roleId } : {})
+    });
+  const refreshToken = generateRefreshToken({ userId: user.id });
   // Save tokens in DB
   await prisma.token.create({
     data: {
@@ -45,17 +47,22 @@ export async function register(req: Request, res: Response) {
 
 export async function validate(req: Request, res: Response) {
   const { token } = req.body;
+  // Validate JWT
+  const payload = validateToken(token);
+  if (!payload) {
+    return res.json({ valid: false, error: 'Invalid token' });
+  }
   // Check Redis cache first
-  const userId = await redisClient.get(`token:${token}`);
+  const userId = await client.get(`token:${token}`);
   if (userId) {
-    return res.json({ valid: true, userId });
+    return res.json({ valid: true, userId, payload });
   }
   // Fallback to DB
   const dbToken = await prisma.token.findUnique({ where: { accessToken: token } });
   if (dbToken) {
     // Optionally re-cache
     await cacheToken(token, dbToken.userId, 3600);
-    return res.json({ valid: true, userId: dbToken.userId });
+    return res.json({ valid: true, userId: dbToken.userId, payload });
   }
   res.json({ valid: false });
 }
@@ -70,7 +77,7 @@ export async function handoverUserStatus(req: Request, res: Response) {
     where: { id: requesterId },
     include: { role: true },
   });
-  
+
   if (!requester || requester.role?.name !== 'superadmin') {
     return res.status(403).json({ error: 'Forbidden' });
   }
