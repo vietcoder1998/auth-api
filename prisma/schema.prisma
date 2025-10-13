@@ -40,3 +40,9 @@ model Token {
   expiresAt    DateTime
   user         User     @relation(fields: [userId], references: [id])
 }
+
+model Config {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+}

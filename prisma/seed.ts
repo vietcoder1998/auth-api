@@ -83,6 +83,13 @@ async function main() {
       status: 'active'
     }
   });
+
+  // Seed CORS config
+  await prisma.config.upsert({
+    where: { key: 'cors_origin' },
+    update: { value: 'http://localhost:3000' },
+    create: { key: 'cors_origin', value: 'http://localhost:3000' }
+  });
 }
 
 main()
