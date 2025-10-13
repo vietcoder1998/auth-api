@@ -1,3 +1,25 @@
+/* Collapsible section styles and icons */
+.collapsible h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+.collapsible .icon {
+  font-size: 1.1em;
+  margin-right: 0.2em;
+}
+.collapseBtn {
+  margin-left: auto;
+  background: #eee;
+  border: none;
+  border-radius: 3px;
+  padding: 0.1em 0.5em;
+  font-size: 0.95em;
+  cursor: pointer;
+}
+.collapseBtn:focus {
+  outline: 2px solid #888;
+}
 
 body {
   font-family: sans-serif;
@@ -108,5 +130,16 @@ h2, h3 {
   }
   input, button, select, textarea {
     font-size: 12px;
+  }
+  .collapsible h2 {
+    font-size: 0.95rem;
+    gap: 0.3em;
+  }
+  .collapsible .icon {
+    font-size: 1em;
+  }
+  .collapseBtn {
+    font-size: 0.9em;
+    padding: 0.05em 0.4em;
   }
 }

@@ -21,8 +21,8 @@
       </nav>
     </aside>
     <main class="main">
-      <section id="users">
-        <h2>User Table</h2>
+      <section id="users" class="collapsible">
+        <h2><span class="icon">👤</span> User Table <button class="collapseBtn" type="button">▼</button></h2>
         <div style="margin-bottom: 1em;">
           <input type="text" id="userSearch" placeholder="Search by email or nickname" style="width: 200px;" />
           <button id="createUserBtn">Create New User</button>
@@ -45,12 +45,12 @@
           <div id="createUserResult"></div>
         </div>
       </section>
-      <section id="tokens">
-        <h2>Token Control</h2>
+      <section id="tokens" class="collapsible">
+        <h2><span class="icon">🔑</span> Token Control <button class="collapseBtn" type="button">▼</button></h2>
         <div class="token-list" id="tokenList"></div>
       </section>
-      <section id="roles">
-        <h2>Roles</h2>
+      <section id="roles" class="collapsible">
+        <h2><span class="icon">🛡️</span> Roles <button class="collapseBtn" type="button">▼</button></h2>
         <table class="table" id="roleTable">
           <thead>
             <tr><th>Role Name</th><th>Permissions</th></tr>
@@ -58,8 +58,8 @@
           <tbody></tbody>
         </table>
       </section>
-      <section id="permissions">
-        <h2>Permissions</h2>
+      <section id="permissions" class="collapsible">
+        <h2><span class="icon">⚙️</span> Permissions <button class="collapseBtn" type="button">▼</button></h2>
         <table class="table" id="permissionTable">
           <thead>
             <tr><th>Permission Name</th><th>Roles</th></tr>
@@ -67,8 +67,8 @@
           <tbody></tbody>
         </table>
       </section>
-      <section id="mail">
-        <h2>Mail Settings</h2>
+      <section id="mail" class="collapsible">
+        <h2><span class="icon">✉️</span> Mail Settings <button class="collapseBtn" type="button">▼</button></h2>
         <form id="mailForm">
           <input type="text" name="smtp" placeholder="SMTP Server" />
           <input type="text" name="from" placeholder="From Email" />
@@ -103,8 +103,8 @@
           <tbody></tbody>
         </table>
       </section>
-      <section id="logs">
-        <h2>API Logs</h2>
+      <section id="logs" class="collapsible">
+        <h2><span class="icon">📜</span> API Logs <button class="collapseBtn" type="button">▼</button></h2>
         <table class="table" id="logTable">
           <thead>
             <tr><th>Time</th><th>Method</th><th>Endpoint</th><th>Status</th><th>User</th></tr>
@@ -115,6 +115,24 @@
     </main>
   </div>
   <script>
+    // Collapse/expand logic for sections
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.collapsible').forEach(section => {
+        const btn = section.querySelector('.collapseBtn');
+        if (btn) {
+          btn.onclick = function() {
+            const content = Array.from(section.children).filter(el => el.tagName !== 'H2');
+            if (btn.textContent === '▼') {
+              content.forEach(el => el.style.display = 'none');
+              btn.textContent = '▲';
+            } else {
+              content.forEach(el => el.style.display = '');
+              btn.textContent = '▼';
+            }
+          };
+        }
+      });
+    });
     // Data holders
     let users = [];
     let roles = [];
@@ -574,7 +592,12 @@
         this.classList.add('active');
         document.querySelectorAll('main section').forEach(sec => sec.style.display = 'none');
         const target = document.querySelector(this.getAttribute('href'));
-        if (target) target.style.display = '';
+        if (target) {
+          target.style.display = '';
+          // Expand section if collapsed
+          const btn = target.querySelector('.collapseBtn');
+          if (btn && btn.textContent === '▲') btn.click();
+        }
       };
     });
     // Open config table button
@@ -585,6 +608,13 @@
     };
     // Show first section by default
     document.querySelectorAll('main section').forEach((sec, i) => sec.style.display = i === 0 ? '' : 'none');
+    // On mobile, collapse all except first section
+    if (window.innerWidth < 700) {
+      document.querySelectorAll('.collapsible').forEach((sec, i) => {
+        const btn = sec.querySelector('.collapseBtn');
+        if (btn && i !== 0 && btn.textContent === '▼') btn.click();
+      });
+    }
   </script>
 </body>
 </html>
