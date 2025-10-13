@@ -50,11 +50,21 @@
       </section>
       <section id="roles">
         <h2>Roles</h2>
-        <div>Role management UI (placeholder)</div>
+        <table class="table" id="roleTable">
+          <thead>
+            <tr><th>Role Name</th><th>Permissions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </section>
       <section id="permissions">
         <h2>Permissions</h2>
-        <div>Permission management UI (placeholder)</div>
+        <table class="table" id="permissionTable">
+          <thead>
+            <tr><th>Permission Name</th><th>Roles</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </section>
       <section id="mail">
         <h2>Mail Settings</h2>
@@ -64,6 +74,15 @@
           <button type="submit">Save</button>
         </form>
         <div class="result" id="mailResult"></div>
+      </section>
+      <section id="logs">
+        <h2>API Logs</h2>
+        <table class="table" id="logTable">
+          <thead>
+            <tr><th>Time</th><th>Method</th><th>Endpoint</th><th>Status</th><th>User</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </section>
     </main>
   </div>
@@ -85,9 +104,40 @@
         (u.nickname && u.nickname.toLowerCase().includes(filter.toLowerCase()))
       ).forEach(u => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${u.email}</td><td>${u.nickname}</td><td><button onclick="alert('Edit user')">Edit</button></td>`;
+        tr.innerHTML = `<td>${u.email}</td><td>${u.nickname}</td><td>
+          <button onclick="alert('Edit user')">Edit</button>
+          <button onclick="loginUser('${u.email}')">Login</button>
+        </td>`;
         tbody.appendChild(tr);
       });
+    }
+    // Login action for user
+    async function loginUser(email) {
+      const password = prompt('Enter password for ' + email);
+      if (!password) return;
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        apiLogs.push({
+          time: new Date().toISOString(),
+          method: 'POST',
+          endpoint: '/login',
+          status: res.status,
+          user: email
+        });
+        renderLogs();
+        if (res.ok) {
+          alert('Login successful! Token: ' + (data.accessToken || 'N/A'));
+        } else {
+          alert('Login failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Login error: ' + err);
+      }
     }
     function renderTokens() {
       const list = document.getElementById('tokenList');
@@ -97,6 +147,39 @@
         div.className = 'token-item';
         div.innerHTML = `<span>${t.token} (${t.user})</span><button onclick="alert('Revoke token')">Revoke</button>`;
         list.appendChild(div);
+      });
+    }
+
+    // Dummy data for roles and permissions
+    const roles = [
+      { name: 'superadmin', permissions: ['manage_users', 'manage_roles', 'view_reports'] },
+      { name: 'admin', permissions: ['manage_users', 'view_reports'] },
+      { name: 'user', permissions: ['view_self'] }
+    ];
+    const permissions = [
+      { name: 'manage_users', roles: ['superadmin', 'admin'] },
+      { name: 'manage_roles', roles: ['superadmin'] },
+      { name: 'view_reports', roles: ['superadmin', 'admin'] },
+      { name: 'view_self', roles: ['user'] }
+    ];
+
+    function renderRoles() {
+      const tbody = document.querySelector('#roleTable tbody');
+      tbody.innerHTML = '';
+      roles.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.name}</td><td>${r.permissions.join(', ')}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderPermissions() {
+      const tbody = document.querySelector('#permissionTable tbody');
+      tbody.innerHTML = '';
+      permissions.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.name}</td><td>${p.roles.join(', ')}</td>`;
+        tbody.appendChild(tr);
       });
     }
     renderUsers();
@@ -111,6 +194,23 @@
       document.getElementById('createUserForm').style.display = 'none';
       document.getElementById('createUserResult').textContent = '';
     };
+    // Dummy API logs
+    const apiLogs = [
+      { time: '2025-10-14T10:00:00', method: 'POST', endpoint: '/login', status: 200, user: 'admin@example.com' },
+      { time: '2025-10-14T10:01:00', method: 'POST', endpoint: '/register', status: 201, user: 'user@example.com' },
+      { time: '2025-10-14T10:02:00', method: 'POST', endpoint: '/login', status: 401, user: 'unknown@example.com' }
+    ];
+
+    function renderLogs() {
+      const tbody = document.querySelector('#logTable tbody');
+      tbody.innerHTML = '';
+      apiLogs.forEach(log => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${log.time}</td><td>${log.method}</td><td>${log.endpoint}</td><td>${log.status}</td><td>${log.user}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
     document.getElementById('newUserForm').onsubmit = function(e) {
       e.preventDefault();
       const form = e.target;
@@ -124,9 +224,21 @@
         document.getElementById('createUserForm').style.display = 'none';
         document.getElementById('createUserResult').textContent = 'User created (demo)';
         form.reset();
+        // Add log entry for simulated login
+        apiLogs.push({
+          time: new Date().toISOString(),
+          method: 'POST',
+          endpoint: '/login',
+          status: 200,
+          user: email
+        });
+        renderLogs();
       }, 500);
     };
-    renderTokens();
+  renderTokens();
+  renderRoles();
+  renderPermissions();
+  renderLogs();
     document.getElementById('mailForm').onsubmit = e => {
       e.preventDefault();
       document.getElementById('mailResult').textContent = 'Mail settings saved (demo)';

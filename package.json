@@ -4,15 +4,13 @@
   "description": "Authentication API with Node.js, Express, TypeScript, Prisma, Redis, Docker, Husky, Prettier, ESLint, Jest, and path alias.",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "npm-run-all --parallel dev:api gui:dev",
-    "dev:api": "nodemon src/index.ts",
+    "dev": "nodemon src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
     "test": "jest --config jest.config.js --coverage",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
-    "prepare": "husky install",
-    "gui:dev": "npx serve src/gui -l 4000"
+    "prepare": "husky install"
   },
   "dependencies": {
     "@prisma/client": "^4.16.2",
