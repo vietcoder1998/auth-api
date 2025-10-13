@@ -1,0 +1,82 @@
+body {
+  font-family: sans-serif;
+  margin: 0;
+  background: #f7f7f7;
+}
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+}
+.sidebar {
+  background: #222;
+  color: #fff;
+  width: 220px;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+}
+.sidebar h2 {
+  margin-top: 0;
+  font-size: 1.5rem;
+}
+.sidebar nav {
+  margin-top: 2rem;
+}
+.sidebar nav a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.sidebar nav a.active,
+.sidebar nav a:hover {
+  background: #444;
+}
+.main {
+  flex: 1;
+  padding: 2rem;
+}
+@media (max-width: 700px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+    padding: 1rem;
+  }
+  .main {
+    padding: 1rem;
+  }
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  margin-bottom: 2rem;
+}
+.table th, .table td {
+  border: 1px solid #eee;
+  padding: 0.75rem;
+  text-align: left;
+}
+.table th {
+  background: #f0f0f0;
+}
+.token-list {
+  margin-bottom: 2rem;
+}
+.token-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.token-item span {
+  flex: 1;
+}
+.token-item button {
+  margin-left: 1rem;
+}

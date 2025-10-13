@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Admin GUI</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="sidebar">
+      <h2>Admin Panel</h2>
+      <nav>
+        <a href="#users" class="active">Users</a>
+        <a href="#tokens">Tokens</a>
+        <a href="#roles">Roles</a>
+        <a href="#permissions">Permissions</a>
+        <a href="#mail">Mail Settings</a>
+      </nav>
+    </aside>
+    <main class="main">
+      <section id="users">
+        <h2>User Table</h2>
+        <table class="table" id="userTable">
+          <thead>
+            <tr><th>Email</th><th>Nickname</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+      <section id="tokens">
+        <h2>Token Control</h2>
+        <div class="token-list" id="tokenList"></div>
+      </section>
+      <section id="roles">
+        <h2>Roles</h2>
+        <div>Role management UI (placeholder)</div>
+      </section>
+      <section id="permissions">
+        <h2>Permissions</h2>
+        <div>Permission management UI (placeholder)</div>
+      </section>
+      <section id="mail">
+        <h2>Mail Settings</h2>
+        <form id="mailForm">
+          <input type="text" name="smtp" placeholder="SMTP Server" />
+          <input type="text" name="from" placeholder="From Email" />
+          <button type="submit">Save</button>
+        </form>
+        <div class="result" id="mailResult"></div>
+      </section>
+    </main>
+  </div>
+  <script>
+    // Dummy data for demonstration
+    const users = [
+      { email: 'admin@example.com', nickname: 'Admin' },
+      { email: 'user@example.com', nickname: 'User' }
+    ];
+    const tokens = [
+      { token: 'abc123', user: 'admin@example.com' },
+      { token: 'def456', user: 'user@example.com' }
+    ];
+    function renderUsers() {
+      const tbody = document.querySelector('#userTable tbody');
+      tbody.innerHTML = '';
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${u.email}</td><td>${u.nickname}</td><td><button onclick="alert('Edit user')">Edit</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderTokens() {
+      const list = document.getElementById('tokenList');
+      list.innerHTML = '';
+      tokens.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'token-item';
+        div.innerHTML = `<span>${t.token} (${t.user})</span><button onclick="alert('Revoke token')">Revoke</button>`;
+        list.appendChild(div);
+      });
+    }
+    renderUsers();
+    renderTokens();
+    document.getElementById('mailForm').onsubmit = e => {
+      e.preventDefault();
+      document.getElementById('mailResult').textContent = 'Mail settings saved (demo)';
+    };
+    // Responsive sidebar navigation
+    document.querySelectorAll('.sidebar nav a').forEach(link => {
+      link.onclick = function() {
+        document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
+        this.classList.add('active');
+        document.querySelectorAll('main section').forEach(sec => sec.style.display = 'none');
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) target.style.display = '';
+      };
+    });
+    // Show first section by default
+    document.querySelectorAll('main section').forEach((sec, i) => sec.style.display = i === 0 ? '' : 'none');
+  </script>
+</body>
+</html>
