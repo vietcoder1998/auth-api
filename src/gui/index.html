@@ -22,12 +22,27 @@
     <main class="main">
       <section id="users">
         <h2>User Table</h2>
+        <div style="margin-bottom: 1em;">
+          <input type="text" id="userSearch" placeholder="Search by email or nickname" style="width: 200px;" />
+          <button id="createUserBtn">Create New User</button>
+        </div>
         <table class="table" id="userTable">
           <thead>
             <tr><th>Email</th><th>Nickname</th><th>Actions</th></tr>
           </thead>
           <tbody></tbody>
         </table>
+        <div id="createUserForm" style="display:none; margin-top:1em;">
+          <h3>Create New User</h3>
+          <form id="newUserForm">
+            <input type="email" name="email" placeholder="Email" required />
+            <input type="text" name="nickname" placeholder="Nickname" />
+            <input type="password" name="password" placeholder="Password" required />
+            <button type="submit">Create</button>
+            <button type="button" id="cancelCreateUser">Cancel</button>
+          </form>
+          <div id="createUserResult"></div>
+        </div>
       </section>
       <section id="tokens">
         <h2>Token Control</h2>
@@ -62,10 +77,13 @@
       { token: 'abc123', user: 'admin@example.com' },
       { token: 'def456', user: 'user@example.com' }
     ];
-    function renderUsers() {
+    function renderUsers(filter = '') {
       const tbody = document.querySelector('#userTable tbody');
       tbody.innerHTML = '';
-      users.forEach(u => {
+      users.filter(u =>
+        u.email.toLowerCase().includes(filter.toLowerCase()) ||
+        (u.nickname && u.nickname.toLowerCase().includes(filter.toLowerCase()))
+      ).forEach(u => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${u.email}</td><td>${u.nickname}</td><td><button onclick="alert('Edit user')">Edit</button></td>`;
         tbody.appendChild(tr);
@@ -82,6 +100,32 @@
       });
     }
     renderUsers();
+    document.getElementById('userSearch').addEventListener('input', function() {
+      renderUsers(this.value);
+    });
+
+    document.getElementById('createUserBtn').onclick = function() {
+      document.getElementById('createUserForm').style.display = '';
+    };
+    document.getElementById('cancelCreateUser').onclick = function() {
+      document.getElementById('createUserForm').style.display = 'none';
+      document.getElementById('createUserResult').textContent = '';
+    };
+    document.getElementById('newUserForm').onsubmit = function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const email = form.email.value;
+      const nickname = form.nickname.value;
+      const password = form.password.value;
+      // Simulate API call
+      setTimeout(() => {
+        users.push({ email, nickname });
+        renderUsers();
+        document.getElementById('createUserForm').style.display = 'none';
+        document.getElementById('createUserResult').textContent = 'User created (demo)';
+        form.reset();
+      }, 500);
+    };
     renderTokens();
     document.getElementById('mailForm').onsubmit = e => {
       e.preventDefault();

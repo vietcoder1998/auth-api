@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { handoverUserStatus, login, register, validate } from '../controllers/auth.controller';
 import { loggerMiddleware } from '../middlewares/logger.middle';
+import { client } from '../setup';
+import { NextFunction, Request, Response } from 'express';
 
 const router = Router();
 router.use(loggerMiddleware);
@@ -9,9 +11,7 @@ router.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', message: 'Auth API is healthy' });
 });
 
-// Middleware to check token from Redis cache
-import { client } from '../setup';
-import { NextFunction, Request, Response } from 'express';
+
 
 async function tokenCacheMiddleware(req: Request, res: Response, next: NextFunction) {
     const token = req.headers['authorization']?.replace('Bearer ', '');
