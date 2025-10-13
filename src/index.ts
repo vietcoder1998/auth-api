@@ -7,6 +7,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
+import adminRouter from './routes/admin.routes';
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -36,6 +37,7 @@ app.use(async (req, res, next) => {
 const API_PATH = process.env.API_PATH || '/auth';
 app.use(API_PATH, authRouter);
 app.use('/config', configRouter);
+app.use('/admin', adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
 // Serve admin GUI at /admin

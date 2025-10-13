@@ -8,6 +8,7 @@ export async function getConfig(req: Request, res: Response) {
   res.json(configs);
 }
 
+
 export async function updateConfig(req: Request, res: Response) {
   const { id, value } = req.body;
   if (!id || typeof value !== 'string') {
@@ -18,4 +19,23 @@ export async function updateConfig(req: Request, res: Response) {
     data: { value }
   });
   res.json(updated);
+}
+
+export async function createConfig(req: Request, res: Response) {
+  const { key, value } = req.body;
+  if (!key || typeof value !== 'string') {
+    return res.status(400).json({ error: 'Missing key or value' });
+  }
+  try {
+    const created = await prisma.config.create({
+      data: { key, value }
+    });
+    res.json(created);
+  } catch (err: any) {
+    if (err.code === 'P2002') {
+      res.status(409).json({ error: 'Config key already exists.' });
+    } else {
+      res.status(500).json({ error: 'Failed to create config.' });
+    }
+  }
 }

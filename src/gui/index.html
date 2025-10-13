@@ -17,6 +17,7 @@
         <a href="#roles">Roles</a>
         <a href="#permissions">Permissions</a>
         <a href="#mail">Mail Settings</a>
+        <button id="openConfigBtn" type="button" style="width:100%;margin-top:1em;">Open Config Table</button>
       </nav>
     </aside>
     <main class="main">
@@ -74,6 +75,19 @@
           <button type="submit">Save</button>
         </form>
         <div class="result" id="mailResult"></div>
+        <h2>Config Table</h2>
+        <form id="newConfigForm" style="margin-bottom:1em;">
+          <input type="text" name="key" placeholder="Config Key" required />
+          <input type="text" name="value" placeholder="Config Value" required />
+          <button type="submit">Create Config</button>
+          <span id="newConfigResult"></span>
+        </form>
+        <table class="table" id="configTable">
+          <thead>
+            <tr><th>Key</th><th>Value</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </section>
       <section id="logs">
         <h2>API Logs</h2>
@@ -87,15 +101,48 @@
     </main>
   </div>
   <script>
-    // Dummy data for demonstration
-    const users = [
-      { email: 'admin@example.com', nickname: 'Admin' },
-      { email: 'user@example.com', nickname: 'User' }
-    ];
+    // Data holders
+    let users = [];
+    let roles = [];
+    let permissions = [];
     const tokens = [
       { token: 'abc123', user: 'admin@example.com' },
       { token: 'def456', user: 'user@example.com' }
     ];
+
+    async function fetchUsers() {
+      try {
+        const res = await fetch('/admin/users');
+        users = await res.json();
+        renderUsers();
+      } catch (err) {
+        users = [];
+        renderUsers();
+      }
+    }
+
+    async function fetchRoles() {
+      try {
+        const res = await fetch('/admin/roles');
+        roles = await res.json();
+        renderRoles();
+      } catch (err) {
+        roles = [];
+        renderRoles();
+      }
+    }
+
+    async function fetchPermissions() {
+      try {
+        const res = await fetch('/admin/permissions');
+        permissions = await res.json();
+        renderPermissions();
+      } catch (err) {
+        permissions = [];
+        renderPermissions();
+      }
+    }
+
     function renderUsers(filter = '') {
       const tbody = document.querySelector('#userTable tbody');
       tbody.innerHTML = '';
@@ -104,11 +151,40 @@
         (u.nickname && u.nickname.toLowerCase().includes(filter.toLowerCase()))
       ).forEach(u => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${u.email}</td><td>${u.nickname}</td><td>
-          <button onclick="alert('Edit user')">Edit</button>
+        tr.innerHTML = `<td class="editable" data-field="email" data-email="${u.email}">${u.email}</td><td class="editable" data-field="nickname" data-email="${u.email}">${u.nickname || ''}</td><td>
           <button onclick="loginUser('${u.email}')">Login</button>
         </td>`;
         tbody.appendChild(tr);
+      });
+      // Inline edit logic
+      tbody.querySelectorAll('.editable').forEach(td => {
+        td.onclick = function(e) {
+          if (td.querySelector('input')) return;
+          const val = td.textContent;
+          td.innerHTML = `<input type="text" value="${val}" style="width:90%" /> <button class="saveUserBtn">Save</button>`;
+          td.querySelector('input').focus();
+          // Cancel edit on outside click
+          function handleClickOutside(event) {
+            if (!td.contains(event.target)) {
+              td.innerHTML = val;
+              document.removeEventListener('mousedown', handleClickOutside);
+            }
+          }
+          document.addEventListener('mousedown', handleClickOutside);
+          td.querySelector('.saveUserBtn').onclick = function(ev) {
+            const newVal = td.querySelector('input').value;
+            const field = td.getAttribute('data-field');
+            const email = td.getAttribute('data-email');
+            const user = users.find(u => u.email === email);
+            if (user) {
+              user[field] = newVal;
+              td.innerHTML = newVal;
+              td.style.background = '#d4ffd4';
+              setTimeout(() => td.style.background = '', 1000);
+            }
+            document.removeEventListener('mousedown', handleClickOutside);
+          };
+        };
       });
     }
     // Login action for user
@@ -116,7 +192,7 @@
       const password = prompt('Enter password for ' + email);
       if (!password) return;
       try {
-        const res = await fetch('/login', {
+        const res = await fetch('/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -125,7 +201,7 @@
         apiLogs.push({
           time: new Date().toISOString(),
           method: 'POST',
-          endpoint: '/login',
+          endpoint: '/auth/login',
           status: res.status,
           user: email
         });
@@ -145,31 +221,84 @@
       tokens.forEach(t => {
         const div = document.createElement('div');
         div.className = 'token-item';
-        div.innerHTML = `<span>${t.token} (${t.user})</span><button onclick="alert('Revoke token')">Revoke</button>`;
+        div.innerHTML = `<span class="editable" data-field="token" data-token="${t.token}">${t.token}</span> (<span class="editable" data-field="user" data-token="${t.token}">${t.user}</span>)
+          <button onclick="alert('Revoke token')">Revoke</button>`;
         list.appendChild(div);
+      });
+      // Inline edit logic
+      list.querySelectorAll('.editable').forEach(span => {
+        span.onclick = function(e) {
+          if (span.querySelector('input')) return;
+          const val = span.textContent;
+          span.innerHTML = `<input type="text" value="${val}" style="width:70%" /> <button class="saveTokenBtn">Save</button>`;
+          span.querySelector('input').focus();
+          // Cancel edit on outside click
+          function handleClickOutside(event) {
+            if (!span.contains(event.target)) {
+              span.innerHTML = val;
+              document.removeEventListener('mousedown', handleClickOutside);
+            }
+          }
+          document.addEventListener('mousedown', handleClickOutside);
+          span.querySelector('.saveTokenBtn').onclick = function(ev) {
+            const newVal = span.querySelector('input').value;
+            const field = span.getAttribute('data-field');
+            const token = span.getAttribute('data-token');
+            const tok = tokens.find(t => t.token === token);
+            if (tok) {
+              tok[field] = newVal;
+              span.innerHTML = newVal;
+              span.style.background = '#d4ffd4';
+              setTimeout(() => span.style.background = '', 1000);
+            }
+            document.removeEventListener('mousedown', handleClickOutside);
+          };
+        };
       });
     }
 
-    // Dummy data for roles and permissions
-    const roles = [
-      { name: 'superadmin', permissions: ['manage_users', 'manage_roles', 'view_reports'] },
-      { name: 'admin', permissions: ['manage_users', 'view_reports'] },
-      { name: 'user', permissions: ['view_self'] }
-    ];
-    const permissions = [
-      { name: 'manage_users', roles: ['superadmin', 'admin'] },
-      { name: 'manage_roles', roles: ['superadmin'] },
-      { name: 'view_reports', roles: ['superadmin', 'admin'] },
-      { name: 'view_self', roles: ['user'] }
-    ];
+    // roles and permissions are now fetched from API
 
     function renderRoles() {
       const tbody = document.querySelector('#roleTable tbody');
       tbody.innerHTML = '';
       roles.forEach(r => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.name}</td><td>${r.permissions.join(', ')}</td>`;
+        // Multi-select permissions
+        let permCheckboxes = (permissions || []).map(p =>
+          `<label style='margin-right:1em;'><input type='checkbox' value='${p.name || p.id}' data-role='${r.name || r.id}' ${r.permissions && r.permissions.some(rp => rp.name === p.name) ? 'checked' : ''}/> ${p.name || p.id}</label>`
+        ).join('');
+        tr.innerHTML = `<td class="editable" data-field="name" data-role="${r.name || r.id}">${r.name || r.id}</td><td>${permCheckboxes}</td>`;
         tbody.appendChild(tr);
+      });
+      // Inline edit logic for role name
+      tbody.querySelectorAll('.editable').forEach(td => {
+        td.onclick = function(e) {
+          if (td.querySelector('input')) return;
+          const val = td.textContent;
+          td.innerHTML = `<input type="text" value="${val}" style="width:90%" /> <button class="saveRoleBtn">Save</button>`;
+          td.querySelector('input').focus();
+          // Cancel edit on outside click
+          function handleClickOutside(event) {
+            if (!td.contains(event.target)) {
+              td.innerHTML = val;
+              document.removeEventListener('mousedown', handleClickOutside);
+            }
+          }
+          document.addEventListener('mousedown', handleClickOutside);
+          td.querySelector('.saveRoleBtn').onclick = function(ev) {
+            const newVal = td.querySelector('input').value;
+            const role = td.getAttribute('data-role');
+            const r = roles.find(r => (r.name || r.id) === role);
+            if (r) {
+              r.name = newVal;
+              td.innerHTML = newVal;
+              td.style.background = '#d4ffd4';
+              setTimeout(() => td.style.background = '', 1000);
+            }
+            document.removeEventListener('mousedown', handleClickOutside);
+          };
+        };
       });
     }
 
@@ -178,11 +307,47 @@
       tbody.innerHTML = '';
       permissions.forEach(p => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${p.name}</td><td>${p.roles.join(', ')}</td>`;
+        // Multi-select roles
+        let roleCheckboxes = (roles || []).map(r =>
+          `<label style='margin-right:1em;'><input type='checkbox' value='${r.name || r.id}' data-perm='${p.name || p.id}' ${p.roles && p.roles.some(pr => pr.name === r.name) ? 'checked' : ''}/> ${r.name || r.id}</label>`
+        ).join('');
+        tr.innerHTML = `<td class="editable" data-field="name" data-perm="${p.name || p.id}">${p.name || p.id}</td><td>${roleCheckboxes}</td>`;
         tbody.appendChild(tr);
       });
+      // Inline edit logic for permission name
+      tbody.querySelectorAll('.editable').forEach(td => {
+        td.onclick = function(e) {
+          if (td.querySelector('input')) return;
+          const val = td.textContent;
+          td.innerHTML = `<input type="text" value="${val}" style="width:90%" /> <button class="savePermBtn">Save</button>`;
+          td.querySelector('input').focus();
+          // Cancel edit on outside click
+          function handleClickOutside(event) {
+            if (!td.contains(event.target)) {
+              td.innerHTML = val;
+              document.removeEventListener('mousedown', handleClickOutside);
+            }
+          }
+          document.addEventListener('mousedown', handleClickOutside);
+          td.querySelector('.savePermBtn').onclick = function(ev) {
+            const newVal = td.querySelector('input').value;
+            const perm = td.getAttribute('data-perm');
+            const p = permissions.find(p => (p.name || p.id) === perm);
+            if (p) {
+              p.name = newVal;
+              td.innerHTML = newVal;
+              td.style.background = '#d4ffd4';
+              setTimeout(() => td.style.background = '', 1000);
+            }
+            document.removeEventListener('mousedown', handleClickOutside);
+          };
+        };
+      });
     }
-    renderUsers();
+    // Initial fetch and render
+    fetchUsers();
+    fetchRoles();
+    fetchPermissions();
     document.getElementById('userSearch').addEventListener('input', function() {
       renderUsers(this.value);
     });
@@ -239,6 +404,114 @@
   renderRoles();
   renderPermissions();
   renderLogs();
+  fetchAndRenderConfig();
+
+  // New config form logic
+  document.getElementById('newConfigForm').onsubmit = async function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const key = form.key.value.trim();
+    const value = form.value.value.trim();
+    const resultSpan = document.getElementById('newConfigResult');
+    if (!key || !value) {
+      resultSpan.textContent = 'Key and value required.';
+      resultSpan.style.color = 'red';
+      return;
+    }
+    try {
+      const res = await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value })
+      });
+      if (res.ok) {
+        resultSpan.textContent = 'Config created!';
+        resultSpan.style.color = 'green';
+        form.reset();
+        fetchAndRenderConfig();
+      } else {
+        const err = await res.json();
+        resultSpan.textContent = err.error || 'Error creating config.';
+        resultSpan.style.color = 'red';
+      }
+    } catch (err) {
+      resultSpan.textContent = 'Network error.';
+      resultSpan.style.color = 'red';
+    }
+  };
+    // Config table logic
+    async function fetchAndRenderConfig() {
+      const tbody = document.querySelector('#configTable tbody');
+      tbody.innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+      try {
+        const res = await fetch('/config');
+        const configs = await res.json();
+        tbody.innerHTML = '';
+        configs.forEach(cfg => {
+          const tr = document.createElement('tr');
+          if (cfg.key === 'allowed_roles') {
+            // Multi-select checkbox list for roles
+            let selectedRoles = [];
+            try {
+              selectedRoles = JSON.parse(cfg.value);
+            } catch { selectedRoles = []; }
+            let checkboxes = roles.map(r =>
+              `<label style='margin-right:1em;'><input type='checkbox' value='${r.name}' data-id='${cfg.id}' ${selectedRoles.includes(r.name) ? 'checked' : ''}/> ${r.name}</label>`
+            ).join('');
+            tr.innerHTML = `<td>${cfg.key}</td><td>${checkboxes}</td><td><button data-id="${cfg.id}">Save</button></td>`;
+          } else {
+            tr.innerHTML = `<td>${cfg.key}</td><td><input type="text" value="${cfg.value}" data-id="${cfg.id}" /></td><td><button data-id="${cfg.id}">Save</button></td>`;
+          }
+          tbody.appendChild(tr);
+        });
+        // Add event listeners for save buttons
+        tbody.querySelectorAll('button').forEach(btn => {
+          btn.onclick = async function() {
+            const id = this.getAttribute('data-id');
+            let value;
+            // If allowed_roles, collect checked values
+            const row = btn.closest('tr');
+            if (row.querySelectorAll('input[type=checkbox]').length) {
+              value = Array.from(row.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+              value = JSON.stringify(value);
+            } else {
+              const input = row.querySelector('input[data-id="' + id + '"]');
+              value = input.value;
+            }
+            const res = await fetch('/config', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id, value })
+            });
+            if (res.ok) {
+              if (row.querySelectorAll('input[type=checkbox]').length) {
+                row.querySelectorAll('input[type=checkbox]').forEach(cb => {
+                  cb.parentElement.style.background = '#d4ffd4';
+                  setTimeout(() => cb.parentElement.style.background = '', 1000);
+                });
+              } else {
+                const input = row.querySelector('input[data-id="' + id + '"]');
+                input.style.background = '#d4ffd4';
+                setTimeout(() => input.style.background = '', 1000);
+              }
+            } else {
+              if (row.querySelectorAll('input[type=checkbox]').length) {
+                row.querySelectorAll('input[type=checkbox]').forEach(cb => {
+                  cb.parentElement.style.background = '#ffd4d4';
+                  setTimeout(() => cb.parentElement.style.background = '', 1000);
+                });
+              } else {
+                const input = row.querySelector('input[data-id="' + id + '"]');
+                input.style.background = '#ffd4d4';
+                setTimeout(() => input.style.background = '', 1000);
+              }
+            }
+          };
+        });
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="3">Error loading config</td></tr>`;
+      }
+    }
     document.getElementById('mailForm').onsubmit = e => {
       e.preventDefault();
       document.getElementById('mailResult').textContent = 'Mail settings saved (demo)';
@@ -253,6 +526,12 @@
         if (target) target.style.display = '';
       };
     });
+    // Open config table button
+    document.getElementById('openConfigBtn').onclick = function() {
+      document.querySelectorAll('.sidebar nav a').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('main section').forEach(sec => sec.style.display = 'none');
+      document.getElementById('mail').style.display = '';
+    };
     // Show first section by default
     document.querySelectorAll('main section').forEach((sec, i) => sec.style.display = i === 0 ? '' : 'none');
   </script>
