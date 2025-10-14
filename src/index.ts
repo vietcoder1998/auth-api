@@ -62,7 +62,6 @@ if (swaggerDocument) {
 
 // Use middlewares
 app.use(loggerMiddleware);
-app.use(rbac)
 app.use(cacheMiddleware({
   ttl: 600, // 10 minutes cache
   skipCache: (req) => {
@@ -75,6 +74,7 @@ app.use(cacheMiddleware({
 const API_PATH = process.env.API_PATH || '/auth';
 app.use('/api' + API_PATH, authRouter);
 app.use('/api/config', boundaryResponse, configRouter);
+app.use(rbac)
 app.use('/api/admin',boundaryResponse, adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
