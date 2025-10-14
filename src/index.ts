@@ -52,11 +52,25 @@ if (swaggerDocument) {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 }
 
+// Import middlewares
+import { loggerMiddleware } from './middlewares/logger.middle';
+import { cacheMiddleware, closeRedisConnection } from './middlewares/cache.middleware';
+
+// Use middlewares
+app.use(loggerMiddleware);
+app.use(cacheMiddleware({
+  ttl: 600, // 10 minutes cache
+  skipCache: (req) => {
+    // Skip caching for admin routes and auth routes
+    return req.originalUrl.includes('/admin') || req.originalUrl.includes('/auth');
+  }
+}));
+
 // API path config
 const API_PATH = process.env.API_PATH || '/auth';
-app.use(API_PATH, authRouter);
-app.use('/config', configRouter);
-app.use('/admin', adminRouter);
+app.use('/api' + API_PATH, authRouter);
+app.use('/api/config', configRouter);
+app.use('/api/admin', adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
 // Serve admin GUI at /admin
@@ -69,4 +83,17 @@ app.listen(PORT, () => {
   if (swaggerDocument) {
     console.log(`API docs available at http://localhost:${PORT}/docs`);
   }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  await closeRedisConnection();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down gracefully');
+  await closeRedisConnection();
+  process.exit(0);
 });
