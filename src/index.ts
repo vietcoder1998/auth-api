@@ -16,6 +16,7 @@ import * as env from './env'
 import { loggerMiddleware } from './middlewares/logger.middle';
 import { cacheMiddleware } from './middlewares/cache.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
+import { rbac } from './middlewares/rbac.middleware';
 
 dotenv.config();
 
@@ -61,6 +62,7 @@ if (swaggerDocument) {
 
 // Use middlewares
 app.use(loggerMiddleware);
+app.use(rbac)
 app.use(cacheMiddleware({
   ttl: 600, // 10 minutes cache
   skipCache: (req) => {
