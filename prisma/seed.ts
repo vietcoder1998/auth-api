@@ -4,48 +4,74 @@ const prisma = new PrismaClient();
 async function main() {
   // Create permissions with categories and descriptions
   const permissions = [
-    { name: 'create_user', description: 'Create new users', category: 'user', route: '/admin/users', method: 'POST' },
-    { name: 'read_user', description: 'View user information', category: 'user', route: '/admin/users', method: 'GET' },
-    { name: 'update_user', description: 'Update user information', category: 'user', route: '/admin/users/:id', method: 'PUT' },
-    { name: 'delete_user', description: 'Delete users', category: 'user', route: '/admin/users/:id', method: 'DELETE' },
+    { name: 'create_user', description: 'Create new users', category: 'user', route: '/api/admin/users', method: 'POST' },
+    { name: 'read_user', description: 'View user information', category: 'user', route: '/api/admin/users', method: 'GET' },
+    { name: 'update_user', description: 'Update user information', category: 'user', route: '/api/admin/users/:id', method: 'PUT' },
+    { name: 'delete_user', description: 'Delete users', category: 'user', route: '/api/admin/users/:id', method: 'DELETE' },
     { name: 'manage_users', description: 'Full user management access', category: 'user' },
     
-    { name: 'create_role', description: 'Create new roles', category: 'role', route: '/admin/roles', method: 'POST' },
-    { name: 'read_role', description: 'View role information', category: 'role', route: '/admin/roles', method: 'GET' },
-    { name: 'update_role', description: 'Update role information', category: 'role', route: '/admin/roles/:id', method: 'PUT' },
-    { name: 'delete_role', description: 'Delete roles', category: 'role', route: '/admin/roles/:id', method: 'DELETE' },
+    { name: 'create_role', description: 'Create new roles', category: 'role', route: '/api/admin/roles', method: 'POST' },
+    { name: 'read_role', description: 'View role information', category: 'role', route: '/api/admin/roles', method: 'GET' },
+    { name: 'update_role', description: 'Update role information', category: 'role', route: '/api/admin/roles/:id', method: 'PUT' },
+    { name: 'delete_role', description: 'Delete roles', category: 'role', route: '/api/admin/roles/:id', method: 'DELETE' },
     { name: 'manage_roles', description: 'Full role management access', category: 'role' },
     
-    { name: 'create_permission', description: 'Create new permissions', category: 'permission', route: '/admin/permissions', method: 'POST' },
-    { name: 'read_permission', description: 'View permission information', category: 'permission', route: '/admin/permissions', method: 'GET' },
-    { name: 'update_permission', description: 'Update permission information', category: 'permission', route: '/admin/permissions/:id', method: 'PUT' },
-    { name: 'delete_permission', description: 'Delete permissions', category: 'permission', route: '/admin/permissions/:id', method: 'DELETE' },
+    { name: 'create_permission', description: 'Create new permissions', category: 'permission', route: '/api/admin/permissions', method: 'POST' },
+    { name: 'read_permission', description: 'View permission information', category: 'permission', route: '/api/admin/permissions', method: 'GET' },
+    { name: 'update_permission', description: 'Update permission information', category: 'permission', route: '/api/admin/permissions/:id', method: 'PUT' },
+    { name: 'delete_permission', description: 'Delete permissions', category: 'permission', route: '/api/admin/permissions/:id', method: 'DELETE' },
     { name: 'manage_permissions', description: 'Full permission management access', category: 'permission' },
     
     { name: 'system_admin', description: 'System administration access', category: 'system' },
-    { name: 'system_config', description: 'System configuration access', category: 'system', route: '/config', method: 'GET' },
-    { name: 'system_logs', description: 'View system logs', category: 'system', route: '/admin/logs', method: 'GET' },
-    { name: 'manage_cache', description: 'Manage cache system', category: 'system', route: '/admin/cache', method: 'GET' },
+    { name: 'system_config', description: 'System configuration access', category: 'system', route: '/api/config', method: 'GET' },
+    { name: 'system_logs', description: 'View system logs', category: 'system', route: '/api/admin/logs', method: 'GET' },
+    { name: 'manage_cache', description: 'Manage cache system', category: 'system', route: '/api/admin/cache', method: 'GET' },
     
-    { name: 'view_reports', description: 'View system reports', category: 'report', route: '/admin/reports', method: 'GET' },
-    { name: 'create_reports', description: 'Create new reports', category: 'report', route: '/admin/reports', method: 'POST' },
-    { name: 'export_reports', description: 'Export reports', category: 'report', route: '/admin/reports/export', method: 'GET' },
+    { name: 'view_reports', description: 'View system reports', category: 'report', route: '/api/admin/reports', method: 'GET' },
+    { name: 'create_reports', description: 'Create new reports', category: 'report', route: '/api/admin/reports', method: 'POST' },
+    { name: 'export_reports', description: 'Export reports', category: 'report', route: '/api/admin/reports/export', method: 'GET' },
     
     { name: 'api_access', description: 'Basic API access', category: 'api' },
     { name: 'api_admin', description: 'Admin API access', category: 'api' },
     
-    { name: 'view_self', description: 'View own profile', category: 'user', route: '/profile', method: 'GET' },
+    { name: 'view_self', description: 'View own profile', category: 'user', route: '/api/profile', method: 'GET' },
     
     // Route-based permissions
-    { name: 'admin_users_get', description: 'GET admin users endpoint', category: 'api', route: '/admin/users', method: 'GET' },
-    { name: 'admin_users_post', description: 'POST admin users endpoint', category: 'api', route: '/admin/users', method: 'POST' },
-    { name: 'admin_users_put', description: 'PUT admin users endpoint', category: 'api', route: '/admin/users/:id', method: 'PUT' },
-    { name: 'admin_users_delete', description: 'DELETE admin users endpoint', category: 'api', route: '/admin/users/:id', method: 'DELETE' },
+    { name: 'admin_users_get', description: 'GET admin users endpoint', category: 'api', route: '/api/admin/users', method: 'GET' },
+    { name: 'admin_users_post', description: 'POST admin users endpoint', category: 'api', route: '/api/admin/users', method: 'POST' },
+    { name: 'admin_users_put', description: 'PUT admin users endpoint', category: 'api', route: '/api/admin/users/:id', method: 'PUT' },
+    { name: 'admin_users_delete', description: 'DELETE admin users endpoint', category: 'api', route: '/api/admin/users/:id', method: 'DELETE' },
     
-    { name: 'admin_roles_get', description: 'GET admin roles endpoint', category: 'api', route: '/admin/roles', method: 'GET' },
-    { name: 'admin_roles_post', description: 'POST admin roles endpoint', category: 'api', route: '/admin/roles', method: 'POST' },
-    { name: 'admin_roles_put', description: 'PUT admin roles endpoint', category: 'api', route: '/admin/roles/:id', method: 'PUT' },
-    { name: 'admin_roles_delete', description: 'DELETE admin roles endpoint', category: 'api', route: '/admin/roles/:id', method: 'DELETE' }
+    { name: 'admin_roles_get', description: 'GET admin roles endpoint', category: 'api', route: '/api/admin/roles', method: 'GET' },
+    { name: 'admin_roles_post', description: 'POST admin roles endpoint', category: 'api', route: '/api/admin/roles', method: 'POST' },
+    { name: 'admin_roles_put', description: 'PUT admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'PUT' },
+    { name: 'admin_roles_delete', description: 'DELETE admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'DELETE' },
+    
+    // Additional admin endpoints permissions
+    { name: 'admin_permissions_get', description: 'GET admin permissions endpoint', category: 'api', route: '/api/admin/permissions', method: 'GET' },
+    { name: 'admin_permissions_post', description: 'POST admin permissions endpoint', category: 'api', route: '/api/admin/permissions', method: 'POST' },
+    { name: 'admin_permissions_put', description: 'PUT admin permissions endpoint', category: 'api', route: '/api/admin/permissions/:id', method: 'PUT' },
+    { name: 'admin_permissions_delete', description: 'DELETE admin permissions endpoint', category: 'api', route: '/api/admin/permissions/:id', method: 'DELETE' },
+    
+    { name: 'admin_tokens_get', description: 'GET admin tokens endpoint', category: 'api', route: '/api/admin/tokens', method: 'GET' },
+    { name: 'admin_tokens_post', description: 'POST admin tokens endpoint', category: 'api', route: '/api/admin/tokens', method: 'POST' },
+    { name: 'admin_tokens_delete', description: 'DELETE admin tokens endpoint', category: 'api', route: '/api/admin/tokens/:id', method: 'DELETE' },
+    
+    { name: 'admin_mail_templates_get', description: 'GET admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates', method: 'GET' },
+    { name: 'admin_mail_templates_post', description: 'POST admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates', method: 'POST' },
+    { name: 'admin_mail_templates_put', description: 'PUT admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'PUT' },
+    { name: 'admin_mail_templates_delete', description: 'DELETE admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'DELETE' },
+    
+    { name: 'admin_notification_templates_get', description: 'GET admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates', method: 'GET' },
+    { name: 'admin_notification_templates_post', description: 'POST admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates', method: 'POST' },
+    { name: 'admin_notification_templates_put', description: 'PUT admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'PUT' },
+    { name: 'admin_notification_templates_delete', description: 'DELETE admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'DELETE' },
+    
+    { name: 'admin_mails_get', description: 'GET admin mails endpoint', category: 'api', route: '/api/admin/mails', method: 'GET' },
+    { name: 'admin_mails_post', description: 'POST admin mails endpoint', category: 'api', route: '/api/admin/mails', method: 'POST' },
+    
+    { name: 'admin_cache_get', description: 'GET admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'GET' },
+    { name: 'admin_cache_delete', description: 'DELETE admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'DELETE' }
   ];
   
   const permissionRecords = await Promise.all(
