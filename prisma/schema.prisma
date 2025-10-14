@@ -58,8 +58,9 @@ model MailTemplate {
   id          String   @id @default(uuid())
   name        String   @unique
   subject     String
-  body        String
+  body        String   @db.Text
   active      Boolean  @default(true)
+  mails       Mail[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -70,7 +71,7 @@ model NotificationTemplate {
   id          String   @id @default(uuid())
   name        String   @unique
   title       String
-  body        String
+  body        String   @db.Text
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -84,4 +85,21 @@ model Config {
   value String
 
   @@map("config")
+}
+
+model Mail {
+  id              String   @id @default(uuid())
+  to              String
+  from            String?
+  subject         String
+  body            String   @db.Text
+  status          String   @default("pending") // pending, sent, failed
+  templateId      String?
+  template        MailTemplate? @relation(fields: [templateId], references: [id])
+  sentAt          DateTime?
+  failedReason    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("mail")
 }

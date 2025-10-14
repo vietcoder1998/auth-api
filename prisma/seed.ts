@@ -119,12 +119,201 @@ async function main() {
     }
   });
 
-  // Seed CORS config
-  await prisma.config.upsert({
-    where: { key: 'cors_origin' },
-    update: { value: 'http://localhost:3000' },
-    create: { key: 'cors_origin', value: 'http://localhost:3000' }
-  });
+  // Seed configuration settings
+  const configs = [
+    { key: 'cors_origin', value: 'http://localhost:3000' },
+    { key: 'app_name', value: 'Auth API Platform' },
+    { key: 'jwt_expiry', value: '24h' },
+    { key: 'max_login_attempts', value: '5' },
+    { key: 'session_timeout', value: '3600' },
+    { key: 'email_settings', value: JSON.stringify({
+        smtp_host: 'smtp.gmail.com',
+        smtp_port: 587,
+        smtp_secure: false,
+        from_email: 'noreply@example.com',
+        from_name: 'Auth API Platform'
+      })
+    },
+    { key: 'feature_flags', value: JSON.stringify({
+        email_verification: true,
+        two_factor_auth: false,
+        social_login: true,
+        password_policy: true
+      })
+    },
+    { key: 'ui_theme', value: JSON.stringify({
+        primary_color: '#007bff',
+        secondary_color: '#6c757d',
+        dark_mode: false,
+        logo_url: '/assets/logo.png'
+      })
+    }
+  ];
+
+  for (const config of configs) {
+    await prisma.config.upsert({
+      where: { key: config.key },
+      update: { value: config.value },
+      create: config
+    });
+  }
+
+  // Seed Mail Templates
+  const mailTemplates = [
+    {
+      name: 'welcome_email',
+      subject: 'Welcome to Our Platform!',
+      body: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #007bff;">Welcome to Our Platform!</h1>
+        <p>Hello {{name}},</p>
+        <p>Thank you for joining our platform. We're excited to have you on board!</p>
+        <p>Your account has been successfully created with the email: <strong>{{email}}</strong></p>
+        <p>You can now log in and start exploring our features.</p>
+        <div style="margin: 30px 0;">
+            <a href="{{login_url}}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Login to Your Account</a>
+        </div>
+        <p>If you have any questions, please don't hesitate to contact our support team.</p>
+        <p>Best regards,<br>The Team</p>
+    </div>
+</body>
+</html>`,
+      active: true
+    },
+    {
+      name: 'password_reset',
+      subject: 'Password Reset Request',
+      body: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Password Reset</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #dc3545;">Password Reset Request</h1>
+        <p>Hello {{name}},</p>
+        <p>We received a request to reset your password for your account.</p>
+        <p>Click the button below to reset your password:</p>
+        <div style="margin: 30px 0;">
+            <a href="{{reset_url}}" style="background-color: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
+        </div>
+        <p>This link will expire in 1 hour for security reasons.</p>
+        <p>If you didn't request this password reset, please ignore this email or contact support if you have concerns.</p>
+        <p>Best regards,<br>The Team</p>
+    </div>
+</body>
+</html>`,
+      active: true
+    },
+    {
+      name: 'account_verification',
+      subject: 'Please Verify Your Email Address',
+      body: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Email Verification</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #28a745;">Email Verification Required</h1>
+        <p>Hello {{name}},</p>
+        <p>Thank you for creating an account with us. To complete your registration, please verify your email address.</p>
+        <div style="margin: 30px 0;">
+            <a href="{{verification_url}}" style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Verify Email Address</a>
+        </div>
+        <p>Or copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">{{verification_url}}</p>
+        <p>This verification link will expire in 24 hours.</p>
+        <p>Best regards,<br>The Team</p>
+    </div>
+</body>
+</html>`,
+      active: true
+    }
+  ];
+
+  for (const template of mailTemplates) {
+    await prisma.mailTemplate.upsert({
+      where: { name: template.name },
+      update: {
+        subject: template.subject,
+        body: template.body,
+        active: template.active
+      },
+      create: template
+    });
+  }
+
+  // Seed Notification Templates
+  const notificationTemplates = [
+    {
+      name: 'user_login',
+      title: 'New Login Detected',
+      body: 'A new login was detected on your account from {{device}} at {{timestamp}}. If this wasn\'t you, please secure your account immediately.',
+      active: true
+    },
+    {
+      name: 'profile_updated',
+      title: 'Profile Updated',
+      body: 'Your profile information has been successfully updated. The changes include: {{changes}}.',
+      active: true
+    },
+    {
+      name: 'password_changed',
+      title: 'Password Changed',
+      body: 'Your account password has been successfully changed. If you didn\'t make this change, please contact support immediately.',
+      active: true
+    },
+    {
+      name: 'role_assigned',
+      title: 'New Role Assigned',
+      body: 'You have been assigned the role "{{role}}" by {{admin}}. Your new permissions are now active.',
+      active: true
+    },
+    {
+      name: 'account_suspended',
+      title: 'Account Suspended',
+      body: 'Your account has been suspended due to {{reason}}. Please contact support for more information.',
+      active: true
+    },
+    {
+      name: 'system_maintenance',
+      title: 'Scheduled Maintenance',
+      body: 'System maintenance is scheduled for {{date}} from {{start_time}} to {{end_time}}. Some services may be temporarily unavailable.',
+      active: true
+    },
+    {
+      name: 'security_alert',
+      title: 'Security Alert',
+      body: 'Security alert: {{alert_type}} detected on your account. Please review your recent activity and update your security settings if necessary.',
+      active: true
+    }
+  ];
+
+  for (const template of notificationTemplates) {
+    await prisma.notificationTemplate.upsert({
+      where: { name: template.name },
+      update: {
+        title: template.title,
+        body: template.body,
+        active: template.active
+      },
+      create: template
+    });
+  }
+
+  console.log('Seeding completed successfully!');
 }
 
 main()
