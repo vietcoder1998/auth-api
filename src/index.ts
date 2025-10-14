@@ -45,7 +45,7 @@ app.use(async (req, res, next) => {
 });
 
 // Swagger API docs setup
-let swaggerDocument=null;
+let swaggerDocument = null;
 try {
   console.log("Loading swagger document...", __dirname);
   const swaggerPath = path.join(__dirname, 'openapi.yaml');
@@ -60,7 +60,7 @@ if (swaggerDocument) {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 }
 
-app.use('/api/auth' , authRouter);
+app.use('/api/auth', authRouter);
 
 // Use middlewares
 app.use(loggerMiddleware);
@@ -73,8 +73,8 @@ app.use(cacheMiddleware({
 }));
 
 // API path config
-app.use('/api/config',jwtTokenValidation, rbac, boundaryResponse, configRouter);
-app.use('/api/admin',jwtTokenValidation, rbac, boundaryResponse, adminRouter);
+app.use('/api/config', jwtTokenValidation, rbac, boundaryResponse, configRouter);
+app.use('/api/admin', jwtTokenValidation, rbac, boundaryResponse, adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
 // Apply boundary response middleware after all routes
