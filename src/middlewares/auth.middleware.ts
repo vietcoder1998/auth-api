@@ -16,7 +16,7 @@ export async function redisTokenValidation(req: Request, res: Response, next: Ne
 
 export async function jwtTokenValidation(req: Request, res: Response, next: NextFunction) {
   try {
-    if (req.originalUrl?.includes('/api/auth')) {
+    if (req.originalUrl?.includes('/api/auth') && !req.originalUrl?.includes('/api/auth/me')) {
       return next();
     }
     
