@@ -76,16 +76,18 @@
         </form>
         <div class="result" id="mailResult"></div>
         <h2>Mail Templates</h2>
+        <button id="createMailTemplateBtn" type="button">Create Mail Template</button>
         <table class="table" id="mailTemplateTable">
           <thead>
-            <tr><th>Name</th><th>Subject</th><th>Body</th><th>Active</th><th>Created</th><th>Updated</th></tr>
+            <tr><th>Name</th><th>Subject</th><th>Body</th><th>Active</th><th>Created</th><th>Updated</th><th>Actions</th></tr>
           </thead>
           <tbody></tbody>
         </table>
         <h2>Notification Templates</h2>
+        <button id="createNotificationTemplateBtn" type="button">Create Notification Template</button>
         <table class="table" id="notificationTemplateTable">
           <thead>
-            <tr><th>Name</th><th>Title</th><th>Body</th><th>Active</th><th>Created</th><th>Updated</th></tr>
+            <tr><th>Name</th><th>Title</th><th>Body</th><th>Active</th><th>Created</th><th>Updated</th><th>Actions</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -442,36 +444,72 @@
   // MailTemplate display logic
   async function fetchAndRenderMailTemplates() {
     const tbody = document.querySelector('#mailTemplateTable tbody');
-    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
     try {
       const res = await fetch('/admin/mail-templates');
       const templates = await res.json();
       tbody.innerHTML = '';
       templates.forEach(t => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${t.name}</td><td>${t.subject}</td><td>${t.body}</td><td>${t.active ? 'Yes' : 'No'}</td><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</td><td>${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : ''}</td>`;
+        tr.innerHTML = `<td>${t.name}</td><td>${t.subject}</td><td>${t.body}</td><td>${t.active ? 'Yes' : 'No'}</td><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</td><td>${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : ''}</td><td>
+          <button class="editMailTemplateBtn" data-id="${t.id}">Edit</button>
+          <button class="deleteMailTemplateBtn" data-id="${t.id}">Delete</button>
+        </td>`;
         tbody.appendChild(tr);
       });
+      // Add action listeners
+      tbody.querySelectorAll('.editMailTemplateBtn').forEach(btn => {
+        btn.onclick = function() {
+          alert('Edit Mail Template: ' + btn.getAttribute('data-id'));
+          // TODO: Show edit form/modal
+        };
+      });
+      tbody.querySelectorAll('.deleteMailTemplateBtn').forEach(btn => {
+        btn.onclick = async function() {
+          if (confirm('Delete this mail template?')) {
+            await fetch('/admin/mail-templates/' + btn.getAttribute('data-id'), { method: 'DELETE' });
+            fetchAndRenderMailTemplates();
+          }
+        };
+      });
     } catch (err) {
-      tbody.innerHTML = '<tr><td colspan="6">Error loading mail templates</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7">Error loading mail templates</td></tr>';
     }
   }
 
   // NotificationTemplate display logic
   async function fetchAndRenderNotificationTemplates() {
     const tbody = document.querySelector('#notificationTemplateTable tbody');
-    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
     try {
       const res = await fetch('/admin/notification-templates');
       const templates = await res.json();
       tbody.innerHTML = '';
       templates.forEach(t => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${t.name}</td><td>${t.title}</td><td>${t.body}</td><td>${t.active ? 'Yes' : 'No'}</td><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</td><td>${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : ''}</td>`;
+        tr.innerHTML = `<td>${t.name}</td><td>${t.title}</td><td>${t.body}</td><td>${t.active ? 'Yes' : 'No'}</td><td>${t.createdAt ? new Date(t.createdAt).toLocaleString() : ''}</td><td>${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : ''}</td><td>
+          <button class="editNotificationTemplateBtn" data-id="${t.id}">Edit</button>
+          <button class="deleteNotificationTemplateBtn" data-id="${t.id}">Delete</button>
+        </td>`;
         tbody.appendChild(tr);
       });
+      // Add action listeners
+      tbody.querySelectorAll('.editNotificationTemplateBtn').forEach(btn => {
+        btn.onclick = function() {
+          alert('Edit Notification Template: ' + btn.getAttribute('data-id'));
+          // TODO: Show edit form/modal
+        };
+      });
+      tbody.querySelectorAll('.deleteNotificationTemplateBtn').forEach(btn => {
+        btn.onclick = async function() {
+          if (confirm('Delete this notification template?')) {
+            await fetch('/admin/notification-templates/' + btn.getAttribute('data-id'), { method: 'DELETE' });
+            fetchAndRenderNotificationTemplates();
+          }
+        };
+      });
     } catch (err) {
-      tbody.innerHTML = '<tr><td colspan="6">Error loading notification templates</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7">Error loading notification templates</td></tr>';
     }
   }
 

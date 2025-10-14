@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <section id="users" class="collapsible">
+    <h2><span class="icon">👤</span> User Table</h2>
+    <div style="margin-bottom: 1em;">
+      <input type="text" id="userSearch" placeholder="Search by email or nickname" style="width: 200px;" />
+      <button id="createUserBtn">Create New User</button>
+    </div>
+    <table class="table" id="userTable">
+      <thead>
+        <tr><th>Email</th><th>Nickname</th><th>Actions</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="createUserForm" style="display:none; margin-top:1em;">
+      <h3>Create New User</h3>
+      <form id="newUserForm">
+        <input type="email" name="email" placeholder="Email" required />
+        <input type="text" name="nickname" placeholder="Nickname" />
+        <input type="password" name="password" placeholder="Password" required />
+        <button type="submit">Create</button>
+        <button type="button" id="cancelCreateUser">Cancel</button>
+      </form>
+      <div id="createUserResult"></div>
+    </div>
+  </section>
+  <script src="user.js"></script>
+</body>
+</html>
