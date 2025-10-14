@@ -1,18 +1,18 @@
 import { Request, Response } from 'express';
-import { redisClient } from '../middlewares/cache.middleware';
 import { setPaginationMeta } from '../middlewares/response.middleware';
+import { client } from '../setup';
 
 // Helper function to check Redis connection
 function ensureRedisClient() {
-  if (!redisClient) {
+  if (!client) {
     throw new Error('Redis client is not initialized. Please check if Redis server is running.');
   }
   
-  if (!redisClient.isOpen) {
+  if (!client.isOpen) {
     throw new Error('Redis client is not connected. Please check if Redis server is running on localhost:6379');
   }
   
-  return redisClient;
+  return client;
 }
 
 /**

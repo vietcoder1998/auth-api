@@ -14,7 +14,7 @@ import YAML from 'yaml';
 import * as env from './env'
 // Import middlewares
 import { loggerMiddleware } from './middlewares/logger.middle';
-import { cacheMiddleware, closeRedisConnection } from './middlewares/cache.middleware';
+import { cacheMiddleware } from './middlewares/cache.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
 
 dotenv.config();
@@ -88,17 +88,4 @@ app.listen(PORT, () => {
   if (swaggerDocument) {
     console.log(`API docs available at http://localhost:${PORT}/docs`);
   }
-});
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  await closeRedisConnection();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully');
-  await closeRedisConnection();
-  process.exit(0);
 });
