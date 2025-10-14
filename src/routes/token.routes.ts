@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import { grantToken, revokeToken } from '../controllers/token.controller';
 
 const router = Router();

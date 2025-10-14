@@ -27,6 +27,7 @@
     "prisma": "^4.16.2",
     "redis": "^4.7.1",
     "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {

@@ -17,6 +17,7 @@
         <a href="#roles">Roles</a>
         <a href="#permissions">Permissions</a>
         <a href="#mail">Mail Settings</a>
+        <a href="#token-control">Token Control</a>
         <button id="openConfigBtn" type="button" style="width:100%;margin-top:1em;">Open Config Table</button>
       </nav>
     </aside>
@@ -48,6 +49,13 @@
       <section id="tokens" class="collapsible">
         <h2><span class="icon">🔑</span> Token Control <button class="collapseBtn" type="button">▼</button></h2>
         <div class="token-list" id="tokenList"></div>
+        <table class="table" id="tokenTable">
+          <thead>
+            <tr><th>Token</th><th>User</th><th>Created</th><th>Expires</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <button id="createTokenBtn" type="button">Create Token</button>
       </section>
       <section id="roles" class="collapsible">
         <h2><span class="icon">🛡️</span> Roles <button class="collapseBtn" type="button">▼</button></h2>
