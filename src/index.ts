@@ -73,8 +73,8 @@ app.use(cacheMiddleware({
 // API path config
 const API_PATH = process.env.API_PATH || '/auth';
 app.use('/api' + API_PATH, authRouter);
-app.use('/api/config', boundaryResponse, configRouter);
 app.use(rbac)
+app.use('/api/config', boundaryResponse, configRouter);
 app.use('/api/admin',boundaryResponse, adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
