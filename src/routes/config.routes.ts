@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { getConfig, updateConfig, createConfig } from '../controllers/config.controller';
+import { getConfig, getConfigByKey, updateConfig, createConfig } from '../controllers/config.controller';
 
 const router = Router();
 
 router.get('/', getConfig);
+router.get('/:key', getConfigByKey);
 router.post('/', createConfig);
 router.put('/', updateConfig);
 
