@@ -17,6 +17,7 @@ import { loggerMiddleware } from './middlewares/logger.middle';
 import { cacheMiddleware } from './middlewares/cache.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
 import { rbac } from './middlewares/rbac.middleware';
+import { jwtTokenValidation } from './middlewares/auth.middleware';
 
 dotenv.config();
 
@@ -73,9 +74,8 @@ app.use(cacheMiddleware({
 // API path config
 const API_PATH = process.env.API_PATH || '/auth';
 app.use('/api' + API_PATH, authRouter);
-app.use(rbac)
-app.use('/api/config', boundaryResponse, configRouter);
-app.use('/api/admin',boundaryResponse, adminRouter);
+app.use('/api/config',jwtTokenValidation, rbac, boundaryResponse, configRouter);
+app.use('/api/admin',jwtTokenValidation, rbac, boundaryResponse, adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
 // Apply boundary response middleware after all routes
