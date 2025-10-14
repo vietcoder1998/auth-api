@@ -8,6 +8,9 @@ import { PrismaClient } from '@prisma/client';
 import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
 import adminRouter from './routes/admin.routes';
+import swaggerUi from 'swagger-ui-express';
+import fs from 'fs';
+import YAML from 'yaml';
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -33,6 +36,22 @@ app.use(async (req, res, next) => {
   })(req, res, next);
 });
 
+// Swagger API docs setup
+let swaggerDocument=null;
+try {
+  console.log("Loading swagger document...", __dirname);
+  const swaggerPath = path.join(__dirname, 'openapi.yaml');
+  if (fs.existsSync(swaggerPath)) {
+    const file = fs.readFileSync(swaggerPath, 'utf8');
+    swaggerDocument = YAML.parse(file);
+  }
+} catch (err) {
+  swaggerDocument = null;
+}
+if (swaggerDocument) {
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+}
+
 // API path config
 const API_PATH = process.env.API_PATH || '/auth';
 app.use(API_PATH, authRouter);
@@ -47,4 +66,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Auth API running on port ${PORT}`);
   console.log(`Admin GUI available at http://localhost:${PORT}/admin`);
+  if (swaggerDocument) {
+    console.log(`API docs available at http://localhost:${PORT}/docs`);
+  }
 });
