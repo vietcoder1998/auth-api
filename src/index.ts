@@ -71,11 +71,13 @@ app.use(cacheMiddleware({
     return req.originalUrl.includes('/auth');
   }
 }));
-app.use(jwtTokenValidation);
-app.use(rbac);
 
 // API path config
 app.use('/api/auth', authRouter);
+
+app.use(jwtTokenValidation);
+app.use(rbac);
+
 app.use('/api/config', configRouter);
 app.use('/api/admin', adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));

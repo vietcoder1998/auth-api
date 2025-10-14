@@ -1,5 +1,5 @@
 
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 
 // Extend Express Request interface to include 'user'
 declare global {
@@ -23,6 +23,11 @@ declare global {
 // For route-based: rbac([]) - will check permissions based on current route and method
 export const rbac = (req: Request, res: Response, next: NextFunction) => {
 	const user = req.user;
+
+	if (req.originalUrl?.includes('/admin/auth')) {
+		return next()
+	}
+
 	if (!user) {
 		return res.status(401).json({ error: 'Unauthorized' });
 	}

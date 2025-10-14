@@ -16,8 +16,12 @@ export async function redisTokenValidation(req: Request, res: Response, next: Ne
 
 export async function jwtTokenValidation(req: Request, res: Response, next: NextFunction) {
   try {
-    const token = req.headers['authorization']?.replace('Bearer ', '');
+    if (req.originalUrl?.includes('/api/auth')) {
+      return next();
+    }
     
+    const token = req.headers['authorization']?.replace('Bearer ', '');
+
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
