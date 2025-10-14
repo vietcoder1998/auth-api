@@ -10,7 +10,8 @@
     "test": "jest --config jest.config.js --coverage",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^4.16.2",

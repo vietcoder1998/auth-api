@@ -7,11 +7,11 @@ export interface JwtPayload {
   role?: string;
 }
 
-export function generateToken(payload: JwtPayload, expiresIn?: jwt.SignOptions['expiresIn']) {
+export function generateToken(payload: JwtPayload, expiresIn: jwt.SignOptions['expiresIn'] = '1h') {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
-export function generateRefreshToken(payload: JwtPayload, expiresIn?: jwt.SignOptions['expiresIn']) {
+export function generateRefreshToken(payload: JwtPayload, expiresIn: jwt.SignOptions['expiresIn'] = '7d') {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 

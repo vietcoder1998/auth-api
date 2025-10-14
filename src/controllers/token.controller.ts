@@ -114,8 +114,8 @@ export async function grantToken(req: Request, res: Response) {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const accessToken = generateToken({ userId: user.id, email: user.email, role: user.roleId || undefined });
-    const refreshToken = generateRefreshToken({ userId: user.id });
+    const accessToken = generateToken({ userId: user.id, email: user.email, role: user.roleId || undefined }, '1h');
+    const refreshToken = generateRefreshToken({ userId: user.id }, '7d');
     await prisma.token.create({
       data: {
         userId: user.id,

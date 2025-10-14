@@ -22,8 +22,8 @@ export async function login(req: Request, res: Response) {
       userId: user.id,
       email: user.email,
       ...(user.roleId ? { role: user.roleId } : {})
-    });
-  const refreshToken = generateRefreshToken({ userId: user.id });
+    }, '1h');
+  const refreshToken = generateRefreshToken({ userId: user.id }, '7d');
   // Save tokens in DB
   await prisma.token.create({
     data: {
