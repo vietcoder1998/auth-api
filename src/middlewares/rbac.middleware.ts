@@ -27,19 +27,6 @@ export const rbac = (req: Request, res: Response, next: NextFunction) => {
 		return res.status(401).json({ error: 'Unauthorized' });
 	}
 
-	// Check roles first
-	if (user.roles?.length && required.some(r => user.roles?.includes(r))) {
-		return next();
-	}
-
-	// Check nae.permissions?.length) {
-	const hasNamedPermission = required.some(p =>
-		user.permissions?.some(perm => perm.name === p)
-	);
-	if (hasNamedPermission) {
-		return next();
-	}
-
 	// Check route-based permissions (if no specific permissions required)
 	if (user.permissions?.length) {
 		const currentRoute = req.route?.path || req.path;

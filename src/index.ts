@@ -1,23 +1,23 @@
 
 
+import { PrismaClient } from '@prisma/client';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
-import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yaml';
+import * as env from './env';
+import adminRouter from './routes/admin.routes';
 import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
-import adminRouter from './routes/admin.routes';
-import swaggerUi from 'swagger-ui-express';
-import fs from 'fs';
-import YAML from 'yaml';
-import * as env from './env'
 // Import middlewares
-import { loggerMiddleware } from './middlewares/logger.middle';
-import { cacheMiddleware } from './middlewares/cache.middleware';
-import { boundaryResponse } from './middlewares/response.middleware';
-import { rbac } from './middlewares/rbac.middleware';
 import { jwtTokenValidation } from './middlewares/auth.middleware';
+import { cacheMiddleware } from './middlewares/cache.middleware';
+import { loggerMiddleware } from './middlewares/logger.middle';
+import { rbac } from './middlewares/rbac.middleware';
+import { boundaryResponse } from './middlewares/response.middleware';
 
 dotenv.config();
 
@@ -60,7 +60,7 @@ if (swaggerDocument) {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 }
 
-app.use('/api/auth', authRouter);
+app.use(boundaryResponse);
 
 // Use middlewares
 app.use(loggerMiddleware);
@@ -71,10 +71,13 @@ app.use(cacheMiddleware({
     return req.originalUrl.includes('/auth');
   }
 }));
+app.use(jwtTokenValidation);
+app.use(rbac);
 
 // API path config
-app.use('/api/config', jwtTokenValidation, rbac, boundaryResponse, configRouter);
-app.use('/api/admin', jwtTokenValidation, rbac, boundaryResponse, adminRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/config', configRouter);
+app.use('/api/admin', adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
 // Apply boundary response middleware after all routes
