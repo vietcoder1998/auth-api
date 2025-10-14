@@ -11,6 +11,8 @@ import adminRouter from './routes/admin.routes';
 import swaggerUi from 'swagger-ui-express';
 import fs from 'fs';
 import YAML from 'yaml';
+import * as env from './env'
+
 dotenv.config();
 
 const prisma = new PrismaClient();
@@ -26,7 +28,7 @@ app.use(async (req, res, next) => {
     const config = await prisma.config.findMany({ where: { key: 'cors_origin' } });
     allowedOrigins = config.map(c => c.value);
     // For demo, fallback to env or default
-    allowedOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'];
+    allowedOrigins = env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'];
   } catch (err) {
     allowedOrigins = ['http://localhost:3000'];
   }
