@@ -60,6 +60,7 @@ if (swaggerDocument) {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 }
 
+app.use('/api/auth' , authRouter);
 
 // Use middlewares
 app.use(loggerMiddleware);
@@ -67,13 +68,11 @@ app.use(cacheMiddleware({
   ttl: 600, // 10 minutes cache
   skipCache: (req) => {
     // Skip caching for admin routes and auth routes
-    return req.originalUrl.includes('/admin') || req.originalUrl.includes('/auth');
+    return req.originalUrl.includes('/auth');
   }
 }));
 
 // API path config
-const API_PATH = process.env.API_PATH || '/auth';
-app.use('/api' + API_PATH, authRouter);
 app.use('/api/config',jwtTokenValidation, rbac, boundaryResponse, configRouter);
 app.use('/api/admin',jwtTokenValidation, rbac, boundaryResponse, adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
