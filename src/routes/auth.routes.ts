@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { handoverUserStatus, login, register, validate } from '../controllers/auth.controller';
+import { handoverUserStatus, login, register, validate, getMe } from '../controllers/auth.controller';
 import { loggerMiddleware } from '../middlewares/logger.middle';
 import { client } from '../setup';
 import { NextFunction, Request, Response } from 'express';
@@ -25,6 +25,7 @@ async function tokenCacheMiddleware(req: Request, res: Response, next: NextFunct
 router.post('/login', login);
 router.post('/register', register);
 router.post('/validate', validate);
+router.get('/me', tokenCacheMiddleware, getMe);
 router.post('/handover-user-status', tokenCacheMiddleware, handoverUserStatus);
 
 export default router;

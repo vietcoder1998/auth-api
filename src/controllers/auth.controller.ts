@@ -68,6 +68,52 @@ export async function validate(req: Request, res: Response) {
   res.json({ valid: false });
 }
 
+// Get current user information
+export async function getMe(req: Request, res: Response) {
+  try {
+    const userId = req.headers['x-user-id'] as string;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User ID not found in request' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        nickname: true,
+        status: true,
+        roleId: true,
+        createdAt: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            permissions: {
+              select: {
+                id: true,
+                name: true,
+                category: true,
+                description: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Get me error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 // Super admin: handover user status
 export async function handoverUserStatus(req: Request, res: Response) {
   const { userId, newStatus } = req.body;
