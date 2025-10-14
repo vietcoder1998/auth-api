@@ -4,50 +4,65 @@ const prisma = new PrismaClient();
 async function main() {
   // Create permissions with categories and descriptions
   const permissions = [
-    { name: 'create_user', description: 'Create new users', category: 'user' },
-    { name: 'read_user', description: 'View user information', category: 'user' },
-    { name: 'update_user', description: 'Update user information', category: 'user' },
-    { name: 'delete_user', description: 'Delete users', category: 'user' },
+    { name: 'create_user', description: 'Create new users', category: 'user', route: '/admin/users', method: 'POST' },
+    { name: 'read_user', description: 'View user information', category: 'user', route: '/admin/users', method: 'GET' },
+    { name: 'update_user', description: 'Update user information', category: 'user', route: '/admin/users/:id', method: 'PUT' },
+    { name: 'delete_user', description: 'Delete users', category: 'user', route: '/admin/users/:id', method: 'DELETE' },
     { name: 'manage_users', description: 'Full user management access', category: 'user' },
     
-    { name: 'create_role', description: 'Create new roles', category: 'role' },
-    { name: 'read_role', description: 'View role information', category: 'role' },
-    { name: 'update_role', description: 'Update role information', category: 'role' },
-    { name: 'delete_role', description: 'Delete roles', category: 'role' },
+    { name: 'create_role', description: 'Create new roles', category: 'role', route: '/admin/roles', method: 'POST' },
+    { name: 'read_role', description: 'View role information', category: 'role', route: '/admin/roles', method: 'GET' },
+    { name: 'update_role', description: 'Update role information', category: 'role', route: '/admin/roles/:id', method: 'PUT' },
+    { name: 'delete_role', description: 'Delete roles', category: 'role', route: '/admin/roles/:id', method: 'DELETE' },
     { name: 'manage_roles', description: 'Full role management access', category: 'role' },
     
-    { name: 'create_permission', description: 'Create new permissions', category: 'permission' },
-    { name: 'read_permission', description: 'View permission information', category: 'permission' },
-    { name: 'update_permission', description: 'Update permission information', category: 'permission' },
-    { name: 'delete_permission', description: 'Delete permissions', category: 'permission' },
+    { name: 'create_permission', description: 'Create new permissions', category: 'permission', route: '/admin/permissions', method: 'POST' },
+    { name: 'read_permission', description: 'View permission information', category: 'permission', route: '/admin/permissions', method: 'GET' },
+    { name: 'update_permission', description: 'Update permission information', category: 'permission', route: '/admin/permissions/:id', method: 'PUT' },
+    { name: 'delete_permission', description: 'Delete permissions', category: 'permission', route: '/admin/permissions/:id', method: 'DELETE' },
     { name: 'manage_permissions', description: 'Full permission management access', category: 'permission' },
     
     { name: 'system_admin', description: 'System administration access', category: 'system' },
-    { name: 'system_config', description: 'System configuration access', category: 'system' },
-    { name: 'system_logs', description: 'View system logs', category: 'system' },
-    { name: 'manage_cache', description: 'Manage cache system', category: 'system' },
+    { name: 'system_config', description: 'System configuration access', category: 'system', route: '/config', method: 'GET' },
+    { name: 'system_logs', description: 'View system logs', category: 'system', route: '/admin/logs', method: 'GET' },
+    { name: 'manage_cache', description: 'Manage cache system', category: 'system', route: '/admin/cache', method: 'GET' },
     
-    { name: 'view_reports', description: 'View system reports', category: 'report' },
-    { name: 'create_reports', description: 'Create new reports', category: 'report' },
-    { name: 'export_reports', description: 'Export reports', category: 'report' },
+    { name: 'view_reports', description: 'View system reports', category: 'report', route: '/admin/reports', method: 'GET' },
+    { name: 'create_reports', description: 'Create new reports', category: 'report', route: '/admin/reports', method: 'POST' },
+    { name: 'export_reports', description: 'Export reports', category: 'report', route: '/admin/reports/export', method: 'GET' },
     
     { name: 'api_access', description: 'Basic API access', category: 'api' },
     { name: 'api_admin', description: 'Admin API access', category: 'api' },
     
-    { name: 'view_self', description: 'View own profile', category: 'user' }
+    { name: 'view_self', description: 'View own profile', category: 'user', route: '/profile', method: 'GET' },
+    
+    // Route-based permissions
+    { name: 'admin_users_get', description: 'GET admin users endpoint', category: 'api', route: '/admin/users', method: 'GET' },
+    { name: 'admin_users_post', description: 'POST admin users endpoint', category: 'api', route: '/admin/users', method: 'POST' },
+    { name: 'admin_users_put', description: 'PUT admin users endpoint', category: 'api', route: '/admin/users/:id', method: 'PUT' },
+    { name: 'admin_users_delete', description: 'DELETE admin users endpoint', category: 'api', route: '/admin/users/:id', method: 'DELETE' },
+    
+    { name: 'admin_roles_get', description: 'GET admin roles endpoint', category: 'api', route: '/admin/roles', method: 'GET' },
+    { name: 'admin_roles_post', description: 'POST admin roles endpoint', category: 'api', route: '/admin/roles', method: 'POST' },
+    { name: 'admin_roles_put', description: 'PUT admin roles endpoint', category: 'api', route: '/admin/roles/:id', method: 'PUT' },
+    { name: 'admin_roles_delete', description: 'DELETE admin roles endpoint', category: 'api', route: '/admin/roles/:id', method: 'DELETE' }
   ];
   
   const permissionRecords = await Promise.all(
-    permissions.map(permission => prisma.permission.upsert({
+    permissions.map((permission: any) => prisma.permission.upsert({
       where: { name: permission.name },
       update: {
         description: permission.description,
-        category: permission.category
+        category: permission.category,
+        route: permission.route,
+        method: permission.method
       },
       create: {
         name: permission.name,
         description: permission.description,
-        category: permission.category
+        category: permission.category,
+        route: permission.route,
+        method: permission.method
       }
     }))
   );

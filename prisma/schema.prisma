@@ -35,6 +35,8 @@ model Permission {
   name        String   @unique
   description String?
   category    String   @default("other")
+  route       String?
+  method      String?  // GET, POST, PUT, DELETE, PATCH
   roles       Role[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

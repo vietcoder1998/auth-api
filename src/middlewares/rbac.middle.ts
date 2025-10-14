@@ -6,7 +6,11 @@ declare global {
   namespace Express {
 	interface User {
 	  roles?: string[];
-	  permissions?: string[];
+	  permissions?: Array<{
+		name: string;
+		route?: string;
+		method?: string;
+	  }>;
 	  // add other user properties if needed
 	}
 	interface Request {
@@ -16,20 +20,51 @@ declare global {
 }
 
 // Usage: rbac(['admin', 'superadmin']) or rbac(['manage_users'])
-export function rbac(required: string[]) {
+// For route-based: rbac([]) - will check permissions based on current route and method
+export function rbac(required: string[] = []) {
 	return (req: Request, res: Response, next: NextFunction) => {
 		const user = req.user;
 		if (!user) {
 			return res.status(401).json({ error: 'Unauthorized' });
 		}
-		// Check roles
+
+		// Check roles first
 		if (user.roles?.length && required.some(r => user.roles?.includes(r))) {
 			return next();
 		}
-		// Check permissions
-		if (user.permissions?.length && required.some(p => user.permissions?.includes(p))) {
-			return next();
+
+		// Check named permissions
+		if (required.length > 0 && user.permissions?.length) {
+			const hasNamedPermission = required.some(p => 
+				user.permissions?.some(perm => perm.name === p)
+			);
+			if (hasNamedPermission) {
+				return next();
+			}
 		}
+
+		// Check route-based permissions (if no specific permissions required)
+		if (required.length === 0 && user.permissions?.length) {
+			const currentRoute = req.route?.path || req.path;
+			const currentMethod = req.method.toUpperCase();
+			
+			const hasRoutePermission = user.permissions.some(perm => {
+				// Check if permission matches current route and method
+				if (perm.route && perm.method) {
+					return perm.route === currentRoute && perm.method === currentMethod;
+				}
+				// Fallback to wildcard permissions
+				if (perm.route && !perm.method) {
+					return perm.route === currentRoute;
+				}
+				return false;
+			});
+			
+			if (hasRoutePermission) {
+				return next();
+			}
+		}
+
 		return res.status(403).json({ error: 'Forbidden: insufficient privileges' });
 	};
 }

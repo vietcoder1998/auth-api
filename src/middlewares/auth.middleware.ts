@@ -51,11 +51,23 @@ export async function jwtTokenValidation(req: Request, res: Response, next: Next
     // Set user ID in headers for downstream use
     req.headers['x-user-id'] = decoded.userId;
     
-    // Optionally set user info for convenience
+    // Load full user data with roles and permissions
+    const fullUser = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      include: { 
+        role: { 
+          include: { permissions: true } 
+        } 
+      }
+    });
+
+    // Set user info with roles and permissions for RBAC
     (req as any).user = {
       id: decoded.userId,
       email: decoded.email,
       role: decoded.role,
+      roles: fullUser?.role?.name ? [fullUser.role.name] : [],
+      permissions: fullUser?.role?.permissions || [],
       impersonatedBy: decoded.impersonatedBy,
       impersonatedAt: decoded.impersonatedAt
     };
