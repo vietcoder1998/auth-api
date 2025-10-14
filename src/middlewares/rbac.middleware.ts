@@ -32,18 +32,16 @@ export const rbac = (req: Request, res: Response, next: NextFunction) => {
 		return next();
 	}
 
-	// Check named permissions
-	if (required.length > 0 && user.permissions?.length) {
-		const hasNamedPermission = required.some(p =>
-			user.permissions?.some(perm => perm.name === p)
-		);
-		if (hasNamedPermission) {
-			return next();
-		}
+	// Check nae.permissions?.length) {
+	const hasNamedPermission = required.some(p =>
+		user.permissions?.some(perm => perm.name === p)
+	);
+	if (hasNamedPermission) {
+		return next();
 	}
 
 	// Check route-based permissions (if no specific permissions required)
-	if (required.length === 0 && user.permissions?.length) {
+	if (user.permissions?.length) {
 		const currentRoute = req.route?.path || req.path;
 		const currentMethod = req.method.toUpperCase();
 
