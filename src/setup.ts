@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 import * as rd from 'redis';
 import { REDIS_URL } from './env';
 

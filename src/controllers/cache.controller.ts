@@ -5,8 +5,13 @@ import { setPaginationMeta } from '../middlewares/response.middleware';
 // Helper function to check Redis connection
 function ensureRedisClient() {
   if (!redisClient) {
-    throw new Error('Redis client is not connected');
+    throw new Error('Redis client is not initialized. Please check if Redis server is running.');
   }
+  
+  if (!redisClient.isOpen) {
+    throw new Error('Redis client is not connected. Please check if Redis server is running on localhost:6379');
+  }
+  
   return redisClient;
 }
 
@@ -18,7 +23,6 @@ export async function getCacheKeys(req: Request, res: Response) {
     const { page = 1, limit = 20, pattern = '*' } = req.query;
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
-    
     const client = ensureRedisClient();
     
     // Get all keys matching pattern
@@ -48,7 +52,11 @@ export async function getCacheKeys(req: Request, res: Response) {
     res.json(keysWithValues);
   } catch (error) {
     console.error('Error getting cache keys:', error);
-    res.status(500).json({ error: 'Failed to retrieve cache keys' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve cache keys';
+    res.status(500).json({ 
+      error: errorMessage,
+      suggestion: 'Please ensure Redis server is running on localhost:6379'
+    });
   }
 }
 
@@ -95,7 +103,11 @@ export async function getCacheStats(req: Request, res: Response) {
     res.json(stats);
   } catch (error) {
     console.error('Error getting cache stats:', error);
-    res.status(500).json({ error: 'Failed to retrieve cache statistics' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve cache statistics';
+    res.status(500).json({ 
+      error: errorMessage,
+      suggestion: 'Please ensure Redis server is running on localhost:6379'
+    });
   }
 }
 
@@ -130,7 +142,11 @@ export async function getCacheValue(req: Request, res: Response) {
     res.json(cacheData);
   } catch (error) {
     console.error('Error getting cache value:', error);
-    res.status(500).json({ error: 'Failed to retrieve cache value' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve cache value';
+    res.status(500).json({ 
+      error: errorMessage,
+      suggestion: 'Please ensure Redis server is running on localhost:6379'
+    });
   }
 }
 
@@ -159,7 +175,11 @@ export async function deleteCacheKey(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Error deleting cache key:', error);
-    res.status(500).json({ error: 'Failed to delete cache key' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete cache key';
+    res.status(500).json({ 
+      error: errorMessage,
+      suggestion: 'Please ensure Redis server is running on localhost:6379'
+    });
   }
 }
 
@@ -178,7 +198,11 @@ export async function clearAllCache(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Error clearing all cache:', error);
-    res.status(500).json({ error: 'Failed to clear all cache' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to clear all cache';
+    res.status(500).json({ 
+      error: errorMessage,
+      suggestion: 'Please ensure Redis server is running on localhost:6379'
+    });
   }
 }
 
@@ -213,7 +237,11 @@ export async function clearCacheByPattern(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Error clearing cache by pattern:', error);
-    res.status(500).json({ error: 'Failed to clear cache by pattern' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to clear cache by pattern';
+    res.status(500).json({ 
+      error: errorMessage,
+      suggestion: 'Please ensure Redis server is running on localhost:6379'
+    });
   }
 }
 
@@ -246,6 +274,10 @@ export async function setCacheValue(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Error setting cache value:', error);
-    res.status(500).json({ error: 'Failed to set cache value' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to set cache value';
+    res.status(500).json({ 
+      error: errorMessage,
+      suggestion: 'Please ensure Redis server is running on localhost:6379'
+    });
   }
 }

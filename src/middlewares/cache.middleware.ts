@@ -48,8 +48,8 @@ export function cacheMiddleware(options: {
   } = options;
 
   return async (req: Request, res: Response, next: NextFunction) => {
-    // Skip caching for non-GET requests or when explicitly skipped
-    if (req.method !== 'GET' || skipCache(req)) {
+    // Skip caching for non-GET requests, cache API endpoints, or when explicitly skipped
+    if (req.method !== 'GET' || req.originalUrl.includes('/cache') || skipCache(req)) {
       return next();
     }
 
