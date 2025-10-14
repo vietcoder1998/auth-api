@@ -13,20 +13,17 @@ function parseConfigValue(value: string): any {
   }
 }
 
-// Helper function to prepare config for response
-function prepareConfigResponse(config: { id: string; key: string; value: string }) {
-  return {
-    ...config,
-    value: parseConfigValue(config.value)
-  };
-}
-
 export async function getConfig(req: Request, res: Response) {
   const configs = await prisma.config.findMany();
-  const parsedConfigs = configs.map(prepareConfigResponse);
   
-  logger.info('Fetched configs', parsedConfigs);
-  res.json(parsedConfigs);
+  // Return as key-value pairs with pure values
+  const configMap: Record<string, any> = {};
+  configs.forEach(config => {
+    configMap[config.key] = parseConfigValue(config.value);
+  });
+  
+  logger.info('Fetched configs', configMap);
+  res.json(configMap);
 }
 
 export async function getConfigByKey(req: Request, res: Response) {
@@ -41,7 +38,8 @@ export async function getConfigByKey(req: Request, res: Response) {
       return res.status(404).json({ error: 'Config not found' });
     }
     
-    res.json(prepareConfigResponse(config));
+    // Return just the pure value
+    res.json(parseConfigValue(config.value));
   } catch (error) {
     logger.error('Error fetching config by key:', error);
     res.status(500).json({ error: 'Failed to fetch config' });
@@ -50,20 +48,26 @@ export async function getConfigByKey(req: Request, res: Response) {
 
 
 export async function updateConfig(req: Request, res: Response) {
-  const { id, value } = req.body;
-  if (!id || value === undefined) {
-    return res.status(400).json({ error: 'Missing id or value' });
+  const { key, value } = req.body;
+  if (!key || value === undefined) {
+    return res.status(400).json({ error: 'Missing key or value' });
   }
   
-  // Convert value to string if it's an object/array, otherwise keep as string
-  const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-  
-  const updated = await prisma.config.update({
-    where: { id },
-    data: { value: stringValue }
-  });
-  
-  res.json(prepareConfigResponse(updated));
+  try {
+    // Convert value to string if it's an object/array, otherwise keep as string
+    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+    
+    const updated = await prisma.config.update({
+      where: { key },
+      data: { value: stringValue }
+    });
+    
+    // Return just the pure value
+    res.json(parseConfigValue(updated.value));
+  } catch (error) {
+    logger.error('Error updating config:', error);
+    res.status(500).json({ error: 'Failed to update config' });
+  }
 }
 
 export async function createConfig(req: Request, res: Response) {
@@ -80,12 +84,28 @@ export async function createConfig(req: Request, res: Response) {
       data: { key, value: stringValue }
     });
     
-    res.json(prepareConfigResponse(created));
+    // Return just the pure value
+    res.json(parseConfigValue(created.value));
   } catch (err: any) {
     if (err.code === 'P2002') {
       res.status(409).json({ error: 'Config key already exists.' });
     } else {
       res.status(500).json({ error: 'Failed to create config.' });
     }
+  }
+}
+
+export async function deleteConfig(req: Request, res: Response) {
+  const { key } = req.params;
+  
+  try {
+    await prisma.config.delete({
+      where: { key }
+    });
+    
+    res.json({ success: true, message: 'Config deleted successfully' });
+  } catch (error) {
+    logger.error('Error deleting config:', error);
+    res.status(500).json({ error: 'Failed to delete config' });
   }
 }

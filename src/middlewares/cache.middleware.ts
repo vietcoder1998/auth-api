@@ -47,7 +47,30 @@ export function cacheMiddleware(
         res.set('X-Cache', 'HIT');
         res.set('X-Cache-Key', cacheKey);
 
-        return res.status(statusCode).json(data);
+        // Handle different data types for cached responses
+        let responseData = data;
+        
+        // If data is a string that looks like JSON, try to parse it
+        if (typeof data === 'string') {
+          try {
+            const parsedData = JSON.parse(data);
+            // If parsed data is an object (but not array), use the parsed value
+            if (typeof parsedData === 'object' && parsedData !== null && !Array.isArray(parsedData)) {
+              responseData = parsedData;
+            } else {
+              // For arrays or other types, keep original logic (return as string)
+              responseData = data;
+            }
+          } catch {
+            // If parsing fails, keep as string
+            responseData = data;
+          }
+        } else {
+          // For non-string data, return as is
+          responseData = data;
+        }
+
+        return res.status(statusCode).json(responseData);
       }
 
       // Cache miss - intercept response
