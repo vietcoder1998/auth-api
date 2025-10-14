@@ -12,6 +12,10 @@ import swaggerUi from 'swagger-ui-express';
 import fs from 'fs';
 import YAML from 'yaml';
 import * as env from './env'
+// Import middlewares
+import { loggerMiddleware } from './middlewares/logger.middle';
+import { cacheMiddleware, closeRedisConnection } from './middlewares/cache.middleware';
+import { boundaryResponse } from './middlewares/response.middleware';
 
 dotenv.config();
 
@@ -54,9 +58,6 @@ if (swaggerDocument) {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 }
 
-// Import middlewares
-import { loggerMiddleware } from './middlewares/logger.middle';
-import { cacheMiddleware, closeRedisConnection } from './middlewares/cache.middleware';
 
 // Use middlewares
 app.use(loggerMiddleware);
@@ -71,9 +72,11 @@ app.use(cacheMiddleware({
 // API path config
 const API_PATH = process.env.API_PATH || '/auth';
 app.use('/api' + API_PATH, authRouter);
-app.use('/api/config', configRouter);
-app.use('/api/admin', adminRouter);
+app.use('/api/config', boundaryResponse, configRouter);
+app.use('/api/admin',boundaryResponse, adminRouter);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
+
+// Apply boundary response middleware after all routes
 
 // Serve admin GUI at /admin
 app.use('/admin', express.static(path.join(__dirname, 'gui')));

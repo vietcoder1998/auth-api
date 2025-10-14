@@ -1,10 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
+import { logger } from '../middlewares/logger.middle';
 
 const prisma = new PrismaClient();
 
 export async function getConfig(req: Request, res: Response) {
   const configs = await prisma.config.findMany();
+  logger.info('Fetched configs', configs);
   res.json(configs);
 }
 

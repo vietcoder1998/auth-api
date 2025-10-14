@@ -1,0 +1,251 @@
+import { Request, Response } from 'express';
+import { redisClient } from '../middlewares/cache.middleware';
+import { setPaginationMeta } from '../middlewares/response.middleware';
+
+// Helper function to check Redis connection
+function ensureRedisClient() {
+  if (!redisClient) {
+    throw new Error('Redis client is not connected');
+  }
+  return redisClient;
+}
+
+/**
+ * Get all cache keys with pagination
+ */
+export async function getCacheKeys(req: Request, res: Response) {
+  try {
+    const { page = 1, limit = 20, pattern = '*' } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    
+    const client = ensureRedisClient();
+    
+    // Get all keys matching pattern
+    const allKeys = await client.keys(pattern as string);
+    const total = allKeys.length;
+    
+    // Paginate keys
+    const startIndex = (pageNum - 1) * limitNum;
+    const endIndex = startIndex + limitNum;
+    const paginatedKeys = allKeys.slice(startIndex, endIndex);
+    
+    // Get values for paginated keys
+    const keysWithValues = await Promise.all(
+      paginatedKeys.map(async (key) => {
+        const value = await client.get(key);
+        const ttl = await client.ttl(key);
+        return {
+          key,
+          value: value ? JSON.parse(value) : null,
+          ttl: ttl === -1 ? 'no expiry' : `${ttl}s`,
+          size: value ? Buffer.byteLength(value, 'utf8') : 0
+        };
+      })
+    );
+    
+    setPaginationMeta(req, total, pageNum, limitNum);
+    res.json(keysWithValues);
+  } catch (error) {
+    console.error('Error getting cache keys:', error);
+    res.status(500).json({ error: 'Failed to retrieve cache keys' });
+  }
+}
+
+/**
+ * Get cache statistics
+ */
+export async function getCacheStats(req: Request, res: Response) {
+  try {
+    const client = ensureRedisClient();
+    
+    const info = await client.info();
+    const dbSize = await client.dbSize();
+    const allKeys = await client.keys('*');
+    
+    // Calculate total memory usage
+    let totalSize = 0;
+    for (const key of allKeys) {
+      const value = await client.get(key);
+      if (value) {
+        totalSize += Buffer.byteLength(value, 'utf8');
+      }
+    }
+    
+    // Parse Redis info
+    const infoLines = info.split('\r\n');
+    const memoryInfo = infoLines.find(line => line.startsWith('used_memory_human:'));
+    const uptimeInfo = infoLines.find(line => line.startsWith('uptime_in_seconds:'));
+    const connectedClients = infoLines.find(line => line.startsWith('connected_clients:'));
+    
+    const stats = {
+      totalKeys: dbSize,
+      totalMemoryUsage: memoryInfo ? memoryInfo.split(':')[1] : 'unknown',
+      uptime: uptimeInfo ? `${Math.floor(parseInt(uptimeInfo.split(':')[1]) / 3600)}h` : 'unknown',
+      connectedClients: connectedClients ? connectedClients.split(':')[1] : 'unknown',
+      dataSize: `${Math.round(totalSize / 1024)}KB`,
+      patterns: {
+        'auth:*': allKeys.filter(key => key.startsWith('auth:')).length,
+        'token:*': allKeys.filter(key => key.startsWith('token:')).length,
+        'cache:*': allKeys.filter(key => key.startsWith('cache:')).length,
+        'other': allKeys.filter(key => !key.match(/^(auth|token|cache):/)).length
+      }
+    };
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('Error getting cache stats:', error);
+    res.status(500).json({ error: 'Failed to retrieve cache statistics' });
+  }
+}
+
+/**
+ * Get specific cache value by key
+ */
+export async function getCacheValue(req: Request, res: Response) {
+  try {
+    const { key } = req.params;
+    
+    if (!key) {
+      return res.status(400).json({ error: 'Cache key is required' });
+    }
+    
+    const client = ensureRedisClient();
+    
+    const value = await client.get(key);
+    const ttl = await client.ttl(key);
+    
+    if (value === null) {
+      return res.status(404).json({ error: 'Cache key not found' });
+    }
+    
+    const cacheData = {
+      key,
+      value: JSON.parse(value),
+      ttl: ttl === -1 ? 'no expiry' : `${ttl}s`,
+      size: Buffer.byteLength(value, 'utf8'),
+      createdAt: new Date().toISOString() // Approximate
+    };
+    
+    res.json(cacheData);
+  } catch (error) {
+    console.error('Error getting cache value:', error);
+    res.status(500).json({ error: 'Failed to retrieve cache value' });
+  }
+}
+
+/**
+ * Delete specific cache key
+ */
+export async function deleteCacheKey(req: Request, res: Response) {
+  try {
+    const { key } = req.params;
+    
+    if (!key) {
+      return res.status(400).json({ error: 'Cache key is required' });
+    }
+    
+    const client = ensureRedisClient();
+    
+    const result = await client.del(key);
+    
+    if (result === 0) {
+      return res.status(404).json({ error: 'Cache key not found' });
+    }
+    
+    res.json({ 
+      message: `Cache key '${key}' deleted successfully`,
+      deleted: true 
+    });
+  } catch (error) {
+    console.error('Error deleting cache key:', error);
+    res.status(500).json({ error: 'Failed to delete cache key' });
+  }
+}
+
+/**
+ * Clear all cache (flush all keys)
+ */
+export async function clearAllCache(req: Request, res: Response) {
+  try {
+    const client = ensureRedisClient();
+    
+    await client.flushAll();
+    
+    res.json({ 
+      message: 'All cache cleared successfully',
+      cleared: true 
+    });
+  } catch (error) {
+    console.error('Error clearing all cache:', error);
+    res.status(500).json({ error: 'Failed to clear all cache' });
+  }
+}
+
+/**
+ * Clear cache by pattern
+ */
+export async function clearCacheByPattern(req: Request, res: Response) {
+  try {
+    const { pattern } = req.body;
+    
+    if (!pattern) {
+      return res.status(400).json({ error: 'Pattern is required' });
+    }
+    
+    const client = ensureRedisClient();
+    
+    const keys = await client.keys(pattern);
+    
+    if (keys.length === 0) {
+      return res.json({ 
+        message: `No keys found matching pattern '${pattern}'`,
+        deleted: 0 
+      });
+    }
+    
+    const result = await client.del(keys);
+    
+    res.json({ 
+      message: `${result} cache keys deleted matching pattern '${pattern}'`,
+      deleted: result,
+      pattern 
+    });
+  } catch (error) {
+    console.error('Error clearing cache by pattern:', error);
+    res.status(500).json({ error: 'Failed to clear cache by pattern' });
+  }
+}
+
+/**
+ * Set cache value with TTL
+ */
+export async function setCacheValue(req: Request, res: Response) {
+  try {
+    const { key, value, ttl } = req.body;
+    
+    if (!key || value === undefined) {
+      return res.status(400).json({ error: 'Key and value are required' });
+    }
+    
+    const client = ensureRedisClient();
+    
+    const valueStr = JSON.stringify(value);
+    
+    if (ttl && ttl > 0) {
+      await client.setEx(key, ttl, valueStr);
+    } else {
+      await client.set(key, valueStr);
+    }
+    
+    res.json({ 
+      message: `Cache key '${key}' set successfully`,
+      key,
+      ttl: ttl || 'no expiry',
+      size: Buffer.byteLength(valueStr, 'utf8')
+    });
+  } catch (error) {
+    console.error('Error setting cache value:', error);
+    res.status(500).json({ error: 'Failed to set cache value' });
+  }
+}
