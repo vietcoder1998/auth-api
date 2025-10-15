@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { logger } from './logger.middle';
+import { extractAndValidateSSOKey } from '../utils/ssoValidation';
 
 const prisma = new PrismaClient();
 
@@ -12,6 +13,7 @@ declare global {
         id: string;
         url: string;
         key: string;
+        ssoKey?: string;
         userId: string;
         user?: {
           id: string;
@@ -29,73 +31,30 @@ declare global {
 
 export async function ssoKeyValidation(req: Request, res: Response, next: NextFunction) {
   try {
-    // Check for SSO key in headers
-    const ssoKey = req.headers['x-sso-key'] as string;
+    // Extract and validate SSO key from headers
+    const validation = await extractAndValidateSSOKey(req.headers);
     
-    if (!ssoKey) {
+    if (!validation.ssoKey) {
       console.log('[SSO] No SSO key provided in headers');
       return next(); // Continue without SSO authentication
     }
 
-    console.log('[SSO] Validating SSO key:', ssoKey.substring(0, 8) + '...');
+    console.log('[SSO] Validating SSO key:', validation.ssoKey.substring(0, 8) + '...');
 
-    // Find SSO entry by key (will be updated to include ssoKey after migration)
-    const ssoEntry = await prisma.sSO.findUnique({
-      where: { 
-        key: ssoKey,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            nickname: true,
-            roleId: true,
-            status: true,
-          },
-        },
-      },
-    });
-
-    // TODO: After migration, update to also check ssoKey:
-    // const ssoEntry = await prisma.sSO.findFirst({
-    //   where: { 
-    //     OR: [
-    //       { key: ssoKey },
-    //       { ssoKey: ssoKey }
-    //     ]
-    //   },
-    //   include: { user: { ... } }
-    // });
-
-    if (!ssoEntry) {
-      console.log('[SSO] Invalid SSO key provided');
-      return res.status(401).json({ error: 'Invalid SSO key' });
+    if (!validation.valid) {
+      console.log(`[SSO] SSO validation failed: ${validation.error}`);
+      return res.status(401).json({ error: validation.error || 'Invalid SSO key' });
     }
 
-    // Check if SSO entry is active
-    if (!ssoEntry.isActive) {
-      console.log('[SSO] SSO entry is inactive');
-      return res.status(401).json({ error: 'SSO entry is inactive' });
-    }
-
-    // Check if user is active
-    if (ssoEntry.user.status !== 'active') {
-      console.log('[SSO] User account is not active');
-      return res.status(401).json({ error: 'User account is not active' });
-    }
-
-    // Check if SSO entry has expired
-    if (ssoEntry.expiresAt && ssoEntry.expiresAt < new Date()) {
-      console.log('[SSO] SSO entry has expired');
-      return res.status(401).json({ error: 'SSO entry has expired' });
-    }
+    const ssoEntry = validation.ssoEntry;
+    console.log(`[SSO] SSO entry found via ${validation.matchedKeyType}:`, ssoEntry.id);
 
     // Store SSO information in request
     req.sso = {
       id: ssoEntry.id,
       url: ssoEntry.url,
       key: ssoEntry.key,
+      ssoKey: ssoEntry.ssoKey || undefined,
       userId: ssoEntry.userId,
       user: {
         id: ssoEntry.user.id,

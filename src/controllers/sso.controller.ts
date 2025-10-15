@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 import { logger } from '../middlewares/logger.middle';
+import { SSOValidationUtils } from '../utils/ssoValidation';
 
 const prisma = new PrismaClient();
 
@@ -21,6 +22,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       where.OR = [
         { url: { contains: search, mode: 'insensitive' } },
         { key: { contains: search, mode: 'insensitive' } },
+        { ssoKey: { contains: search, mode: 'insensitive' } },
         { deviceIP: { contains: search, mode: 'insensitive' } },
         { user: { email: { contains: search, mode: 'insensitive' } } },
         { user: { nickname: { contains: search, mode: 'insensitive' } } },
@@ -182,9 +184,26 @@ export const createSSO = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    // Generate unique SSO key and ssoKey
+    // Generate unique SSO key
     const key = crypto.randomBytes(32).toString('hex');
-    const generatedSSOKey = ssoKey || crypto.randomBytes(16).toString('hex'); // Generate ssoKey if not provided
+    
+    // Handle ssoKey generation and validation
+    let finalSSOKey = null;
+    if (ssoKey) {
+      // Check if provided ssoKey is unique
+      const uniqueCheck = await SSOValidationUtils.checkSSOKeyUniqueness(ssoKey);
+      if (!uniqueCheck.unique) {
+        return res.status(400).json({ error: uniqueCheck.error || 'SSO key already exists' });
+      }
+      finalSSOKey = ssoKey;
+    } else if (ssoKey !== null) { // Only generate if not explicitly set to null
+      try {
+        finalSSOKey = await SSOValidationUtils.generateUniqueSSOKey(url);
+      } catch (error) {
+        console.error('Failed to generate unique SSO key:', error);
+        finalSSOKey = crypto.randomBytes(16).toString('hex');
+      }
+    }
 
     const ssoEntry = await prisma.sSO.create({
       data: {
@@ -193,8 +212,7 @@ export const createSSO = async (req: Request, res: Response) => {
         userId,
         deviceIP: deviceIP || null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
-        // Note: ssoKey will be added after migration
-        ...(generatedSSOKey && { ssoKey: generatedSSOKey }),
+        ssoKey: finalSSOKey,
       },
       include: {
         user: {
@@ -223,7 +241,7 @@ export const createSSO = async (req: Request, res: Response) => {
 export const updateSSO = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { url, deviceIP, isActive, expiresAt } = req.body;
+    const { url, deviceIP, isActive, expiresAt, ssoKey } = req.body;
 
     // Check if SSO entry exists
     const existingSSO = await prisma.sSO.findUnique({
@@ -234,11 +252,22 @@ export const updateSSO = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'SSO entry not found' });
     }
 
+    // If ssoKey is being updated, check for uniqueness
+    if (ssoKey !== undefined && ssoKey !== existingSSO.ssoKey) {
+      if (ssoKey) { // Only check uniqueness if ssoKey is not null/empty
+        const uniqueCheck = await SSOValidationUtils.checkSSOKeyUniqueness(ssoKey, id);
+        if (!uniqueCheck.unique) {
+          return res.status(400).json({ error: uniqueCheck.error || 'SSO key already exists' });
+        }
+      }
+    }
+
     const updateData: any = {};
     if (url !== undefined) updateData.url = url;
     if (deviceIP !== undefined) updateData.deviceIP = deviceIP;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (expiresAt !== undefined) updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    if (ssoKey !== undefined) updateData.ssoKey = ssoKey || null; // Allow setting to null
 
     const ssoEntry = await prisma.sSO.update({
       where: { id },

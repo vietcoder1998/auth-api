@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { logger } from '../middlewares/logger.middle';
 import { ssoKeyValidation, requireSSO } from '../middlewares/sso.middleware';
 import { HistoryService } from '../services/history.service';
+import { SSOValidationUtils } from '../utils/ssoValidation';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -210,6 +211,48 @@ router.get('/me', ssoKeyValidation, requireSSO, async (req: Request, res: Respon
 });
 
 // SSO Key validation endpoint
+// Direct SSO key validation endpoint - validates key without requiring authentication
+router.post('/validate-key', async (req: Request, res: Response) => {
+  try {
+    const { ssoKey } = req.body;
+
+    if (!ssoKey) {
+      return res.status(400).json({ error: 'SSO key is required' });
+    }
+
+    const validation = await SSOValidationUtils.validateSSOKey(ssoKey);
+
+    if (validation.valid && validation.ssoEntry) {
+      res.json({
+        valid: true,
+        matchedKeyType: validation.matchedKeyType,
+        sso: {
+          id: validation.ssoEntry.id,
+          url: validation.ssoEntry.url,
+          userId: validation.ssoEntry.userId,
+          isActive: validation.ssoEntry.isActive,
+          expiresAt: validation.ssoEntry.expiresAt,
+        },
+        user: {
+          id: validation.ssoEntry.user.id,
+          email: validation.ssoEntry.user.email,
+          nickname: validation.ssoEntry.user.nickname,
+        },
+      });
+    } else {
+      res.status(401).json({
+        valid: false,
+        error: validation.error || 'Invalid SSO key',
+      });
+    }
+  } catch (error) {
+    console.error('[SSO_AUTH] Error in direct key validation:', error);
+    logger.error('SSO direct key validation error', { error, service: 'auth-api' });
+    res.status(500).json({ error: 'SSO key validation failed' });
+  }
+});
+
+// Header-based SSO validation endpoint - validates x-sso-key header
 router.get('/validate', ssoKeyValidation, requireSSO, async (req: Request, res: Response) => {
   try {
     const sso = req.sso!;
@@ -219,6 +262,8 @@ router.get('/validate', ssoKeyValidation, requireSSO, async (req: Request, res: 
       sso: {
         id: sso.id,
         url: sso.url,
+        key: sso.key,
+        ssoKey: sso.ssoKey,
         userId: sso.userId,
         isActive: sso.isActive,
         expiresAt: sso.expiresAt,
