@@ -134,15 +134,39 @@ async function main() {
     
     // Conversation Management permissions
     { name: 'admin_conversations_get', description: 'GET admin conversations endpoint', category: 'api', route: '/api/admin/conversations', method: 'GET' },
+    { name: 'admin_conversations_get_single', description: 'GET single admin conversation endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'GET' },
     { name: 'admin_conversations_post', description: 'POST admin conversations endpoint', category: 'api', route: '/api/admin/conversations', method: 'POST' },
     { name: 'admin_conversations_put', description: 'PUT admin conversations endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'PUT' },
     { name: 'admin_conversations_delete', description: 'DELETE admin conversations endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'DELETE' },
     { name: 'admin_conversations_messages_post', description: 'POST admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages', method: 'POST' },
-    
+    { name: 'admin_conversations_messages_get', description: 'GET admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages', method: 'GET' },
+    { name: 'admin_conversations_messages_put', description: 'PUT admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'PUT' },
+    { name: 'admin_conversations_messages_delete', description: 'DELETE admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'DELETE' },
+
+    // Message-specific permissions
+    { name: 'admin_messages_get', description: 'GET admin messages endpoint', category: 'api', route: '/api/admin/messages', method: 'GET' },
+    { name: 'admin_messages_post', description: 'POST admin messages endpoint', category: 'api', route: '/api/admin/messages', method: 'POST' },
+    { name: 'admin_messages_put', description: 'PUT admin messages endpoint', category: 'api', route: '/api/admin/messages/:id', method: 'PUT' },
+    { name: 'admin_messages_delete', description: 'DELETE admin messages endpoint', category: 'api', route: '/api/admin/messages/:id', method: 'DELETE' },
+
+    // Conversation management permissions
+    { name: 'manage_conversations', description: 'Full conversation management access', category: 'conversation', route: '/api/conversations', method: 'ALL' },
+    { name: 'view_conversations', description: 'View conversations and message history', category: 'conversation', route: '/api/conversations', method: 'GET' },
+    { name: 'create_conversations', description: 'Create new conversations with AI agents', category: 'conversation', route: '/api/conversations', method: 'POST' },
+    { name: 'edit_conversations', description: 'Edit conversation titles and settings', category: 'conversation', route: '/api/conversations/:id', method: 'PUT' },
+    { name: 'delete_conversations', description: 'Delete conversations and their messages', category: 'conversation', route: '/api/conversations/:id', method: 'DELETE' },
+
+    // Message management permissions
+    { name: 'manage_messages', description: 'Full message management access', category: 'message', route: '/api/messages', method: 'ALL' },
+    { name: 'view_messages', description: 'View messages in conversations', category: 'message', route: '/api/messages', method: 'GET' },
+    { name: 'send_messages', description: 'Send messages to AI agents', category: 'message', route: '/api/conversations/:id/messages', method: 'POST' },
+    { name: 'edit_messages', description: 'Edit existing messages', category: 'message', route: '/api/messages/:id', method: 'PUT' },
+    { name: 'delete_messages', description: 'Delete messages from conversations', category: 'message', route: '/api/messages/:id', method: 'DELETE' },
+
     // High-level AI agent management permissions
-    { name: 'manage_ai_agents', description: 'Full AI agent management access', category: 'ai' },
-    { name: 'view_ai_agents', description: 'View AI agents and conversations', category: 'ai' },
-    { name: 'chat_with_agents', description: 'Chat with AI agents and create conversations', category: 'ai' }
+    { name: 'manage_ai_agents', description: 'Full AI agent management access', category: 'ai', route: '/api/admin/agents', method: 'ALL' },
+    { name: 'view_ai_agents', description: 'View AI agents and conversations', category: 'ai', route: '/api/admin/agents', method: 'GET' },
+    { name: 'chat_with_agents', description: 'Chat with AI agents and create conversations', category: 'ai', route: '/api/admin/conversations', method: 'POST' }
   ];
   
   const permissionRecords = await Promise.all(
@@ -190,7 +214,21 @@ async function main() {
           'admin_logic_history_get',
           'admin_cache_get',
           'admin_cache_post',
-          'admin_cache_delete'
+          'admin_cache_delete',
+          'admin_conversations_get',
+          'admin_conversations_post',
+          'admin_conversations_put',
+          'admin_conversations_delete',
+          'admin_conversations_messages_get',
+          'admin_conversations_messages_post',
+          'admin_messages_get',
+          'admin_messages_post',
+          'view_conversations',
+          'create_conversations',
+          'view_messages',
+          'send_messages',
+          'view_ai_agents',
+          'chat_with_agents'
         ].includes(p.name)).map(p => ({ id: p.id }))
       }
     },
@@ -204,18 +242,52 @@ async function main() {
           'admin_logic_history_get',
           'admin_cache_get',
           'admin_cache_post',
-          'admin_cache_delete'
+          'admin_cache_delete',
+          'admin_conversations_get',
+          'admin_conversations_post',
+          'admin_conversations_put',
+          'admin_conversations_delete',
+          'admin_conversations_messages_get',
+          'admin_conversations_messages_post',
+          'admin_messages_get',
+          'admin_messages_post',
+          'view_conversations',
+          'create_conversations',
+          'view_messages',
+          'send_messages',
+          'view_ai_agents',
+          'chat_with_agents'
         ].includes(p.name)).map(p => ({ id: p.id }))
       }
     }
   });
   const userRole = await prisma.role.upsert({
     where: { name: 'user' },
-    update: {},
+    update: {
+      permissions: {
+        set: permissionRecords.filter(p => [
+          'view_self',
+          'view_conversations',
+          'create_conversations',
+          'view_messages',
+          'send_messages',
+          'view_ai_agents',
+          'chat_with_agents'
+        ].includes(p.name)).map(p => ({ id: p.id }))
+      }
+    },
     create: {
       name: 'user',
       permissions: {
-        connect: permissionRecords.filter(p => p.name === 'view_self').map(p => ({ id: p.id }))
+        connect: permissionRecords.filter(p => [
+          'view_self',
+          'view_conversations',
+          'create_conversations',
+          'view_messages',
+          'send_messages',
+          'view_ai_agents',
+          'chat_with_agents'
+        ].includes(p.name)).map(p => ({ id: p.id }))
       }
     }
   });
