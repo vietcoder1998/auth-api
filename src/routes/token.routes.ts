@@ -4,8 +4,8 @@ import { getTokens, grantToken, revokeToken } from '../controllers/token.control
 
 const router = Router();
 
+router.get('', getTokens);
 router.post('/revoke', revokeToken);
 router.post('/grant', grantToken);
-router.get('/', getTokens);
 
 export default router;

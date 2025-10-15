@@ -7,16 +7,19 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  nickname  String?
-  roleId    String?
-  role      Role?    @relation(fields: [roleId], references: [id])
-  tokens    Token[]
-  status    String   @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String         @id @default(uuid())
+  email        String         @unique
+  password     String
+  nickname     String?
+  roleId       String?
+  role         Role?          @relation(fields: [roleId], references: [id])
+  tokens       Token[]
+  ssos         SSO[]
+  loginHistory LoginHistory[]
+  logicHistory LogicHistory[]
+  status       String         @default("active")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@map("user")
 }
@@ -71,13 +74,14 @@ model MailTemplate {
 }
 
 model NotificationTemplate {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  title       String
-  body        String   @db.Text
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String         @id @default(uuid())
+  name         String         @unique
+  title        String
+  body         String         @db.Text
+  active       Boolean        @default(true)
+  logicHistory LogicHistory[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   @@map("notification_template")
 }
@@ -105,4 +109,57 @@ model Mail {
   updatedAt       DateTime @updatedAt
 
   @@map("mail")
+}
+
+model SSO {
+  id          String   @id @default(uuid())
+  url         String
+  key         String   @unique
+  userId      String
+  deviceIP    String?
+  loginHistory LoginHistory[]
+  user        User     @relation(fields: [userId], references: [id])
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("sso")
+}
+
+model LoginHistory {
+  id          String   @id @default(uuid())
+  ssoId       String?
+  userId      String
+  deviceIP    String?
+  userAgent   String?
+  loginAt     DateTime @default(now())
+  logoutAt    DateTime?
+  status      String   @default("active") // active, logged_out, expired
+  location    String?
+  sso         SSO?     @relation(fields: [ssoId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("login_history")
+}
+
+model LogicHistory {
+  id                        String                 @id @default(uuid())
+  userId                    String
+  action                    String                 // login, logout, password_change, profile_update, etc.
+  entityType                String?                // user, role, permission, etc.
+  entityId                  String?
+  oldValues                 String?                @db.Text // JSON string of old values
+  newValues                 String?                @db.Text // JSON string of new values
+  ipAddress                 String?
+  userAgent                 String?
+  notificationTemplateId    String?
+  notificationSent          Boolean                @default(false)
+  user                      User                   @relation(fields: [userId], references: [id])
+  notificationTemplate      NotificationTemplate?  @relation(fields: [notificationTemplateId], references: [id])
+  createdAt                 DateTime               @default(now())
+
+  @@map("logic_history")
 }

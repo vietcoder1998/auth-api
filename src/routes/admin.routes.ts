@@ -7,6 +7,9 @@ import tokenRouter from './token.routes';
 import notificationTemplateRouter from './notificationTemplate.routes';
 import mailTemplateRouter from './mailTemplate.routes';
 import mailRouter from './mail.routes';
+import ssoRouter from './sso.routes';
+import loginHistoryRouter from './loginHistory.routes';
+import logicHistoryRouter from './logicHistory.routes';
 import cacheRouter from './cache.routes';
 
 const router = Router();
@@ -18,6 +21,9 @@ router.use('/tokens', tokenRouter);
 router.use('/notification-templates', notificationTemplateRouter);
 router.use('/mail-templates', mailTemplateRouter);
 router.use('/mails', mailRouter);
+router.use('/sso', ssoRouter);
+router.use('/login-history', loginHistoryRouter);
+router.use('/logic-history', logicHistoryRouter);
 router.use('/cache', cacheRouter);
 
 export default router;
