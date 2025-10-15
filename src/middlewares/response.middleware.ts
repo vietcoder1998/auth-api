@@ -43,6 +43,19 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
       return oldJson.call(this, body);
     }
 
+    // If response already contains pagination structure (data, total, page, limit), wrap it properly
+    if (body && typeof body === 'object' && 'data' in body && 'total' in body && 'page' in body && 'limit' in body) {
+      return oldJson.call(this, {
+        data: body.data,
+        message: 'Success',
+        total: body.total,
+        page: body.page,
+        limit: body.limit,
+        totalPages: body.totalPages || Math.ceil(body.total / body.limit),
+        success: true
+      });
+    }
+
     // If body is an error or string, treat as message
     if (body instanceof Error || (body && body.error)) {
       const code = body.code || res.statusCode || 500;
@@ -73,13 +86,9 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
         data: data || body,
         message: 'Success',
         total: total || pagination?.total || (Array.isArray(data) ? data.length : 0),
-        pagination: {
-          page: pagination?.page || req.meta?.page || 1,
-          limit: pagination?.limit || pagination?.pageSize || req.meta?.pageSize || 10,
-          total: pagination?.total || total || (Array.isArray(data) ? data.length : 0),
-          totalPages: pagination?.totalPages || Math.ceil((pagination?.total || total || 0) / (pagination?.limit || req.meta?.pageSize || 10)),
-          ...pagination
-        },
+        page: pagination?.page || req.meta?.page || 1,
+        limit: pagination?.limit || pagination?.pageSize || req.meta?.pageSize || 10,
+        totalPages: pagination?.totalPages || Math.ceil((pagination?.total || total || 0) / (pagination?.limit || req.meta?.pageSize || 10)),
         success: true,
         ...rest
       });

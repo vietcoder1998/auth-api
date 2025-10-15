@@ -23,7 +23,8 @@ export async function apiKeyValidation(req: ApiKeyRequest, res: Response, next: 
     const apiKey = req.headers['x-api-key'] as string;
     
     if (!apiKey) {
-      return res.status(401).json({ error: 'API key is required' });
+      // Skip API key validation if no API key provided, let other auth methods handle it
+      return next();
     }
 
     // Find the API key in database
@@ -94,7 +95,7 @@ export async function apiKeyValidation(req: ApiKeyRequest, res: Response, next: 
       req.user = foundApiKey.user as any;
     }
 
-    // Log API usage (async, don't wait for it)
+    // Log API usage (async, don't wait for it) - only if request will be processed
     logApiUsage(req, res, foundApiKey.id).catch(console.error);
 
     // Update usage count and last used timestamp
@@ -114,41 +115,46 @@ export async function apiKeyValidation(req: ApiKeyRequest, res: Response, next: 
 }
 
 // Log API usage for analytics
-async function logApiUsage(req: Request,res: Response, apiKeyId: string) {
+async function logApiUsage(req: Request, res: Response, apiKeyId: string) {
   try {
     const startTime = Date.now();
     
     // Store original end method
-    const originalEnd = res?.end;
+    const originalEnd = res.end;
     
-    if (originalEnd && res) {
-      const originalEndBound = originalEnd.bind(res);
-
-      res.end = function(this: typeof res, chunk?: any, encoding?: any, cb?: any) {
+    if (originalEnd) {
+      // Override res.end to capture response details
+      res.end = function(chunk?: any, encoding?: any, cb?: any) {
         const responseTime = Date.now() - startTime;
         
-        // Log the usage
-        prisma.apiUsageLog.create({
-          data: {
-            apiKeyId,
-            endpoint: req.path,
-            method: req.method,
-            ipAddress: req.ip || req.connection.remoteAddress as string,
-            userAgent: req.headers['user-agent'],
-            statusCode: res.statusCode || 0,
-            responseTime,
-            // Only log request/response body in development or for debugging
-            requestBody: process.env.NODE_ENV === 'development' ? JSON.stringify(req.body) : null,
-            responseBody: process.env.NODE_ENV === 'development' && chunk ? chunk.toString() : null
-          }
-        }).catch(console.error);
+        // Only log successful API calls (not auth errors)
+        if (res.statusCode < 400) {
+          prisma.apiUsageLog.create({
+            data: {
+              apiKeyId,
+              endpoint: req.originalUrl || req.path,
+              method: req.method,
+              ipAddress: req.ip || (req.connection && req.connection.remoteAddress) || 'unknown',
+              userAgent: req.headers['user-agent'] || null,
+              statusCode: res.statusCode,
+              responseTime,
+              // Only log request/response body in development
+              requestBody: process.env.NODE_ENV === 'development' ? JSON.stringify(req.body || {}) : null,
+              responseBody: process.env.NODE_ENV === 'development' && chunk ? 
+                (typeof chunk === 'string' ? chunk : chunk.toString()) : null
+            }
+          }).catch(error => {
+            console.error('Error logging API usage:', error);
+          });
+        }
 
-        // Call original end method and return its result
-        return originalEndBound(chunk, encoding, cb);
+        // Restore original method and call it
+        res.end = originalEnd;
+        return originalEnd.call(res, chunk, encoding, cb);
       };
     }
   } catch (error) {
-    console.error('Error logging API usage:', error);
+    console.error('Error setting up API usage logging:', error);
   }
 }
 

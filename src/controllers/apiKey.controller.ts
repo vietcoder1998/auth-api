@@ -57,13 +57,7 @@ export async function getApiKeys(req: Request, res: Response) {
       key: `${apiKey.key.substring(0, 8)}...${apiKey.key.substring(apiKey.key.length - 4)}`,
     }));
 
-    res.json({
-      data: sanitizedApiKeys,
-      total,
-      page: pageNum,
-      limit: limitNum,
-      totalPages: Math.ceil(total / limitNum)
-    });
+    res.json(sanitizedApiKeys);
   } catch (err) {
     console.error('Get API keys error:', err);
     res.status(500).json({ error: 'Failed to fetch API keys' });
