@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -71,7 +72,11 @@ async function main() {
     { name: 'admin_mails_post', description: 'POST admin mails endpoint', category: 'api', route: '/api/admin/mails', method: 'POST' },
     
     { name: 'admin_cache_get', description: 'GET admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'GET' },
+    { name: 'admin_cache_post', description: 'POST admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'POST' },
+    { name: 'admin_cache_put', description: 'PUT admin cache endpoint', category: 'api', route: '/api/admin/cache/:key', method: 'PUT' },
     { name: 'admin_cache_delete', description: 'DELETE admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'DELETE' },
+    { name: 'admin_cache_clear', description: 'DELETE admin cache clear endpoint', category: 'api', route: '/api/admin/cache/clear', method: 'DELETE' },
+    { name: 'admin_cache_stats', description: 'GET admin cache statistics endpoint', category: 'api', route: '/api/admin/cache/stats', method: 'GET' },
     
     // SSO Management permissions
     { name: 'admin_sso_get', description: 'GET admin SSO endpoint', category: 'api', route: '/api/admin/sso', method: 'GET' },
@@ -99,7 +104,12 @@ async function main() {
     { name: 'view_login_history', description: 'View login history', category: 'history' },
     { name: 'manage_login_history', description: 'Full login history management', category: 'history' },
     { name: 'view_logic_history', description: 'View logic history and audit trail', category: 'history' },
-    { name: 'manage_logic_history', description: 'Full logic history management', category: 'history' }
+    { name: 'manage_logic_history', description: 'Full logic history management', category: 'history' },
+    
+    // Cache management permissions
+    { name: 'view_cache', description: 'View cache information and statistics', category: 'cache' },
+    { name: 'manage_cache', description: 'Full cache management access including clear and modify', category: 'cache' },
+    { name: 'cache_admin', description: 'Administrative cache operations and monitoring', category: 'cache' }
   ];
   
   const permissionRecords = await Promise.all(
@@ -437,8 +447,16 @@ async function main() {
   const createdSSOEntries = [];
   for (const sso of ssoEntries) {
     if (sso.userId) {
-      const createdSSO = await prisma.sSO.create({
-        data: sso
+      const createdSSO = await prisma.sSO.upsert({
+        where: { key: sso.key },
+        update: {
+          url: sso.url,
+          userId: sso.userId,
+          deviceIP: sso.deviceIP,
+          isActive: sso.isActive,
+          expiresAt: sso.expiresAt
+        },
+        create: sso
       });
       createdSSOEntries.push(createdSSO);
     }
@@ -521,9 +539,22 @@ async function main() {
 
   for (const loginHistory of loginHistoryEntries) {
     if (loginHistory.userId && loginHistory.ssoId) {
-      await prisma.loginHistory.create({
-        data: loginHistory
+      // Since LoginHistory might not have unique constraints, we can use create
+      // But first check if a similar entry exists to avoid duplicates
+      const existingEntry = await prisma.loginHistory.findFirst({
+        where: {
+          userId: loginHistory.userId,
+          ssoId: loginHistory.ssoId,
+          deviceIP: loginHistory.deviceIP,
+          loginAt: loginHistory.loginAt
+        }
       });
+      
+      if (!existingEntry) {
+        await prisma.loginHistory.create({
+          data: loginHistory
+        });
+      }
     }
   }
 
@@ -632,9 +663,25 @@ async function main() {
 
   for (const logicHistory of logicHistoryEntries) {
     if (logicHistory.userId) {
-      await prisma.logicHistory.create({
-        data: logicHistory
+      // Check if a similar logic history entry exists to avoid duplicates
+      const existingEntry = await prisma.logicHistory.findFirst({
+        where: {
+          userId: logicHistory.userId,
+          action: logicHistory.action,
+          entityType: logicHistory.entityType,
+          entityId: logicHistory.entityId,
+          createdAt: {
+            gte: new Date(Date.now() - 5 * 60 * 1000), // Within last 5 minutes
+            lte: new Date(Date.now() + 5 * 60 * 1000)  // Within next 5 minutes (for time variations)
+          }
+        }
       });
+      
+      if (!existingEntry) {
+        await prisma.logicHistory.create({
+          data: logicHistory
+        });
+      }
     }
   }
 
