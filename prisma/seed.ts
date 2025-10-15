@@ -893,18 +893,28 @@ async function main() {
     if (agent.userId) {
       try {
         const existingAgent = await prisma.agent.findFirst({
-          where: { userId: agent.userId, name: agent.name }
+          where: { userId: agent.userId, name: agent.name },
+          include: {
+            user: {
+              select: { id: true, email: true, nickname: true, status: true }
+            }
+          }
         });
         
         if (!existingAgent) {
           const createdAgent = await prisma.agent.create({
-            data: agent
+            data: agent,
+            include: {
+              user: {
+                select: { id: true, email: true, nickname: true, status: true }
+              }
+            }
           });
           createdAgents.push(createdAgent);
-          console.log(`✓ Created AI agent: ${agent.name}`);
+          console.log(`✓ Created AI agent: ${agent.name} (Owner: ${createdAgent.user?.nickname}, Status: ${agent.isActive ? 'Active' : 'Inactive'})`);
         } else {
           createdAgents.push(existingAgent);
-          console.log(`⚠ Agent already exists: ${agent.name}`);
+          console.log(`⚠ Agent already exists: ${agent.name} (Owner: ${existingAgent.user?.nickname}, Status: ${existingAgent.isActive ? 'Active' : 'Inactive'})`);
         }
       } catch (error) {
         console.log(`⚠ Error creating agent ${agent.name}:`, error);
@@ -1003,25 +1013,43 @@ async function main() {
       agentId: createdAgents[0]?.id,
       userId: superadminUser?.id || '',
       title: 'Getting Started with AI Agents',
-      summary: 'Initial conversation about setting up and configuring AI agents for the platform'
+      summary: 'Initial conversation about setting up and configuring AI agents for the platform',
+      isActive: true
     },
     {
       agentId: createdAgents[1]?.id,
       userId: superadminUser?.id || '',
       title: 'Code Review Session',
-      summary: 'Discussion about TypeScript implementation and best practices for API middleware'
+      summary: 'Discussion about TypeScript implementation and best practices for API middleware',
+      isActive: true
     },
     {
       agentId: createdAgents[2]?.id,
       userId: adminUser?.id || '',
       title: 'Business Strategy Discussion',
-      summary: 'Analysis of AI integration opportunities and market positioning'
+      summary: 'Analysis of AI integration opportunities and market positioning',
+      isActive: true
     },
     {
       agentId: createdAgents[4]?.id,
       userId: regularUser?.id || '',
       title: 'Learning TypeScript',
-      summary: 'Step-by-step tutorial for learning TypeScript fundamentals'
+      summary: 'Step-by-step tutorial for learning TypeScript fundamentals',
+      isActive: true
+    },
+    {
+      agentId: createdAgents[3]?.id,
+      userId: adminUser?.id || '',
+      title: 'Creative Writing Project',
+      summary: 'Collaboration on creative content and marketing materials',
+      isActive: false
+    },
+    {
+      agentId: createdAgents[0]?.id,
+      userId: regularUser?.id || '',
+      title: 'General Questions',
+      summary: 'Various questions about platform features and functionality',
+      isActive: true
     }
   ];
 
@@ -1034,17 +1062,34 @@ async function main() {
             agentId: conversation.agentId, 
             userId: conversation.userId, 
             title: conversation.title 
+          },
+          include: {
+            user: {
+              select: { id: true, email: true, nickname: true, status: true }
+            },
+            agent: {
+              select: { id: true, name: true, description: true, model: true, isActive: true }
+            }
           }
         });
         
         if (!existingConversation) {
           const createdConversation = await prisma.conversation.create({
-            data: conversation
+            data: conversation,
+            include: {
+              user: {
+                select: { id: true, email: true, nickname: true, status: true }
+              },
+              agent: {
+                select: { id: true, name: true, description: true, model: true, isActive: true }
+              }
+            }
           });
           createdConversations.push(createdConversation);
-          console.log(`✓ Created conversation: ${conversation.title}`);
+          console.log(`✓ Created conversation: ${conversation.title} (User: ${createdConversation.user?.nickname}, Agent: ${createdConversation.agent?.name}, Status: ${conversation.isActive ? 'Active' : 'Inactive'})`);
         } else {
           createdConversations.push(existingConversation);
+          console.log(`✓ Found existing conversation: ${conversation.title} (Status: ${existingConversation.isActive ? 'Active' : 'Inactive'})`);
         }
       } catch (error) {
         console.log(`⚠ Error creating conversation:`, error);
@@ -1226,6 +1271,39 @@ async function main() {
         focusAreas: ['pricing', 'features', 'market_share']
       }),
       status: 'pending'
+    },
+    {
+      agentId: createdAgents[4]?.id,
+      name: 'Learning Path Generation',
+      input: JSON.stringify({
+        subject: 'TypeScript',
+        skill_level: 'beginner',
+        learning_goals: ['basic syntax', 'types', 'interfaces', 'functions']
+      }),
+      status: 'completed',
+      output: JSON.stringify({
+        learning_path: [
+          'Introduction to TypeScript',
+          'Basic Types and Variables',
+          'Functions and Parameters',
+          'Interfaces and Type Definitions',
+          'Practice Exercises'
+        ],
+        estimated_time: '4-6 weeks'
+      }),
+      startedAt: new Date(Date.now() - 4 * 60 * 60 * 1000)
+    },
+    {
+      agentId: createdAgents[3]?.id,
+      name: 'Content Creation Campaign',
+      input: JSON.stringify({
+        campaign_type: 'social_media',
+        target_audience: 'tech_professionals',
+        content_themes: ['AI innovation', 'developer tools', 'productivity']
+      }),
+      status: 'failed',
+      error: 'Insufficient context provided for target audience analysis',
+      startedAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
     }
   ];
 
@@ -1237,10 +1315,22 @@ async function main() {
         });
         
         if (!existingTask) {
-          await prisma.agentTask.create({
-            data: task
+          const createdTask = await prisma.agentTask.create({
+            data: task,
+            include: {
+              agent: {
+                select: { name: true },
+                include: {
+                  user: {
+                    select: { nickname: true }
+                  }
+                }
+              }
+            }
           });
-          console.log(`✓ Created task ${task.name} for agent ${task.agentId}`);
+          console.log(`✓ Created task "${task.name}" for agent ${createdTask.agent?.name} (Status: ${task.status}, Owner: ${createdTask.agent?.user?.nickname})`);
+        } else {
+          console.log(`⚠ Task already exists: ${task.name} (Status: ${existingTask.status})`);
         }
       } catch (error) {
         console.log(`⚠ Error creating task:`, error);
