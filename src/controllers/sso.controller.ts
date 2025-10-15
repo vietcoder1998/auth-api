@@ -19,11 +19,11 @@ export const getSSOEntries = async (req: Request, res: Response) => {
 
     if (search) {
       where.OR = [
-        { url: { contains: search } },
-        { key: { contains: search } },
-        { deviceIP: { contains: search } },
-        { user: { email: { contains: search } } },
-        { user: { nickname: { contains: search } } },
+        { url: { contains: search, mode: 'insensitive' } },
+        { key: { contains: search, mode: 'insensitive' } },
+        { deviceIP: { contains: search, mode: 'insensitive' } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+        { user: { nickname: { contains: search, mode: 'insensitive' } } },
       ];
     }
 
@@ -31,9 +31,21 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       where.userId = userId;
     }
 
-    if (isActive !== undefined) {
+    if (isActive !== undefined && isActive !== '') {
       where.isActive = isActive === 'true';
     }
+
+    // Debug logging to see what we're querying
+    console.log('Debug SSO Query:', {
+      where: JSON.stringify(where, null, 2),
+      page,
+      limit,
+      skip
+    });
+
+    // First check if we have any SSO entries at all
+    const totalEntries = await prisma.sSO.count();
+    console.log('Debug: Total SSO entries in database:', totalEntries);
 
     const [ssoEntries, total] = await Promise.all([
       prisma.sSO.findMany({
@@ -61,6 +73,13 @@ export const getSSOEntries = async (req: Request, res: Response) => {
 
     const totalPages = Math.ceil(total / limit);
 
+    console.log('Debug SSO Results:', {
+      foundEntries: ssoEntries.length,
+      totalWithFilter: total,
+      totalInDB: totalEntries,
+      sampleEntry: ssoEntries[0] || 'No entries found'
+    });
+
     logger.info(`Fetched SSO entries`, {
       service: 'auth-api',
       count: ssoEntries.length,
@@ -70,7 +89,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
     });
 
     res.json({
-      data: ssoEntries,
+      data: ssoEntries || [],
       pagination: {
         page,
         limit,
@@ -90,6 +109,12 @@ export const getSSOById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ error: 'SSO ID is required' });
+    }
+
+    console.log('Debug: Fetching SSO by ID:', id);
+
     const ssoEntry = await prisma.sSO.findUnique({
       where: { id },
       include: {
@@ -103,9 +128,20 @@ export const getSSOById = async (req: Request, res: Response) => {
         loginHistory: {
           orderBy: { loginAt: 'desc' },
           take: 10,
+          select: {
+            id: true,
+            deviceIP: true,
+            userAgent: true,
+            loginAt: true,
+            logoutAt: true,
+            status: true,
+            location: true,
+          },
         },
       },
     });
+
+    console.log('Debug: SSO entry found:', ssoEntry ? 'Yes' : 'No');
 
     if (!ssoEntry) {
       return res.status(404).json({ error: 'SSO entry not found' });
@@ -114,10 +150,13 @@ export const getSSOById = async (req: Request, res: Response) => {
     logger.info(`Fetched SSO entry by ID`, {
       service: 'auth-api',
       ssoId: id,
+      hasUser: !!ssoEntry.user,
+      loginHistoryCount: ssoEntry.loginHistory.length,
     });
 
     res.json(ssoEntry);
   } catch (error) {
+    console.error('Debug: Error fetching SSO by ID:', error);
     logger.error('Error fetching SSO entry by ID', { error, service: 'auth-api' });
     res.status(500).json({ error: 'Failed to fetch SSO entry' });
   }
@@ -271,6 +310,19 @@ export const regenerateKey = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ error: 'SSO ID is required' });
+    }
+
+    // Check if SSO entry exists first
+    const existingSSO = await prisma.sSO.findUnique({
+      where: { id },
+    });
+
+    if (!existingSSO) {
+      return res.status(404).json({ error: 'SSO entry not found' });
+    }
+
     // Generate new unique SSO key
     const newKey = crypto.randomBytes(32).toString('hex');
 
@@ -293,18 +345,27 @@ export const regenerateKey = async (req: Request, res: Response) => {
     logger.info(`Regenerated SSO key`, {
       service: 'auth-api',
       ssoId: id,
+      oldKey: existingSSO.key.substring(0, 8) + '...',
+      newKey: newKey.substring(0, 8) + '...',
     });
 
     res.json(ssoEntry);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Debug: Error regenerating SSO key:', error);
     logger.error('Error regenerating SSO key', { error, service: 'auth-api' });
+    
+    // Handle specific Prisma errors
+    if (error?.code === 'P2025') {
+      return res.status(404).json({ error: 'SSO entry not found' });
+    }
+    
     res.status(500).json({ error: 'Failed to regenerate SSO key' });
   }
 };
 
 export const getSSOStats = async (req: Request, res: Response) => {
   try {
-    const [totalSSO, activeSSO, expiredSSO, totalLogins] = await Promise.all([
+    const [totalSSO, activeSSO, expiredSSO, totalLogins, ssoLogins] = await Promise.all([
       prisma.sSO.count(),
       prisma.sSO.count({ where: { isActive: true } }),
       prisma.sSO.count({ 
@@ -315,15 +376,20 @@ export const getSSOStats = async (req: Request, res: Response) => {
         } 
       }),
       prisma.loginHistory.count(),
+      prisma.loginHistory.count({ where: { NOT: { ssoId: null } } }),
     ]);
 
     const stats = {
-      totalSSO,
-      activeSSO,
-      inactiveSSO: totalSSO - activeSSO,
-      expiredSSO,
-      totalLogins,
+      totalSSO: totalSSO || 0,
+      activeSSO: activeSSO || 0,
+      inactiveSSO: (totalSSO || 0) - (activeSSO || 0),
+      expiredSSO: expiredSSO || 0,
+      totalLogins: totalLogins || 0,
+      ssoLogins: ssoLogins || 0,
+      directLogins: (totalLogins || 0) - (ssoLogins || 0),
     };
+
+    console.log('Debug SSO Stats:', stats);
 
     logger.info(`Fetched SSO stats`, {
       service: 'auth-api',
@@ -332,6 +398,7 @@ export const getSSOStats = async (req: Request, res: Response) => {
 
     res.json(stats);
   } catch (error) {
+    console.error('Debug: Error fetching SSO stats:', error);
     logger.error('Error fetching SSO stats', { error, service: 'auth-api' });
     res.status(500).json({ error: 'Failed to fetch SSO stats' });
   }
