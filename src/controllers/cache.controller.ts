@@ -39,9 +39,21 @@ export async function getCacheKeys(req: Request, res: Response) {
       paginatedKeys.map(async (key) => {
         const value = await client.get(key);
         const ttl = await client.ttl(key);
+        
+        // Try to parse as JSON, fallback to raw value if not valid JSON
+        let parsedValue = null;
+        if (value) {
+          try {
+            parsedValue = JSON.parse(value);
+          } catch (jsonError) {
+            // If JSON parsing fails, store the raw string value
+            parsedValue = value;
+          }
+        }
+        
         return {
           key,
-          value: value ? JSON.parse(value) : null,
+          value: parsedValue,
           ttl: ttl === -1 ? 'no expiry' : `${ttl}s`,
           size: value ? Buffer.byteLength(value, 'utf8') : 0
         };
@@ -131,9 +143,18 @@ export async function getCacheValue(req: Request, res: Response) {
       return res.status(404).json({ error: 'Cache key not found' });
     }
     
+    // Try to parse as JSON, fallback to raw value if not valid JSON
+    let parsedValue;
+    try {
+      parsedValue = JSON.parse(value);
+    } catch (jsonError) {
+      // If JSON parsing fails, store the raw string value
+      parsedValue = value;
+    }
+    
     const cacheData = {
       key,
-      value: JSON.parse(value),
+      value: parsedValue,
       ttl: ttl === -1 ? 'no expiry' : `${ttl}s`,
       size: Buffer.byteLength(value, 'utf8'),
       createdAt: new Date().toISOString() // Approximate

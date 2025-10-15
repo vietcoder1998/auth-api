@@ -134,7 +134,11 @@ async function main() {
   // Create roles
   const superadminRole = await prisma.role.upsert({
     where: { name: 'superadmin' },
-    update: {},
+    update: {
+      permissions: {
+        set: permissionRecords.map(p => ({ id: p.id })) // Update to include all permissions
+      }
+    },
     create: {
       name: 'superadmin',
       permissions: {
