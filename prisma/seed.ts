@@ -1319,8 +1319,8 @@ async function main() {
             data: task,
             include: {
               agent: {
-                select: { name: true },
-                include: {
+                select: { 
+                  name: true,
                   user: {
                     select: { nickname: true }
                   }
