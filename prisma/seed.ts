@@ -777,6 +777,478 @@ async function main() {
     }
   }
 
+  // Seed AI Agents
+  console.log('🤖 Seeding AI Agents...');
+  
+  const aiAgents = [
+    {
+      userId: superadminUser?.id || '',
+      name: 'General Assistant',
+      description: 'A versatile AI assistant for general tasks and conversations',
+      model: 'gpt-4',
+      personality: JSON.stringify({
+        traits: ['helpful', 'friendly', 'professional', 'knowledgeable'],
+        tone: 'professional but approachable',
+        style: 'concise yet comprehensive',
+        expertise: ['general knowledge', 'problem solving', 'analysis']
+      }),
+      systemPrompt: 'You are a helpful AI assistant. Provide accurate, helpful, and professional responses while maintaining a friendly tone. Always aim to be informative and supportive.',
+      config: JSON.stringify({
+        temperature: 0.7,
+        maxTokens: 1000,
+        topP: 1,
+        frequencyPenalty: 0,
+        presencePenalty: 0
+      }),
+      isActive: true
+    },
+    {
+      userId: superadminUser?.id || '',
+      name: 'Code Assistant',
+      description: 'Specialized AI assistant for programming and technical support',
+      model: 'gpt-4',
+      personality: JSON.stringify({
+        traits: ['analytical', 'precise', 'helpful', 'technical'],
+        tone: 'technical but clear',
+        style: 'detailed explanations with examples',
+        expertise: ['programming', 'debugging', 'architecture', 'best practices']
+      }),
+      systemPrompt: 'You are an expert programming assistant. Help with code review, debugging, architecture decisions, and best practices. Provide clear explanations and working code examples.',
+      config: JSON.stringify({
+        temperature: 0.3,
+        maxTokens: 2000,
+        topP: 0.95,
+        frequencyPenalty: 0,
+        presencePenalty: 0
+      }),
+      isActive: true
+    },
+    {
+      userId: adminUser?.id || '',
+      name: 'Business Analyst',
+      description: 'AI assistant focused on business analysis and decision support',
+      model: 'gpt-4-turbo',
+      personality: JSON.stringify({
+        traits: ['analytical', 'strategic', 'data-driven', 'insightful'],
+        tone: 'professional and strategic',
+        style: 'structured analysis with actionable insights',
+        expertise: ['business analysis', 'data interpretation', 'strategic planning', 'market research']
+      }),
+      systemPrompt: 'You are a business analysis expert. Provide strategic insights, data analysis, market research, and actionable business recommendations. Focus on practical solutions and measurable outcomes.',
+      config: JSON.stringify({
+        temperature: 0.5,
+        maxTokens: 1500,
+        topP: 0.9,
+        frequencyPenalty: 0.1,
+        presencePenalty: 0.1
+      }),
+      isActive: true
+    },
+    {
+      userId: adminUser?.id || '',
+      name: 'Creative Writer',
+      description: 'AI assistant specialized in creative writing and content creation',
+      model: 'gpt-4',
+      personality: JSON.stringify({
+        traits: ['creative', 'imaginative', 'eloquent', 'inspiring'],
+        tone: 'creative and engaging',
+        style: 'vivid and expressive',
+        expertise: ['creative writing', 'storytelling', 'content creation', 'marketing copy']
+      }),
+      systemPrompt: 'You are a creative writing expert. Help with storytelling, content creation, marketing copy, and creative projects. Use vivid language and engaging narratives.',
+      config: JSON.stringify({
+        temperature: 0.8,
+        maxTokens: 1200,
+        topP: 0.95,
+        frequencyPenalty: 0.2,
+        presencePenalty: 0.2
+      }),
+      isActive: false
+    },
+    {
+      userId: regularUser?.id || '',
+      name: 'Learning Companion',
+      description: 'Patient AI tutor for learning and educational support',
+      model: 'gpt-3.5-turbo',
+      personality: JSON.stringify({
+        traits: ['patient', 'encouraging', 'knowledgeable', 'supportive'],
+        tone: 'friendly and educational',
+        style: 'step-by-step explanations with encouragement',
+        expertise: ['education', 'tutoring', 'skill development', 'learning strategies']
+      }),
+      systemPrompt: 'You are a patient and encouraging tutor. Break down complex topics into understandable steps, provide examples, and offer positive reinforcement. Adapt your teaching style to the learner\'s pace.',
+      config: JSON.stringify({
+        temperature: 0.6,
+        maxTokens: 800,
+        topP: 0.9,
+        frequencyPenalty: 0,
+        presencePenalty: 0
+      }),
+      isActive: true
+    }
+  ];
+
+  const createdAgents = [];
+  for (const agent of aiAgents) {
+    if (agent.userId) {
+      try {
+        const existingAgent = await prisma.agent.findFirst({
+          where: { userId: agent.userId, name: agent.name }
+        });
+        
+        if (!existingAgent) {
+          const createdAgent = await prisma.agent.create({
+            data: agent
+          });
+          createdAgents.push(createdAgent);
+          console.log(`✓ Created AI agent: ${agent.name}`);
+        } else {
+          createdAgents.push(existingAgent);
+          console.log(`⚠ Agent already exists: ${agent.name}`);
+        }
+      } catch (error) {
+        console.log(`⚠ Error creating agent ${agent.name}:`, error);
+      }
+    }
+  }
+
+  // Seed Agent Memories
+  console.log('🧠 Seeding Agent Memories...');
+  
+  const agentMemories = [
+    // General Assistant memories
+    {
+      agentId: createdAgents[0]?.id,
+      type: 'knowledge_base',
+      content: 'User prefers concise explanations over lengthy responses',
+      importance: 8,
+      metadata: JSON.stringify({
+        source: 'user_feedback',
+        tags: ['preference', 'communication'],
+        date: '2025-10-15'
+      })
+    },
+    {
+      agentId: createdAgents[0]?.id,
+      type: 'long_term',
+      content: 'User is working on a React project with TypeScript',
+      importance: 7,
+      metadata: JSON.stringify({
+        source: 'conversation',
+        tags: ['project', 'technology'],
+        date: '2025-10-14'
+      })
+    },
+    // Code Assistant memories
+    {
+      agentId: createdAgents[1]?.id,
+      type: 'knowledge_base',
+      content: 'User follows clean code principles and prefers functional programming patterns',
+      importance: 9,
+      metadata: JSON.stringify({
+        source: 'code_review',
+        tags: ['coding_style', 'preference'],
+        date: '2025-10-13'
+      })
+    },
+    {
+      agentId: createdAgents[1]?.id,
+      type: 'short_term',
+      content: 'Currently debugging TypeScript compilation errors in middleware',
+      importance: 6,
+      metadata: JSON.stringify({
+        source: 'current_task',
+        tags: ['debugging', 'typescript'],
+        date: '2025-10-15'
+      })
+    },
+    // Business Analyst memories
+    {
+      agentId: createdAgents[2]?.id,
+      type: 'knowledge_base',
+      content: 'Company is focusing on AI integration and digital transformation initiatives',
+      importance: 9,
+      metadata: JSON.stringify({
+        source: 'strategic_planning',
+        tags: ['company_strategy', 'ai', 'transformation'],
+        date: '2025-10-10'
+      })
+    }
+  ];
+
+  for (const memory of agentMemories) {
+    if (memory.agentId) {
+      try {
+        const existingMemory = await prisma.agentMemory.findFirst({
+          where: { agentId: memory.agentId, content: memory.content }
+        });
+        
+        if (!existingMemory) {
+          await prisma.agentMemory.create({
+            data: memory
+          });
+          console.log(`✓ Created memory for agent ${memory.agentId}`);
+        }
+      } catch (error) {
+        console.log(`⚠ Error creating memory:`, error);
+      }
+    }
+  }
+
+  // Seed Conversations
+  console.log('💬 Seeding Conversations...');
+  
+  const conversations = [
+    {
+      agentId: createdAgents[0]?.id,
+      userId: superadminUser?.id || '',
+      title: 'Getting Started with AI Agents',
+      summary: 'Initial conversation about setting up and configuring AI agents for the platform'
+    },
+    {
+      agentId: createdAgents[1]?.id,
+      userId: superadminUser?.id || '',
+      title: 'Code Review Session',
+      summary: 'Discussion about TypeScript implementation and best practices for API middleware'
+    },
+    {
+      agentId: createdAgents[2]?.id,
+      userId: adminUser?.id || '',
+      title: 'Business Strategy Discussion',
+      summary: 'Analysis of AI integration opportunities and market positioning'
+    },
+    {
+      agentId: createdAgents[4]?.id,
+      userId: regularUser?.id || '',
+      title: 'Learning TypeScript',
+      summary: 'Step-by-step tutorial for learning TypeScript fundamentals'
+    }
+  ];
+
+  const createdConversations = [];
+  for (const conversation of conversations) {
+    if (conversation.agentId && conversation.userId) {
+      try {
+        const existingConversation = await prisma.conversation.findFirst({
+          where: { 
+            agentId: conversation.agentId, 
+            userId: conversation.userId, 
+            title: conversation.title 
+          }
+        });
+        
+        if (!existingConversation) {
+          const createdConversation = await prisma.conversation.create({
+            data: conversation
+          });
+          createdConversations.push(createdConversation);
+          console.log(`✓ Created conversation: ${conversation.title}`);
+        } else {
+          createdConversations.push(existingConversation);
+        }
+      } catch (error) {
+        console.log(`⚠ Error creating conversation:`, error);
+      }
+    }
+  }
+
+  // Seed Messages
+  console.log('📝 Seeding Messages...');
+  
+  const messages = [
+    // Getting Started conversation
+    {
+      conversationId: createdConversations[0]?.id,
+      sender: 'user',
+      content: 'Hi! I\'d like to learn how to set up AI agents effectively. Can you guide me through the process?'
+    },
+    {
+      conversationId: createdConversations[0]?.id,
+      sender: 'agent',
+      content: 'Hello! I\'d be happy to help you set up AI agents. Let\'s start with the basics:\n\n1. **Define the Purpose**: What specific tasks do you want your agent to handle?\n2. **Choose the Right Model**: Select between GPT-4 for complex tasks or GPT-3.5 for simpler ones\n3. **Configure Personality**: Set traits and tone that match your use case\n4. **Write System Prompts**: Create clear instructions for consistent behavior\n\nWhat type of AI agent are you looking to create?',
+      tokens: 85
+    },
+    // Code Review conversation
+    {
+      conversationId: createdConversations[1]?.id,
+      sender: 'user',
+      content: 'I\'m having TypeScript compilation errors in my API middleware. The compiler complains about null handling and response override issues.'
+    },
+    {
+      conversationId: createdConversations[1]?.id,
+      sender: 'agent',
+      content: 'I can help you resolve those TypeScript issues. Common middleware problems include:\n\n**Null Handling:**\n```typescript\n// Use optional chaining and nullish coalescing\nconst userId = req.user?.id ?? null;\nif (!userId) {\n  return res.status(401).json({ error: \'Unauthorized\' });\n}\n```\n\n**Response Override:**\n```typescript\n// Ensure proper typing for response methods\nres.status(200).json({ data }).end();\n// Or use proper middleware flow\nnext();\n```\n\nCould you share the specific error messages?',
+      tokens: 120
+    },
+    // Business Strategy conversation
+    {
+      conversationId: createdConversations[2]?.id,
+      sender: 'user',
+      content: 'What are the key opportunities for AI integration in our current business model?'
+    },
+    {
+      conversationId: createdConversations[2]?.id,
+      sender: 'agent',
+      content: 'Based on current market trends, here are key AI integration opportunities:\n\n**Immediate Opportunities:**\n• **Customer Support**: AI chatbots for 24/7 service\n• **Content Creation**: Automated documentation and marketing copy\n• **Data Analysis**: Intelligent insights from business metrics\n\n**Strategic Advantages:**\n• **Personalization**: Tailored user experiences\n• **Automation**: Streamlined workflows and processes\n• **Competitive Edge**: Early adoption in your market segment\n\n**ROI Potential:**\n• 30-40% reduction in support costs\n• 50% faster content production\n• Improved customer satisfaction scores\n\nWhich area would you like to prioritize first?',
+      tokens: 140
+    }
+  ];
+
+  for (const message of messages) {
+    if (message.conversationId) {
+      try {
+        const existingMessage = await prisma.message.findFirst({
+          where: { 
+            conversationId: message.conversationId, 
+            content: message.content 
+          }
+        });
+        
+        if (!existingMessage) {
+          await prisma.message.create({
+            data: message
+          });
+          console.log(`✓ Created message in conversation ${message.conversationId}`);
+        }
+      } catch (error) {
+        console.log(`⚠ Error creating message:`, error);
+      }
+    }
+  }
+
+  // Seed Agent Tools
+  console.log('🛠️ Seeding Agent Tools...');
+  
+  const agentTools = [
+    {
+      agentId: createdAgents[0]?.id,
+      name: 'web_search',
+      type: 'api',
+      config: JSON.stringify({
+        apiKey: 'demo_search_key',
+        maxResults: 5,
+        safeSearch: true,
+        language: 'en'
+      }),
+      enabled: true
+    },
+    {
+      agentId: createdAgents[0]?.id,
+      name: 'calculator',
+      type: 'function',
+      config: JSON.stringify({
+        precision: 10,
+        allowedOperations: ['basic', 'scientific']
+      }),
+      enabled: true
+    },
+    {
+      agentId: createdAgents[1]?.id,
+      name: 'code_analyzer',
+      type: 'function',
+      config: JSON.stringify({
+        languages: ['javascript', 'typescript', 'python', 'java'],
+        analysisTypes: ['syntax', 'security', 'performance', 'style']
+      }),
+      enabled: true
+    },
+    {
+      agentId: createdAgents[2]?.id,
+      name: 'data_visualizer',
+      type: 'plugin',
+      config: JSON.stringify({
+        chartTypes: ['line', 'bar', 'pie', 'scatter'],
+        exportFormats: ['png', 'svg', 'pdf']
+      }),
+      enabled: true
+    }
+  ];
+
+  for (const tool of agentTools) {
+    if (tool.agentId) {
+      try {
+        const existingTool = await prisma.agentTool.findFirst({
+          where: { agentId: tool.agentId, name: tool.name }
+        });
+        
+        if (!existingTool) {
+          await prisma.agentTool.create({
+            data: tool
+          });
+          console.log(`✓ Created tool ${tool.name} for agent ${tool.agentId}`);
+        }
+      } catch (error) {
+        console.log(`⚠ Error creating tool:`, error);
+      }
+    }
+  }
+
+  // Seed Agent Tasks
+  console.log('📋 Seeding Agent Tasks...');
+  
+  const agentTasks = [
+    {
+      agentId: createdAgents[0]?.id,
+      name: 'Daily Summary Report',
+      input: JSON.stringify({
+        reportType: 'daily',
+        metrics: ['user_activity', 'system_performance', 'error_rates'],
+        format: 'summary'
+      }),
+      status: 'completed',
+      output: JSON.stringify({
+        summary: 'System performed well with 99.8% uptime, 1,247 active users, and minimal errors',
+        metrics: {
+          uptime: '99.8%',
+          activeUsers: 1247,
+          errorRate: '0.1%'
+        }
+      }),
+      startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+    },
+    {
+      agentId: createdAgents[1]?.id,
+      name: 'Code Quality Analysis',
+      input: JSON.stringify({
+        repository: 'auth-api',
+        analysisType: 'full',
+        includeTests: true
+      }),
+      status: 'running',
+      startedAt: new Date(Date.now() - 30 * 60 * 1000)
+    },
+    {
+      agentId: createdAgents[2]?.id,
+      name: 'Market Research Report',
+      input: JSON.stringify({
+        industry: 'AI SaaS',
+        competitors: ['OpenAI', 'Anthropic', 'Cohere'],
+        focusAreas: ['pricing', 'features', 'market_share']
+      }),
+      status: 'pending'
+    }
+  ];
+
+  for (const task of agentTasks) {
+    if (task.agentId) {
+      try {
+        const existingTask = await prisma.agentTask.findFirst({
+          where: { agentId: task.agentId, name: task.name }
+        });
+        
+        if (!existingTask) {
+          await prisma.agentTask.create({
+            data: task
+          });
+          console.log(`✓ Created task ${task.name} for agent ${task.agentId}`);
+        }
+      } catch (error) {
+        console.log(`⚠ Error creating task:`, error);
+      }
+    }
+  }
+
+  console.log('✅ AI seeding completed successfully!');
   console.log('Seeding completed successfully!');
 }
 
