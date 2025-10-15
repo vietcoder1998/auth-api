@@ -71,7 +71,35 @@ async function main() {
     { name: 'admin_mails_post', description: 'POST admin mails endpoint', category: 'api', route: '/api/admin/mails', method: 'POST' },
     
     { name: 'admin_cache_get', description: 'GET admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'GET' },
-    { name: 'admin_cache_delete', description: 'DELETE admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'DELETE' }
+    { name: 'admin_cache_delete', description: 'DELETE admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'DELETE' },
+    
+    // SSO Management permissions
+    { name: 'admin_sso_get', description: 'GET admin SSO endpoint', category: 'api', route: '/api/admin/sso', method: 'GET' },
+    { name: 'admin_sso_post', description: 'POST admin SSO endpoint', category: 'api', route: '/api/admin/sso', method: 'POST' },
+    { name: 'admin_sso_put', description: 'PUT admin SSO endpoint', category: 'api', route: '/api/admin/sso/:id', method: 'PUT' },
+    { name: 'admin_sso_delete', description: 'DELETE admin SSO endpoint', category: 'api', route: '/api/admin/sso/:id', method: 'DELETE' },
+    { name: 'admin_sso_regenerate', description: 'PATCH admin SSO regenerate key endpoint', category: 'api', route: '/api/admin/sso/:id/regenerate-key', method: 'PATCH' },
+    
+    // Login History permissions
+    { name: 'admin_login_history_get', description: 'GET admin login history endpoint', category: 'api', route: '/api/admin/login-history', method: 'GET' },
+    { name: 'admin_login_history_post', description: 'POST admin login history endpoint', category: 'api', route: '/api/admin/login-history', method: 'POST' },
+    { name: 'admin_login_history_put', description: 'PUT admin login history endpoint', category: 'api', route: '/api/admin/login-history/:id', method: 'PUT' },
+    { name: 'admin_login_history_delete', description: 'DELETE admin login history endpoint', category: 'api', route: '/api/admin/login-history/:id', method: 'DELETE' },
+    { name: 'admin_login_history_logout', description: 'PATCH admin login history logout endpoint', category: 'api', route: '/api/admin/login-history/:id/logout', method: 'PATCH' },
+    
+    // Logic History permissions
+    { name: 'admin_logic_history_get', description: 'GET admin logic history endpoint', category: 'api', route: '/api/admin/logic-history', method: 'GET' },
+    { name: 'admin_logic_history_post', description: 'POST admin logic history endpoint', category: 'api', route: '/api/admin/logic-history', method: 'POST' },
+    { name: 'admin_logic_history_put', description: 'PUT admin logic history endpoint', category: 'api', route: '/api/admin/logic-history/:id', method: 'PUT' },
+    { name: 'admin_logic_history_delete', description: 'DELETE admin logic history endpoint', category: 'api', route: '/api/admin/logic-history/:id', method: 'DELETE' },
+    { name: 'admin_logic_history_notification', description: 'PATCH admin logic history notification endpoint', category: 'api', route: '/api/admin/logic-history/:id/notification-sent', method: 'PATCH' },
+    
+    // High-level SSO and History management permissions
+    { name: 'manage_sso', description: 'Full SSO management access', category: 'sso' },
+    { name: 'view_login_history', description: 'View login history', category: 'history' },
+    { name: 'manage_login_history', description: 'Full login history management', category: 'history' },
+    { name: 'view_logic_history', description: 'View logic history and audit trail', category: 'history' },
+    { name: 'manage_logic_history', description: 'Full logic history management', category: 'history' }
   ];
   
   const permissionRecords = await Promise.all(
@@ -354,6 +382,264 @@ async function main() {
     });
   }
 
+  // Get users for SSO seeding
+  const superadminUser = await prisma.user.findUnique({ where: { email: 'superadmin@example.com' } });
+  const adminUser = await prisma.user.findUnique({ where: { email: 'admin@example.com' } });
+  const regularUser = await prisma.user.findUnique({ where: { email: 'user@example.com' } });
+
+  // TODO: Uncomment SSO seeding after running 'npx prisma generate'
+
+
+  // Seed SSO entries
+  const ssoEntries = [
+    {
+      url: 'https://app.example.com/dashboard',
+      key: 'sso_key_1234567890abcdef',
+      userId: superadminUser?.id || '',
+      deviceIP: '192.168.1.100',
+      isActive: true,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    },
+    {
+      url: 'https://admin.example.com/panel',
+      key: 'sso_key_abcdef1234567890',
+      userId: adminUser?.id || '',
+      deviceIP: '10.0.0.50',
+      isActive: true,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+    },
+    {
+      url: 'https://portal.example.com/user',
+      key: 'sso_key_fedcba0987654321',
+      userId: regularUser?.id || '',
+      deviceIP: '172.16.0.10',
+      isActive: true,
+      expiresAt: null, // No expiration
+    },
+    {
+      url: 'https://old.example.com/legacy',
+      key: 'sso_key_legacy123456',
+      userId: adminUser?.id || '',
+      deviceIP: '192.168.1.200',
+      isActive: false, // Inactive SSO
+      expiresAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // Expired 5 days ago
+    },
+    {
+      url: 'https://mobile.example.com/app',
+      key: 'sso_key_mobile987654',
+      userId: regularUser?.id || '',
+      deviceIP: '203.0.113.45',
+      isActive: true,
+      expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+    }
+  ];
+
+  const createdSSOEntries = [];
+  for (const sso of ssoEntries) {
+    if (sso.userId) {
+      const createdSSO = await prisma.sSO.create({
+        data: sso
+      });
+      createdSSOEntries.push(createdSSO);
+    }
+  }
+
+  // Seed Login History (simulate users logging in via SSO)
+  const loginHistoryEntries = [
+    // Superadmin login sessions
+    {
+      userId: superadminUser?.id || '',
+      ssoId: createdSSOEntries[0]?.id,
+      deviceIP: '192.168.1.100',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      location: 'New York, US',
+      status: 'active',
+      loginAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    },
+    {
+      userId: superadminUser?.id || '',
+      ssoId: createdSSOEntries[0]?.id,
+      deviceIP: '192.168.1.100',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+      location: 'New York, US',
+      status: 'logged_out',
+      loginAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+      logoutAt: new Date(Date.now() - 22 * 60 * 60 * 1000), // Logged out 22 hours ago
+    },
+
+    // Admin login sessions
+    {
+      userId: adminUser?.id || '',
+      ssoId: createdSSOEntries[1]?.id,
+      deviceIP: '10.0.0.50',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      location: 'San Francisco, US',
+      status: 'active',
+      loginAt: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
+    },
+    {
+      userId: adminUser?.id || '',
+      ssoId: createdSSOEntries[3]?.id, // Using inactive SSO (legacy system)
+      deviceIP: '192.168.1.200',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+      location: 'Los Angeles, US',
+      status: 'expired',
+      loginAt: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
+    },
+
+    // Regular user login sessions
+    {
+      userId: regularUser?.id || '',
+      ssoId: createdSSOEntries[2]?.id,
+      deviceIP: '172.16.0.10',
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      location: 'Toronto, CA',
+      status: 'active',
+      loginAt: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
+    },
+    {
+      userId: regularUser?.id || '',
+      ssoId: createdSSOEntries[4]?.id, // Mobile app login
+      deviceIP: '203.0.113.45',
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+      location: 'Vancouver, CA',
+      status: 'logged_out',
+      loginAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+      logoutAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // Logged out 4 hours ago
+    },
+    {
+      userId: regularUser?.id || '',
+      ssoId: createdSSOEntries[2]?.id,
+      deviceIP: '172.16.0.15', // Different IP (work vs home)
+      userAgent: 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0',
+      location: 'Montreal, CA',
+      status: 'logged_out',
+      loginAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+      logoutAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hour session
+    }
+  ];
+
+  for (const loginHistory of loginHistoryEntries) {
+    if (loginHistory.userId && loginHistory.ssoId) {
+      await prisma.loginHistory.create({
+        data: loginHistory
+      });
+    }
+  }
+
+  // Seed Logic History (audit trail for various actions)
+  const userLoginNotificationTemplate = await prisma.notificationTemplate.findUnique({
+    where: { name: 'user_login' }
+  });
+
+  const profileUpdatedNotificationTemplate = await prisma.notificationTemplate.findUnique({
+    where: { name: 'profile_updated' }
+  });
+
+  const logicHistoryEntries = [
+    // SSO login actions
+    {
+      userId: superadminUser?.id || '',
+      action: 'sso_login',
+      entityType: 'SSO',
+      entityId: createdSSOEntries[0]?.id,
+      oldValues: null,
+      newValues: JSON.stringify({
+        sso_url: 'https://app.example.com/dashboard',
+        login_time: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        device_ip: '192.168.1.100'
+      }),
+      ipAddress: '192.168.1.100',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      notificationTemplateId: userLoginNotificationTemplate?.id,
+      notificationSent: true,
+    },
+    {
+      userId: adminUser?.id || '',
+      action: 'sso_login',
+      entityType: 'SSO',
+      entityId: createdSSOEntries[1]?.id,
+      oldValues: null,
+      newValues: JSON.stringify({
+        sso_url: 'https://admin.example.com/panel',
+        login_time: new Date(Date.now() - 30 * 60 * 1000),
+        device_ip: '10.0.0.50'
+      }),
+      ipAddress: '10.0.0.50',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      notificationTemplateId: userLoginNotificationTemplate?.id,
+      notificationSent: true,
+    },
+
+    // SSO key regeneration
+    {
+      userId: adminUser?.id || '',
+      action: 'sso_key_regenerated',
+      entityType: 'SSO',
+      entityId: createdSSOEntries[1]?.id,
+      oldValues: JSON.stringify({
+        key: 'old_sso_key_12345'
+      }),
+      newValues: JSON.stringify({
+        key: 'sso_key_abcdef1234567890'
+      }),
+      ipAddress: '10.0.0.50',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      notificationTemplateId: null,
+      notificationSent: false,
+    },
+
+    // Profile updates via SSO
+    {
+      userId: regularUser?.id || '',
+      action: 'profile_updated',
+      entityType: 'User',
+      entityId: regularUser?.id,
+      oldValues: JSON.stringify({
+        nickname: 'Old Nickname',
+        last_login: '2024-10-10T10:00:00Z'
+      }),
+      newValues: JSON.stringify({
+        nickname: 'User',
+        last_login: new Date(Date.now() - 15 * 60 * 1000).toISOString()
+      }),
+      ipAddress: '172.16.0.10',
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      notificationTemplateId: profileUpdatedNotificationTemplate?.id,
+      notificationSent: false,
+    },
+
+    // SSO logout
+    {
+      userId: regularUser?.id || '',
+      action: 'sso_logout',
+      entityType: 'SSO',
+      entityId: createdSSOEntries[4]?.id,
+      oldValues: JSON.stringify({
+        status: 'active',
+        logout_time: null
+      }),
+      newValues: JSON.stringify({
+        status: 'logged_out',
+        logout_time: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
+      }),
+      ipAddress: '203.0.113.45',
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+      notificationTemplateId: null,
+      notificationSent: false,
+    }
+  ];
+
+  for (const logicHistory of logicHistoryEntries) {
+    if (logicHistory.userId) {
+      await prisma.logicHistory.create({
+        data: logicHistory
+      });
+    }
+  }
+
+  */
+  
   console.log('Seeding completed successfully!');
 }
 
