@@ -109,7 +109,20 @@ async function main() {
     // Cache management permissions
     { name: 'view_cache', description: 'View cache information and statistics', category: 'cache' },
     { name: 'manage_cache', description: 'Full cache management access including clear and modify', category: 'cache' },
-    { name: 'cache_admin', description: 'Administrative cache operations and monitoring', category: 'cache' }
+    { name: 'cache_admin', description: 'Administrative cache operations and monitoring', category: 'cache' },
+    
+    // API Key Management permissions
+    { name: 'admin_api_keys_get', description: 'GET admin API keys endpoint', category: 'api', route: '/api/admin/api-keys', method: 'GET' },
+    { name: 'admin_api_keys_post', description: 'POST admin API keys endpoint', category: 'api', route: '/api/admin/api-keys', method: 'POST' },
+    { name: 'admin_api_keys_put', description: 'PUT admin API keys endpoint', category: 'api', route: '/api/admin/api-keys/:id', method: 'PUT' },
+    { name: 'admin_api_keys_delete', description: 'DELETE admin API keys endpoint', category: 'api', route: '/api/admin/api-keys/:id', method: 'DELETE' },
+    { name: 'admin_api_keys_regenerate', description: 'PATCH admin API keys regenerate endpoint', category: 'api', route: '/api/admin/api-keys/:id/regenerate', method: 'PATCH' },
+    { name: 'admin_api_keys_stats', description: 'GET admin API keys usage statistics endpoint', category: 'api', route: '/api/admin/api-keys/stats', method: 'GET' },
+    { name: 'admin_api_keys_logs', description: 'GET admin API keys usage logs endpoint', category: 'api', route: '/api/admin/api-keys/:id/logs', method: 'GET' },
+    
+    // High-level API key management permissions
+    { name: 'manage_api_keys', description: 'Full API key management access', category: 'api' },
+    { name: 'view_api_keys', description: 'View API keys and usage statistics', category: 'api' }
   ];
   
   const permissionRecords = await Promise.all(

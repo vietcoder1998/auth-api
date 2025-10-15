@@ -17,6 +17,7 @@ model User {
   ssos         SSO[]
   loginHistory LoginHistory[]
   logicHistory LogicHistory[]
+  apiKeys      ApiKey[]       // API keys created by this user
   status       String         @default("active")
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -95,6 +96,65 @@ model Config {
   value String
 
   @@map("config")
+}
+
+model ApiKey {
+  id          String   @id @default(uuid())
+  name        String   // Friendly name for the API key
+  key         String   @unique @db.VarChar(255) // The actual API key
+  description String?  @db.Text
+  userId      String?  // Optional: associate with a user
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  // Access control
+  isActive    Boolean  @default(true)
+  permissions String?  @db.Text // JSON array of allowed permissions/scopes
+  allowedIPs  String?  @db.Text // JSON array of allowed IP addresses
+  
+  // Rate limiting
+  rateLimit   Int?     @default(1000) // Requests per hour
+  
+  // Usage tracking
+  usageCount  Int      @default(0)
+  lastUsedAt  DateTime?
+  
+  // Expiration
+  expiresAt   DateTime?
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // User ID who created this API key
+  
+  // Usage logs
+  apiUsageLogs ApiUsageLog[]
+
+  @@map("api_key")
+}
+
+model ApiUsageLog {
+  id          String   @id @default(uuid())
+  apiKeyId    String
+  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  
+  // Request details
+  endpoint    String   // The API endpoint called
+  method      String   // HTTP method (GET, POST, etc.)
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  
+  // Response details
+  statusCode  Int      // HTTP status code
+  responseTime Int?    // Response time in milliseconds
+  
+  // Request/Response data (optional, for debugging)
+  requestBody  String? @db.Text
+  responseBody String? @db.Text
+  
+  // Metadata
+  createdAt   DateTime @default(now())
+
+  @@map("api_usage_log")
 }
 
 model Mail {

@@ -11,6 +11,7 @@ import ssoRouter from './sso.routes';
 import loginHistoryRouter from './loginHistory.routes';
 import logicHistoryRouter from './logicHistory.routes';
 import cacheRouter from './cache.routes';
+import apiKeyRouter from './apiKey.routes';
 
 const router = Router();
 
@@ -25,5 +26,6 @@ router.use('/sso', ssoRouter);
 router.use('/login-history', loginHistoryRouter);
 router.use('/logic-history', logicHistoryRouter);
 router.use('/cache', cacheRouter);
+router.use('/api-keys', apiKeyRouter);
 
 export default router;

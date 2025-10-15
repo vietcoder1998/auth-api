@@ -5,12 +5,17 @@ import { NextFunction, Request, Response } from 'express';
 declare global {
 	namespace Express {
 		interface User {
+			id?: string;
+			email?: string;
+			role?: string;
 			roles?: string[];
 			permissions?: Array<{
 				name: string;
 				route?: string;
 				method?: string;
 			}>;
+			impersonatedBy?: string;
+			impersonatedAt?: string;
 			// add other user properties if needed
 		}
 		interface Request {

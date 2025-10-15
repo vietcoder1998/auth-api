@@ -14,6 +14,7 @@ import ssoAuthRouter from './routes/ssoAuth.routes';
 // Import middlewares
 import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
+import { apiKeyValidation } from './middlewares/apiKey.middleware';
 import { cacheMiddleware } from './middlewares/cache.middleware';
 import { logger, loggerMiddleware } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
@@ -69,9 +70,10 @@ app.use('/api/auth', authRouter);
 // SSO authentication routes (no JWT required)
 app.use('/api/sso', ssoAuthRouter);
 
-// Apply SSO validation middleware before JWT (order matters)
+// Apply authentication middleware chain (order matters)
 app.use(ssoKeyValidation);
-app.use(jwtTokenValidation);
+app.use(apiKeyValidation); // Check for API key authentication
+app.use(jwtTokenValidation); // Fallback to JWT if no API key
 app.use(rbac);
 
 app.use('/api/config', configRouter);
