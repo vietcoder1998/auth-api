@@ -33,6 +33,11 @@ export async function getConversations(req: Request, res: Response) {
           agent: {
             select: { id: true, name: true, model: true, isActive: true }
           },
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { id: true, content: true, sender: true, createdAt: true, tokens: true }
+          },
           _count: {
             select: { messages: true }
           }
@@ -44,8 +49,15 @@ export async function getConversations(req: Request, res: Response) {
       prisma.conversation.count({ where })
     ]);
 
+    // Transform the data to include lastMessage
+    const transformedConversations = conversations.map(conv => ({
+      ...conv,
+      lastMessage: conv.messages[0] || null,
+      messages: undefined // Remove the messages array since we only want the last one
+    }));
+
     res.json({
-      data: conversations,
+      data: transformedConversations,
       total,
       page: pageNum,
       limit: limitNum,
