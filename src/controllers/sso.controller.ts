@@ -1,14 +1,10 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { logger } from '../middlewares/logger.middle';
 
 const prisma = new PrismaClient();
 
-// Simple logger function
-const logger = {
-  info: (message: string, meta?: any) => console.log(`[INFO] ${message}`, meta || ''),
-  error: (message: string, meta?: any) => console.error(`[ERROR] ${message}`, meta || ''),
-};
 
 export const getSSOEntries = async (req: Request, res: Response) => {
   try {

@@ -43,6 +43,11 @@ export const getLoginHistory = async (req: Request, res: Response) => {
       where.status = status;
     }
 
+    // Debug: Check total count first
+    const totalCount = await prisma.loginHistory.count();
+    console.log('Debug: Total login history records in DB:', totalCount);
+    console.log('Debug: Query where clause:', JSON.stringify(where, null, 2));
+
     const [loginHistory, total] = await Promise.all([
       prisma.loginHistory.findMany({
         where,
@@ -70,6 +75,15 @@ export const getLoginHistory = async (req: Request, res: Response) => {
     ]);
 
     const totalPages = Math.ceil(total / limit);
+
+    console.log('Debug: Query results:', {
+      foundRecords: loginHistory.length,
+      totalWithWhere: total,
+      totalInDB: totalCount,
+      page,
+      totalPages,
+      where
+    });
 
     logger.info(`Fetched login history`, {
       service: 'auth-api',

@@ -538,17 +538,46 @@ async function main() {
       status: 'logged_out',
       loginAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
       logoutAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hour session
+    },
+    // Non-SSO (direct) login entries
+    {
+      userId: superadminUser?.id || '',
+      ssoId: null, // Direct login (no SSO)
+      deviceIP: '192.168.1.101',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      location: 'New York, US',
+      status: 'active',
+      loginAt: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
+    },
+    {
+      userId: adminUser?.id || '',
+      ssoId: null, // Direct login (no SSO)
+      deviceIP: '10.0.0.51',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      location: 'San Francisco, US',
+      status: 'logged_out',
+      loginAt: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
+      logoutAt: new Date(Date.now() - 10 * 60 * 60 * 1000), // Logged out 10 hours ago
+    },
+    {
+      userId: regularUser?.id || '',
+      ssoId: null, // Direct login (no SSO)
+      deviceIP: '172.16.0.11',
+      userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      location: 'Toronto, CA',
+      status: 'expired',
+      loginAt: new Date(Date.now() - 25 * 60 * 60 * 1000), // 25 hours ago (expired)
     }
   ];
 
   for (const loginHistory of loginHistoryEntries) {
-    if (loginHistory.userId && loginHistory.ssoId) {
+    if (loginHistory.userId) {
       // Since LoginHistory might not have unique constraints, we can use create
       // But first check if a similar entry exists to avoid duplicates
       const existingEntry = await prisma.loginHistory.findFirst({
         where: {
           userId: loginHistory.userId,
-          ssoId: loginHistory.ssoId,
+          ssoId: loginHistory.ssoId || null,
           deviceIP: loginHistory.deviceIP,
           loginAt: loginHistory.loginAt
         }
