@@ -122,7 +122,27 @@ async function main() {
     
     // High-level API key management permissions
     { name: 'manage_api_keys', description: 'Full API key management access', category: 'api' },
-    { name: 'view_api_keys', description: 'View API keys and usage statistics', category: 'api' }
+    { name: 'view_api_keys', description: 'View API keys and usage statistics', category: 'api' },
+    
+    // AI Agent Management permissions
+    { name: 'admin_agents_get', description: 'GET admin agents endpoint', category: 'api', route: '/api/admin/agents', method: 'GET' },
+    { name: 'admin_agents_post', description: 'POST admin agents endpoint', category: 'api', route: '/api/admin/agents', method: 'POST' },
+    { name: 'admin_agents_put', description: 'PUT admin agents endpoint', category: 'api', route: '/api/admin/agents/:id', method: 'PUT' },
+    { name: 'admin_agents_delete', description: 'DELETE admin agents endpoint', category: 'api', route: '/api/admin/agents/:id', method: 'DELETE' },
+    { name: 'admin_agents_memories_get', description: 'GET admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories', method: 'GET' },
+    { name: 'admin_agents_memories_post', description: 'POST admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories', method: 'POST' },
+    
+    // Conversation Management permissions
+    { name: 'admin_conversations_get', description: 'GET admin conversations endpoint', category: 'api', route: '/api/admin/conversations', method: 'GET' },
+    { name: 'admin_conversations_post', description: 'POST admin conversations endpoint', category: 'api', route: '/api/admin/conversations', method: 'POST' },
+    { name: 'admin_conversations_put', description: 'PUT admin conversations endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'PUT' },
+    { name: 'admin_conversations_delete', description: 'DELETE admin conversations endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'DELETE' },
+    { name: 'admin_conversations_messages_post', description: 'POST admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages', method: 'POST' },
+    
+    // High-level AI agent management permissions
+    { name: 'manage_ai_agents', description: 'Full AI agent management access', category: 'ai' },
+    { name: 'view_ai_agents', description: 'View AI agents and conversations', category: 'ai' },
+    { name: 'chat_with_agents', description: 'Chat with AI agents and create conversations', category: 'ai' }
   ];
   
   const permissionRecords = await Promise.all(

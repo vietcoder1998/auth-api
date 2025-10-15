@@ -18,6 +18,8 @@ model User {
   loginHistory LoginHistory[]
   logicHistory LogicHistory[]
   apiKeys      ApiKey[]       // API keys created by this user
+  agents       Agent[]        // AI agents owned by this user
+  conversations Conversation[] // Conversations this user participated in
   status       String         @default("active")
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -226,4 +228,108 @@ model LogicHistory {
   createdAt                 DateTime               @default(now())
 
   @@map("logic_history")
+}
+
+// AI Agent Management Models
+model Agent {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?        @db.Text
+  model         String         @default("gpt-4") // LLM model (gpt-4, claude-3, etc.)
+  personality   String?        @db.Text // JSON config for personality
+  systemPrompt  String?        @db.Text
+  config        String?        @db.Text // JSON config (temperature, max_tokens, etc.)
+  isActive      Boolean        @default(true)
+  
+  // Relationships
+  memories      AgentMemory[]
+  conversations Conversation[]
+  tools         AgentTool[]
+  tasks         AgentTask[]
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("agent")
+}
+
+model AgentMemory {
+  id         String   @id @default(uuid())
+  agentId    String
+  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type       String   // 'short_term', 'long_term', 'knowledge_base'
+  content    String   @db.Text
+  embedding  String?  @db.Text // JSON array for vector embeddings
+  metadata   String?  @db.Text // JSON metadata (tags, source, date, etc.)
+  importance Int      @default(1) // 1-10 importance score
+  
+  createdAt  DateTime @default(now())
+
+  @@map("agent_memory")
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  agentId   String
+  agent     Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  summary   String?   @db.Text // Auto-generated summary of conversation
+  isActive  Boolean   @default(true)
+  
+  messages  Message[]
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("conversation")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String       // 'user', 'agent', 'system'
+  content        String       @db.Text
+  metadata       String?      @db.Text // JSON (tool calls, attachments, etc.)
+  tokens         Int?         // Token count for this message
+  
+  createdAt      DateTime     @default(now())
+
+  @@map("message")
+}
+
+model AgentTool {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name      String   // Tool name (e.g., "web_search", "calculator", "email_sender")
+  type      String   // 'api', 'function', 'system', 'plugin'
+  config    String?  @db.Text // JSON configuration for the tool
+  enabled   Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("agent_tool")
+}
+
+model AgentTask {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name      String
+  input     String?  @db.Text // JSON input data
+  output    String?  @db.Text // JSON output result
+  status    String   @default("pending") // 'pending', 'running', 'completed', 'failed'
+  error     String?  @db.Text
+  startedAt DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("agent_task")
 }

@@ -12,6 +12,8 @@ import loginHistoryRouter from './loginHistory.routes';
 import logicHistoryRouter from './logicHistory.routes';
 import cacheRouter from './cache.routes';
 import apiKeyRouter from './apiKey.routes';
+import agentRouter from './agent.routes';
+import conversationRouter from './conversation.routes';
 
 const router = Router();
 
@@ -27,5 +29,7 @@ router.use('/login-history', loginHistoryRouter);
 router.use('/logic-history', logicHistoryRouter);
 router.use('/cache', cacheRouter);
 router.use('/api-keys', apiKeyRouter);
+router.use('/agents', agentRouter);
+router.use('/conversations', conversationRouter);
 
 export default router;
