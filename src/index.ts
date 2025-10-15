@@ -82,6 +82,7 @@ app.use(
       
       // Skip caching for POST, PUT, DELETE, PATCH requests (only cache GET requests)
       if (req.method !== 'GET') {
+        console.log(`[CACHE] Skipping cache for ${req.method} ${req.originalUrl}`);
         return true;
       }
       
@@ -89,6 +90,12 @@ app.use(
       const shouldSkip = skipPaths.some(path => req.originalUrl.startsWith(path));
       
       // Debug logging
+      console.log(`[CACHE] Cache check for ${req.originalUrl}:`, {
+        method: req.method,
+        shouldSkip,
+        matchedPath: skipPaths.find(path => req.originalUrl.startsWith(path)) || 'none'
+      });
+      
       logger.info('Cache middleware check:', {
         url: req.originalUrl,
         method: req.method,

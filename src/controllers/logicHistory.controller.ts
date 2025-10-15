@@ -44,6 +44,8 @@ export const getLogicHistory = async (req: Request, res: Response) => {
       where.entityType = entityType;
     }
 
+    // Debug: Check total count first
+    const totalCount = await prisma.logicHistory.count();
     const [logicHistory, total] = await Promise.all([
       prisma.logicHistory.findMany({
         where,
@@ -72,15 +74,7 @@ export const getLogicHistory = async (req: Request, res: Response) => {
 
     const totalPages = Math.ceil(total / limit);
 
-    logger.info(`Fetched logic history`, {
-      service: 'auth-api',
-      count: logicHistory.length,
-      total,
-      page,
-      totalPages,
-    });
-
-    res.json({
+    const responseData = {
       data: logicHistory,
       pagination: {
         page,
@@ -90,7 +84,17 @@ export const getLogicHistory = async (req: Request, res: Response) => {
         hasNext: page < totalPages,
         hasPrev: page > 1,
       },
+    };
+
+    logger.info(`Fetched logic history`, {
+      service: 'auth-api',
+      count: logicHistory.length,
+      total,
+      page,
+      totalPages,
     });
+
+    res.json(responseData);
   } catch (error) {
     logger.error('Error fetching logic history', { error, service: 'auth-api' });
     res.status(500).json({ error: 'Failed to fetch logic history' });

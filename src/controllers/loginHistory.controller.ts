@@ -10,6 +10,9 @@ const logger = {
 };
 
 export const getLoginHistory = async (req: Request, res: Response) => {
+  console.log('[LOGIN_HISTORY] getLoginHistory endpoint called');
+  console.log('[LOGIN_HISTORY] Query params:', req.query);
+  
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -45,8 +48,9 @@ export const getLoginHistory = async (req: Request, res: Response) => {
 
     // Debug: Check total count first
     const totalCount = await prisma.loginHistory.count();
-    console.log('Debug: Total login history records in DB:', totalCount);
-    console.log('Debug: Query where clause:', JSON.stringify(where, null, 2));
+    console.log('[LOGIN_HISTORY] Total login history records in DB:', totalCount);
+    console.log('[LOGIN_HISTORY] Query where clause:', JSON.stringify(where, null, 2));
+    console.log('[LOGIN_HISTORY] Query params - page:', page, 'limit:', limit, 'skip:', skip);
 
     const [loginHistory, total] = await Promise.all([
       prisma.loginHistory.findMany({
@@ -76,7 +80,7 @@ export const getLoginHistory = async (req: Request, res: Response) => {
 
     const totalPages = Math.ceil(total / limit);
 
-    console.log('Debug: Query results:', {
+    console.log('[LOGIN_HISTORY] Query results:', {
       foundRecords: loginHistory.length,
       totalWithWhere: total,
       totalInDB: totalCount,
@@ -85,15 +89,7 @@ export const getLoginHistory = async (req: Request, res: Response) => {
       where
     });
 
-    logger.info(`Fetched login history`, {
-      service: 'auth-api',
-      count: loginHistory.length,
-      total,
-      page,
-      totalPages,
-    });
-
-    res.json({
+    const responseData = {
       data: loginHistory,
       pagination: {
         page,
@@ -103,7 +99,19 @@ export const getLoginHistory = async (req: Request, res: Response) => {
         hasNext: page < totalPages,
         hasPrev: page > 1,
       },
+    };
+
+    console.log('[LOGIN_HISTORY] Sending response:', JSON.stringify(responseData, null, 2));
+
+    logger.info(`Fetched login history`, {
+      service: 'auth-api',
+      count: loginHistory.length,
+      total,
+      page,
+      totalPages,
     });
+
+    res.json(responseData);
   } catch (error) {
     logger.error('Error fetching login history', { error, service: 'auth-api' });
     res.status(500).json({ error: 'Failed to fetch login history' });

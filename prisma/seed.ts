@@ -148,11 +148,31 @@ async function main() {
   });
   const adminRole = await prisma.role.upsert({
     where: { name: 'admin' },
-    update: {},
+    update: {
+      permissions: {
+        set: permissionRecords.filter(p => [
+          'manage_users', 
+          'view_reports',
+          'admin_login_history_get',
+          'admin_logic_history_get',
+          'admin_cache_get',
+          'admin_cache_post',
+          'admin_cache_delete'
+        ].includes(p.name)).map(p => ({ id: p.id }))
+      }
+    },
     create: {
       name: 'admin',
       permissions: {
-        connect: permissionRecords.filter(p => ['manage_users', 'view_reports'].includes(p.name)).map(p => ({ id: p.id }))
+        connect: permissionRecords.filter(p => [
+          'manage_users', 
+          'view_reports',
+          'admin_login_history_get',
+          'admin_logic_history_get',
+          'admin_cache_get',
+          'admin_cache_post',
+          'admin_cache_delete'
+        ].includes(p.name)).map(p => ({ id: p.id }))
       }
     }
   });
