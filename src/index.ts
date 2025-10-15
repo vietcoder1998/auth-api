@@ -1,5 +1,3 @@
-
-
 import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -32,7 +30,7 @@ app.use(async (req, res, next) => {
   try {
     // If you have a Config table, fetch origins from there
     const config = await prisma.config.findMany({ where: { key: 'cors_origin' } });
-    allowedOrigins = config.map(c => c.value);
+    allowedOrigins = config.map((c) => c.value);
     // For demo, fallback to env or default
     allowedOrigins = env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'];
   } catch (err) {
@@ -40,14 +38,14 @@ app.use(async (req, res, next) => {
   }
   cors({
     origin: allowedOrigins,
-    credentials: true
+    credentials: true,
   })(req, res, next);
 });
 
 // Swagger API docs setup
 let swaggerDocument = null;
 try {
-  console.log("Loading swagger document...", __dirname);
+  console.log('Loading swagger document...', __dirname);
   const swaggerPath = path.join(__dirname, 'openapi.yaml');
   if (fs.existsSync(swaggerPath)) {
     const file = fs.readFileSync(swaggerPath, 'utf8');
@@ -61,16 +59,7 @@ if (swaggerDocument) {
 }
 
 app.use(boundaryResponse);
-
-// Use middlewares
 app.use(loggerMiddleware);
-app.use(cacheMiddleware({
-  ttl: 600, // 10 minutes cache
-  skipCache: (req) => {
-    // Skip caching for admin routes and auth routes
-    return req.originalUrl.includes('/auth');
-  }
-}));
 
 // API path config
 app.use('/api/auth', authRouter);
@@ -79,7 +68,39 @@ app.use(jwtTokenValidation);
 app.use(rbac);
 
 app.use('/api/config', configRouter);
-app.use('/api/admin', adminRouter);
+app.use(
+  '/api/admin',
+  cacheMiddleware({
+    ttl: 600, // 10 minutes cache
+    skipCache: (req) => {
+      // Skip caching for specific admin routes that shouldn't be cached
+      const skipPaths = [
+        '/api/admin/cache', // Don't cache the cache management endpoints
+        '/api/admin/login-history', // Don't cache login history (real-time data)
+        '/api/admin/logic-history', // Don't cache logic history (real-time data)
+      ];
+      
+      // Skip caching for POST, PUT, DELETE, PATCH requests (only cache GET requests)
+      if (req.method !== 'GET') {
+        return true;
+      }
+      
+      // Skip caching for specific paths
+      const shouldSkip = skipPaths.some(path => req.originalUrl.startsWith(path));
+      
+      // Debug logging
+      console.log('Cache middleware check:', {
+        url: req.originalUrl,
+        method: req.method,
+        shouldSkip,
+        skipPaths
+      });
+      
+      return shouldSkip;
+    },
+  }),
+  adminRouter,
+);
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 
 // Apply boundary response middleware after all routes
@@ -88,10 +109,28 @@ app.get('/', (req, res) => res.json({ status: 'ok' }));
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+
+// Check Redis connection on startup
+async function checkRedisConnection() {
+  try {
+    // Import the Redis client from setup
+    const { client } = await import('./setup');
+    await client.ping();
+    console.log('✅ Redis connection successful');
+    return true;
+  } catch (error) {
+    console.error('❌ Redis connection failed:', error);
+    return false;
+  }
+}
+
+app.listen(PORT, async () => {
   console.log(`Auth API running on port ${PORT}`);
   console.log(`Admin GUI available at http://localhost:${PORT}/admin`);
   if (swaggerDocument) {
     console.log(`API docs available at http://localhost:${PORT}/docs`);
   }
+  
+  // Check Redis connection
+  await checkRedisConnection();
 });

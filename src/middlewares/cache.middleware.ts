@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 import { client } from '../setup';
+import { logger } from './logger.middle';
 
 // Generate cache key from request
 function generateCacheKey(req: Request): string {
@@ -24,18 +25,31 @@ export function cacheMiddleware(
   } = options;
 
   return async (req: Request, res: Response, next: NextFunction) => {
-    // Skip caching for non-GET requests, cache API endpoints, or when explicitly skipped
-    if (req.method !== 'GET' || req.originalUrl.includes('/cache') || skipCache(req)) {
+    // Skip caching for non-GET requests or when explicitly skipped
+    if (req.method !== 'GET' || skipCache(req)) {
       return next();
     }
 
     try {
       const cacheKey = keyGenerator(req);
+      logger.info('Cache middleware processing:', {
+        method: req.method,
+        url: req.originalUrl,
+        cacheKey,
+        redisConnected: client.isOpen
+      });
+
+      // Check if Redis is connected
+      if (!client.isOpen) {
+        console.warn('Redis not connected, skipping cache');
+        return next();
+      }
 
       // Try to get cached response
       const cachedResponse = await client.get(cacheKey);
 
       if (cachedResponse) {
+        logger.info('Cache HIT for:', req.originalUrl);
         const { statusCode, data, headers } = JSON.parse(cachedResponse);
 
         // Set cached headers
@@ -73,6 +87,8 @@ export function cacheMiddleware(
         return res.status(statusCode).json(responseData);
       }
 
+      console.log('Cache MISS for:', req.originalUrl);
+      
       // Cache miss - intercept response
       const originalSend = res.send;
       const originalJson = res.json;
