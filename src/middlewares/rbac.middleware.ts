@@ -21,14 +21,16 @@ declare global {
 
 // Usage: rbac(['admin', 'superadmin']) or rbac(['manage_users'])
 // For route-based: rbac([]) - will check permissions based on current route and method
-export const rbac = (req: Request, res: Response, next: NextFunction) => {
+export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 	const user = req.user;
+	const sso = req.sso;
 
 	console.log('[RBAC] Checking permissions for:', req.originalUrl, req.method);
 	console.log('[RBAC] User permissions:', user?.permissions?.map(p => ({ name: p.name, route: p.route, method: p.method })));
+	console.log('[RBAC] SSO authentication:', !!sso);
 
-	if (req.originalUrl?.includes('/admin/auth')) {
-		console.log('[RBAC] Admin auth route, skipping RBAC');
+	if (req.originalUrl?.includes('/admin/auth') || req.originalUrl?.includes('/api/sso')) {
+		console.log('[RBAC] Auth/SSO route, skipping RBAC');
 		return next()
 	}
 
@@ -38,13 +40,44 @@ export const rbac = (req: Request, res: Response, next: NextFunction) => {
 		return next();
 	}
 
-	if (!user) {
-		console.log('[RBAC] No user found, returning 401');
+	// If SSO authentication but no user permissions loaded, load them
+	if (sso && (!user || !user.permissions)) {
+		console.log('[RBAC] Loading permissions for SSO user');
+		try {
+			const userWithPermissions = await require('@prisma/client').PrismaClient().user.findUnique({
+				where: { id: sso.userId },
+				include: {
+					role: {
+						include: {
+							permissions: true,
+						},
+					},
+				},
+			});
+
+			if (userWithPermissions?.role) {
+				req.user = {
+					...req.user,
+					roles: [userWithPermissions.role.name],
+					permissions: userWithPermissions.role.permissions.map((p: any) => ({
+						name: p.name,
+						route: p.route,
+						method: p.method,
+					})),
+				};
+			}
+		} catch (error) {
+			console.error('[RBAC] Error loading SSO user permissions:', error);
+		}
+	}
+
+	if (!user && !sso) {
+		console.log('[RBAC] No user or SSO found, returning 401');
 		return res.status(401).json({ error: 'Unauthorized' });
 	}
 
 	// Check route-based permissions (if no specific permissions required)
-	if (user.permissions?.length) {
+	if (user?.permissions?.length) {
 		const currentRoute = req.route?.path || req.path;
 		const fullUrl = req.originalUrl; // Use the full URL for matching
 		const currentMethod = req.method.toUpperCase();

@@ -10,8 +10,10 @@ import * as env from './env';
 import adminRouter from './routes/admin.routes';
 import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
+import ssoAuthRouter from './routes/ssoAuth.routes';
 // Import middlewares
 import { jwtTokenValidation } from './middlewares/auth.middleware';
+import { ssoKeyValidation } from './middlewares/sso.middleware';
 import { cacheMiddleware } from './middlewares/cache.middleware';
 import { logger, loggerMiddleware } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
@@ -64,6 +66,11 @@ app.use(loggerMiddleware);
 // API path config
 app.use('/api/auth', authRouter);
 
+// SSO authentication routes (no JWT required)
+app.use('/api/sso', ssoAuthRouter);
+
+// Apply SSO validation middleware before JWT (order matters)
+app.use(ssoKeyValidation);
 app.use(jwtTokenValidation);
 app.use(rbac);
 

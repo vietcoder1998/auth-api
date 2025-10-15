@@ -19,6 +19,12 @@ export async function jwtTokenValidation(req: Request, res: Response, next: Next
     if (req.originalUrl?.includes('/api/auth') && !req.originalUrl?.includes('/api/auth/me')) {
       return next();
     }
+
+    // If SSO authentication is already successful, skip JWT validation
+    if (req.sso && req.user) {
+      console.log('[JWT] Skipping JWT validation - SSO already authenticated');
+      return next();
+    }
     
     const token = req.headers['authorization']?.replace('Bearer ', '');
 
