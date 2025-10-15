@@ -14,15 +14,17 @@ export async function getRoles(req: Request, res: Response) {
 }
 
 export async function createRole(req: Request, res: Response) {
-  const { name, permissions } = req.body;
+  const { name, description, permissions } = req.body;
   try {
     const role = await prisma.role.create({
       data: {
         name,
+        description,
         permissions: {
           connect: permissions?.map((pid: string) => ({ id: pid })) || []
         }
-      }
+      },
+      include: { permissions: true }
     });
     res.json(role);
   } catch (err) {
