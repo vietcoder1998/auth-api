@@ -13,7 +13,7 @@ import configRouter from './routes/config.routes';
 // Import middlewares
 import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { cacheMiddleware } from './middlewares/cache.middleware';
-import { loggerMiddleware } from './middlewares/logger.middle';
+import { logger, loggerMiddleware } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
 
@@ -89,7 +89,7 @@ app.use(
       const shouldSkip = skipPaths.some(path => req.originalUrl.startsWith(path));
       
       // Debug logging
-      console.log('Cache middleware check:', {
+      logger.info('Cache middleware check:', {
         url: req.originalUrl,
         method: req.method,
         shouldSkip,
