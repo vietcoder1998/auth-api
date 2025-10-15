@@ -27,8 +27,11 @@ export async function getConversations(req: Request, res: Response) {
       prisma.conversation.findMany({
         where,
         include: {
+          user: {
+            select: { id: true, email: true, nickname: true, status: true }
+          },
           agent: {
-            select: { id: true, name: true, model: true }
+            select: { id: true, name: true, model: true, isActive: true }
           },
           _count: {
             select: { messages: true }
@@ -84,8 +87,11 @@ export async function createConversation(req: Request, res: Response) {
         title: title || 'New Conversation',
       },
       include: {
+        user: {
+          select: { id: true, email: true, nickname: true, status: true }
+        },
         agent: {
-          select: { id: true, name: true, model: true }
+          select: { id: true, name: true, model: true, isActive: true }
         },
         _count: {
           select: { messages: true }
@@ -119,8 +125,11 @@ export async function getConversation(req: Request, res: Response) {
     const conversation = await prisma.conversation.findFirst({
       where: { id, userId },
       include: {
+        user: {
+          select: { id: true, email: true, nickname: true, status: true }
+        },
         agent: {
-          select: { id: true, name: true, model: true, systemPrompt: true }
+          select: { id: true, name: true, model: true, systemPrompt: true, isActive: true }
         }
       }
     });
@@ -271,8 +280,11 @@ export async function updateConversation(req: Request, res: Response) {
       where: { id },
       data: updateData,
       include: {
+        user: {
+          select: { id: true, email: true, nickname: true, status: true }
+        },
         agent: {
-          select: { id: true, name: true, model: true }
+          select: { id: true, name: true, model: true, isActive: true }
         },
         _count: {
           select: { messages: true }
