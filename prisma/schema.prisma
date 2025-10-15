@@ -115,6 +115,7 @@ model SSO {
   id          String   @id @default(uuid())
   url         String
   key         String   @unique
+  ssoKey      String?  @unique // Additional SSO key field for identification
   userId      String
   deviceIP    String?
   loginHistory LoginHistory[]

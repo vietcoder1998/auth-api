@@ -429,6 +429,7 @@ async function main() {
     {
       url: 'https://app.example.com/dashboard',
       key: 'sso_key_1234567890abcdef',
+      ssoKey: 'app_dashboard_sso',
       userId: superadminUser?.id || '',
       deviceIP: '192.168.1.100',
       isActive: true,
@@ -437,6 +438,7 @@ async function main() {
     {
       url: 'https://admin.example.com/panel',
       key: 'sso_key_abcdef1234567890',
+      ssoKey: 'admin_panel_sso',
       userId: adminUser?.id || '',
       deviceIP: '10.0.0.50',
       isActive: true,
@@ -445,6 +447,7 @@ async function main() {
     {
       url: 'https://portal.example.com/user',
       key: 'sso_key_fedcba0987654321',
+      ssoKey: 'user_portal_sso',
       userId: regularUser?.id || '',
       deviceIP: '172.16.0.10',
       isActive: true,
@@ -453,6 +456,7 @@ async function main() {
     {
       url: 'https://old.example.com/legacy',
       key: 'sso_key_legacy123456',
+      ssoKey: 'legacy_system_sso',
       userId: adminUser?.id || '',
       deviceIP: '192.168.1.200',
       isActive: false, // Inactive SSO
@@ -461,6 +465,7 @@ async function main() {
     {
       url: 'https://mobile.example.com/app',
       key: 'sso_key_mobile987654',
+      ssoKey: 'mobile_app_sso',
       userId: regularUser?.id || '',
       deviceIP: '203.0.113.45',
       isActive: true,
@@ -478,7 +483,8 @@ async function main() {
           userId: sso.userId,
           deviceIP: sso.deviceIP,
           isActive: sso.isActive,
-          expiresAt: sso.expiresAt
+          expiresAt: sso.expiresAt,
+          ...(sso.ssoKey && { ssoKey: sso.ssoKey }) // Add ssoKey if present
         },
         create: sso
       });

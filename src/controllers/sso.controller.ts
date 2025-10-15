@@ -164,7 +164,7 @@ export const getSSOById = async (req: Request, res: Response) => {
 
 export const createSSO = async (req: Request, res: Response) => {
   try {
-    const { url, userId, deviceIP, expiresAt } = req.body;
+    const { url, userId, deviceIP, expiresAt, ssoKey } = req.body;
 
     // Validate required fields
     if (!url || !userId) {
@@ -182,8 +182,9 @@ export const createSSO = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid user ID' });
     }
 
-    // Generate unique SSO key
+    // Generate unique SSO key and ssoKey
     const key = crypto.randomBytes(32).toString('hex');
+    const generatedSSOKey = ssoKey || crypto.randomBytes(16).toString('hex'); // Generate ssoKey if not provided
 
     const ssoEntry = await prisma.sSO.create({
       data: {
@@ -192,6 +193,8 @@ export const createSSO = async (req: Request, res: Response) => {
         userId,
         deviceIP: deviceIP || null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
+        // Note: ssoKey will be added after migration
+        ...(generatedSSOKey && { ssoKey: generatedSSOKey }),
       },
       include: {
         user: {

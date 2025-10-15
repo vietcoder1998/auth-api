@@ -39,7 +39,7 @@ export async function ssoKeyValidation(req: Request, res: Response, next: NextFu
 
     console.log('[SSO] Validating SSO key:', ssoKey.substring(0, 8) + '...');
 
-    // Find SSO entry by key
+    // Find SSO entry by key (will be updated to include ssoKey after migration)
     const ssoEntry = await prisma.sSO.findUnique({
       where: { 
         key: ssoKey,
@@ -56,6 +56,17 @@ export async function ssoKeyValidation(req: Request, res: Response, next: NextFu
         },
       },
     });
+
+    // TODO: After migration, update to also check ssoKey:
+    // const ssoEntry = await prisma.sSO.findFirst({
+    //   where: { 
+    //     OR: [
+    //       { key: ssoKey },
+    //       { ssoKey: ssoKey }
+    //     ]
+    //   },
+    //   include: { user: { ... } }
+    // });
 
     if (!ssoEntry) {
       console.log('[SSO] Invalid SSO key provided');
