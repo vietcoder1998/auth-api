@@ -130,3 +130,99 @@ export async function grantToken(req: Request, res: Response) {
     res.status(500).json({ error: 'Failed to grant token' });
   }
 }
+
+export async function createToken(req: Request, res: Response) {
+  const { userId, ssoId, deviceIP, userAgent, location, expiresIn = '24h' } = req.body;
+  
+  try {
+    // Validate user exists
+    const user = await prisma.user.findUnique({ 
+      where: { id: userId },
+      include: {
+        role: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Calculate expiration time based on expiresIn
+    let expirationMs = 24 * 60 * 60 * 1000; // Default 24 hours
+    if (expiresIn.endsWith('h')) {
+      expirationMs = parseInt(expiresIn.slice(0, -1)) * 60 * 60 * 1000;
+    } else if (expiresIn.endsWith('d')) {
+      expirationMs = parseInt(expiresIn.slice(0, -1)) * 24 * 60 * 60 * 1000;
+    }
+
+    // Generate tokens
+    const accessToken = generateToken({ 
+      userId: user.id, 
+      email: user.email, 
+      role: user.roleId || undefined
+    }, expiresIn);
+    
+    const refreshToken = generateRefreshToken({ userId: user.id }, '7d');
+
+    // Create token record
+    const tokenRecord = await prisma.token.create({
+      data: {
+        userId: user.id,
+        accessToken,
+        refreshToken,
+        expiresAt: new Date(Date.now() + expirationMs)
+      }
+    });
+
+    // Store in Redis for fast lookup
+    await client.set(`token:${accessToken}`, user.id, { 
+      EX: Math.floor(expirationMs / 1000) 
+    });
+
+    // If SSO context, create login history entry
+    if (ssoId) {
+      try {
+        await prisma.loginHistory.create({
+          data: {
+            userId: user.id,
+            ssoId: ssoId,
+            deviceIP: deviceIP || req.ip || 'Unknown',
+            userAgent: userAgent || req.get('User-Agent') || 'Unknown',
+            location: location || 'Token Creation',
+            status: 'active',
+            loginAt: new Date()
+          }
+        });
+      } catch (loginHistoryError) {
+        console.error('Failed to create login history entry:', loginHistoryError);
+        // Continue without failing token creation
+      }
+    }
+
+    res.status(201).json({
+      token: accessToken,
+      refreshToken,
+      expiresAt: tokenRecord.expiresAt,
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        role: user.role
+      },
+      metadata: {
+        ssoId,
+        deviceIP: deviceIP || req.ip,
+        location: location || 'Token Creation'
+      }
+    });
+
+  } catch (error) {
+    console.error('Create token error:', error);
+    res.status(500).json({ error: 'Failed to create token' });
+  }
+}
