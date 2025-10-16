@@ -6,6 +6,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Label {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  color       String?  @default("#007bff") // Hex color code for UI
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Single generic relationship for all entities
+  entityLabels EntityLabel[]
+
+  @@map("label")
+}
+
 model User {
   id           String         @id @default(uuid())
   email        String         @unique
@@ -93,9 +107,9 @@ model NotificationTemplate {
 }
 
 model Config {
-  id    String @id @default(uuid())
-  key   String @unique
-  value String
+  id      String @id @default(uuid())
+  key     String @unique
+  value   String
 
   @@map("config")
 }
@@ -334,4 +348,21 @@ model AgentTask {
   updatedAt DateTime @updatedAt
 
   @@map("agent_task")
+}
+
+// Single Generic Junction Table for Entity-Label Relationships
+model EntityLabel {
+  id         String @id @default(uuid())
+  entityId   String // ID of any entity (user, role, permission, etc.)
+  entityType String // Type of entity (user, role, permission, token, etc.)
+  labelId    String
+  label      Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@unique([entityId, entityType, labelId])
+  @@index([entityId, entityType])
+  @@index([labelId])
+  @@index([entityType])
+  @@map("entity_label")
 }

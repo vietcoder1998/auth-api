@@ -14,6 +14,7 @@ import cacheRouter from './cache.routes';
 import apiKeyRouter from './apiKey.routes';
 import agentRouter from './agent.routes';
 import conversationRouter from './conversation.routes';
+import labelRouter from './label.routes';
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use('/cache', cacheRouter);
 router.use('/api-keys', apiKeyRouter);
 router.use('/agents', agentRouter);
 router.use('/conversations', conversationRouter);
+router.use('/labels', labelRouter);
 
 export default router;

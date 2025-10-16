@@ -10,10 +10,30 @@ import { mockNotificationTemplates } from '../src/mock/notification-templates';
 import { mockSSOEntries } from '../src/mock/sso';
 import { mockLoginHistoryEntries } from '../src/mock/login-history';
 import { mockLogicHistoryEntries } from '../src/mock/logic-history';
+import { mockLabels } from '../src/mock/labels';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  // Seed labels first (required for all other entities)
+  console.log('🏷️ Seeding Labels...');
+  const createdLabels: Record<string, any> = {};
+  
+  for (const label of mockLabels) {
+    const createdLabel = await prisma.label.upsert({
+      where: { name: label.name },
+      update: {
+        description: label.description,
+        color: label.color
+      },
+      create: label
+    });
+    createdLabels[label.name] = createdLabel;
+  }
+
+  // Get the default mock label ID for other entities
+  const mockLabelId = createdLabels['mock']?.id;
+
   // Seed permissions from mock data
   console.log('🔐 Seeding Permissions...');
   
@@ -36,7 +56,22 @@ async function main() {
     }))
   );
 
+  // Add mock label to all permissions
+  if (mockLabelId) {
+    const permissionLabels = permissionRecords.map(permission => ({
+      entityId: permission.id,
+      entityType: 'permission',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: permissionLabels,
+      skipDuplicates: true
+    });
+  }
+
   // Create roles
+  console.log('👑 Seeding Roles...');
   const superadminRole = await prisma.role.upsert({
     where: { name: 'superadmin' },
     update: {
@@ -92,6 +127,20 @@ async function main() {
     }
   });
 
+  // Add mock label to all roles
+  if (mockLabelId) {
+    const roleLabels = [
+      { entityId: superadminRole.id, entityType: 'role', labelId: mockLabelId },
+      { entityId: adminRole.id, entityType: 'role', labelId: mockLabelId },
+      { entityId: userRole.id, entityType: 'role', labelId: mockLabelId }
+    ];
+    
+    await prisma.entityLabel.createMany({
+      data: roleLabels,
+      skipDuplicates: true
+    });
+  }
+
   // Seed users from mock data
   console.log('👥 Seeding Users...');
   const roleMapping: Record<string, string> = {
@@ -100,8 +149,9 @@ async function main() {
     'user': userRole.id
   };
 
+  const createdUsers: any[] = [];
   for (const user of mockUsers) {
-    await prisma.user.upsert({
+    const createdUser = await prisma.user.upsert({
       where: { email: user.email },
       update: {},
       create: {
@@ -112,22 +162,54 @@ async function main() {
         status: user.status
       }
     });
+    createdUsers.push(createdUser);
+  }
+
+  // Add mock label to all users
+  if (mockLabelId) {
+    const userLabels = createdUsers.map(user => ({
+      entityId: user.id,
+      entityType: 'user',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: userLabels,
+      skipDuplicates: true
+    });
   }
 
   // Seed configuration settings from mock data
   console.log('⚙️ Seeding Configuration...');
+  const createdConfigs: any[] = [];
   for (const config of mockConfigs) {
-    await prisma.config.upsert({
+    const createdConfig = await prisma.config.upsert({
       where: { key: config.key },
       update: { value: config.value },
       create: config
+    });
+    createdConfigs.push(createdConfig);
+  }
+
+  // Add mock label to all configs
+  if (mockLabelId) {
+    const configLabels = createdConfigs.map(config => ({
+      entityId: config.id,
+      entityType: 'config',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: configLabels,
+      skipDuplicates: true
     });
   }
 
   // Seed mail templates from mock data
   console.log('📧 Seeding Mail Templates...');
+  const createdMailTemplates: any[] = [];
   for (const template of mockMailTemplates) {
-    await prisma.mailTemplate.upsert({
+    const createdTemplate = await prisma.mailTemplate.upsert({
       where: { name: template.name },
       update: {
         subject: template.subject,
@@ -136,12 +218,28 @@ async function main() {
       },
       create: template
     });
+    createdMailTemplates.push(createdTemplate);
+  }
+
+  // Add mock label to all mail templates
+  if (mockLabelId) {
+    const mailTemplateLabels = createdMailTemplates.map(template => ({
+      entityId: template.id,
+      entityType: 'mailTemplate',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: mailTemplateLabels,
+      skipDuplicates: true
+    });
   }
 
   // Seed notification templates from mock data
   console.log('🔔 Seeding Notification Templates...');
+  const createdNotificationTemplates: any[] = [];
   for (const template of mockNotificationTemplates) {
-    await prisma.notificationTemplate.upsert({
+    const createdTemplate = await prisma.notificationTemplate.upsert({
       where: { name: template.name },
       update: {
         title: template.title,
@@ -149,6 +247,21 @@ async function main() {
         active: template.active
       },
       create: template
+    });
+    createdNotificationTemplates.push(createdTemplate);
+  }
+
+  // Add mock label to all notification templates
+  if (mockLabelId) {
+    const notificationTemplateLabels = createdNotificationTemplates.map(template => ({
+      entityId: template.id,
+      entityType: 'notificationTemplate',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: notificationTemplateLabels,
+      skipDuplicates: true
     });
   }
 
@@ -193,6 +306,20 @@ async function main() {
     }
   }
 
+  // Add mock label to all SSO entries
+  if (mockLabelId && createdSSOEntries.length > 0) {
+    const ssoLabels = createdSSOEntries.map(sso => ({
+      entityId: sso.id,
+      entityType: 'sso',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: ssoLabels,
+      skipDuplicates: true
+    });
+  }
+
   // Seed Login History from mock data
   console.log('📋 Seeding Login History...');
   
@@ -215,6 +342,7 @@ async function main() {
     logoutAt: entry.logoutAt || null
   }));
 
+  const createdLoginHistories: any[] = [];
   for (const loginHistory of loginHistoryEntries) {
     if (loginHistory.userId) {
       // Since LoginHistory might not have unique constraints, we can use create
@@ -229,11 +357,28 @@ async function main() {
       });
       
       if (!existingEntry) {
-        await prisma.loginHistory.create({
+        const createdHistory = await prisma.loginHistory.create({
           data: loginHistory
         });
+        createdLoginHistories.push(createdHistory);
+      } else {
+        createdLoginHistories.push(existingEntry);
       }
     }
+  }
+
+  // Add mock label to all login histories
+  if (mockLabelId && createdLoginHistories.length > 0) {
+    const loginHistoryLabels = createdLoginHistories.map(history => ({
+      entityId: history.id,
+      entityType: 'loginHistory',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: loginHistoryLabels,
+      skipDuplicates: true
+    });
   }
 
   // Seed Logic History from mock data
@@ -246,6 +391,7 @@ async function main() {
     createdAt: entry.createdAt
   }));
 
+  const createdLogicHistories: any[] = [];
   for (const logicHistory of logicHistoryEntries) {
     // Only create logic history for users that exist (skip null userId entries)
     if (logicHistory.userId) {
@@ -263,7 +409,7 @@ async function main() {
         });
         
         if (!existingEntry) {
-          await prisma.logicHistory.create({
+          const createdHistory = await prisma.logicHistory.create({
             data: {
               userId: logicHistory.userId,
               action: logicHistory.action,
@@ -278,11 +424,28 @@ async function main() {
               createdAt: logicHistory.createdAt
             }
           });
+          createdLogicHistories.push(createdHistory);
+        } else {
+          createdLogicHistories.push(existingEntry);
         }
       } catch (error) {
         console.log(`⚠ Error creating logic history entry:`, error);
       }
     }
+  }
+
+  // Add mock label to all logic histories
+  if (mockLabelId && createdLogicHistories.length > 0) {
+    const logicHistoryLabels = createdLogicHistories.map(history => ({
+      entityId: history.id,
+      entityType: 'logicHistory',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: logicHistoryLabels,
+      skipDuplicates: true
+    });
   }
 
   // Seed AI Agents
@@ -336,6 +499,20 @@ async function main() {
     }
   }
 
+  // Add mock label to all agents
+  if (mockLabelId && createdAgents.length > 0) {
+    const agentLabels = createdAgents.map(agent => ({
+      entityId: agent.id,
+      entityType: 'agent',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: agentLabels,
+      skipDuplicates: true
+    });
+  }
+
   // Seed Agent Memories
   console.log('🧠 Seeding Agent Memories...');
   
@@ -344,6 +521,7 @@ async function main() {
     agentId: createdAgents.find(agent => agent.name === mockAgents.find(a => a.id === memory.agentId)?.name)?.id || ''
   }));
 
+  const createdAgentMemories: any[] = [];
   for (const memory of agentMemories) {
     if (memory.agentId) {
       try {
@@ -352,15 +530,32 @@ async function main() {
         });
         
         if (!existingMemory) {
-          await prisma.agentMemory.create({
+          const createdMemory = await prisma.agentMemory.create({
             data: memory
           });
+          createdAgentMemories.push(createdMemory);
           console.log(`✓ Created memory for agent ${memory.agentId}`);
+        } else {
+          createdAgentMemories.push(existingMemory);
         }
       } catch (error) {
         console.log(`⚠ Error creating memory:`, error);
       }
     }
+  }
+
+  // Add mock label to all agent memories
+  if (mockLabelId && createdAgentMemories.length > 0) {
+    const agentMemoryLabels = createdAgentMemories.map(memory => ({
+      entityId: memory.id,
+      entityType: 'agentMemory',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: agentMemoryLabels,
+      skipDuplicates: true
+    });
   }
 
   // Seed Conversations and Messages
@@ -430,9 +625,24 @@ async function main() {
     }
   }
 
+  // Add mock label to all conversations
+  if (mockLabelId && createdConversations.length > 0) {
+    const conversationLabels = createdConversations.map(conversation => ({
+      entityId: conversation.id,
+      entityType: 'conversation',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: conversationLabels,
+      skipDuplicates: true
+    });
+  }
+
   // Seed Messages with position tracking
   console.log('📝 Seeding Messages...');
   
+  const createdMessages: any[] = [];
   // Create messages for each conversation from mock data
   for (let i = 0; i < mockConversations.length && i < createdConversations.length; i++) {
     const mockConv = mockConversations[i];
@@ -450,7 +660,7 @@ async function main() {
           });
           
           if (!existingMessage) {
-            await prisma.message.create({
+            const createdMessage = await prisma.message.create({
               data: {
                 conversationId: realConv.id,
                 sender: message.sender,
@@ -460,13 +670,30 @@ async function main() {
                 metadata: message.metadata || null
               }
             });
+            createdMessages.push(createdMessage);
             console.log(`✓ Created message ${message.position} in conversation "${mockConv.title}"`);
+          } else {
+            createdMessages.push(existingMessage);
           }
         } catch (error) {
           console.log(`⚠ Error creating message:`, error);
         }
       }
     }
+  }
+
+  // Add mock label to all messages
+  if (mockLabelId && createdMessages.length > 0) {
+    const messageLabels = createdMessages.map(message => ({
+      entityId: message.id,
+      entityType: 'message',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: messageLabels,
+      skipDuplicates: true
+    });
   }
 
   // Seed Agent Tools
@@ -477,6 +704,7 @@ async function main() {
     agentId: createdAgents.find(agent => agent.name === mockAgents.find(a => a.id === tool.agentId)?.name)?.id || ''
   }));
 
+  const createdAgentTools: any[] = [];
   for (const tool of agentTools) {
     if (tool.agentId) {
       try {
@@ -485,15 +713,32 @@ async function main() {
         });
         
         if (!existingTool) {
-          await prisma.agentTool.create({
+          const createdTool = await prisma.agentTool.create({
             data: tool
           });
+          createdAgentTools.push(createdTool);
           console.log(`✓ Created tool ${tool.name} for agent ${tool.agentId}`);
+        } else {
+          createdAgentTools.push(existingTool);
         }
       } catch (error) {
         console.log(`⚠ Error creating tool:`, error);
       }
     }
+  }
+
+  // Add mock label to all agent tools
+  if (mockLabelId && createdAgentTools.length > 0) {
+    const agentToolLabels = createdAgentTools.map(tool => ({
+      entityId: tool.id,
+      entityType: 'agentTool',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: agentToolLabels,
+      skipDuplicates: true
+    });
   }
 
   // Seed Agent Tasks
@@ -504,6 +749,7 @@ async function main() {
     agentId: createdAgents.find((agent: any) => agent.name === mockAgents.find((a: any) => a.id === task.agentId)?.name)?.id || ''
   }));
 
+  const createdAgentTasks: any[] = [];
   for (const task of agentTasks) {
     if (task.agentId) {
       try {
@@ -525,8 +771,10 @@ async function main() {
               }
             }
           });
+          createdAgentTasks.push(createdTask);
           console.log(`✓ Created task "${task.name}" for agent ${createdTask.agent?.name} (Status: ${task.status}, Owner: ${createdTask.agent?.user?.nickname})`);
         } else {
+          createdAgentTasks.push(existingTask);
           console.log(`⚠ Task already exists: ${task.name} (Status: ${existingTask.status})`);
         }
       } catch (error) {
@@ -535,8 +783,43 @@ async function main() {
     }
   }
 
+  // Add mock label to all agent tasks
+  if (mockLabelId && createdAgentTasks.length > 0) {
+    const agentTaskLabels = createdAgentTasks.map(task => ({
+      entityId: task.id,
+      entityType: 'agentTask',
+      labelId: mockLabelId
+    }));
+    
+    await prisma.entityLabel.createMany({
+      data: agentTaskLabels,
+      skipDuplicates: true
+    });
+  }
+
   console.log('✅ AI seeding completed successfully!');
-  console.log('Seeding completed successfully!');
+  
+  // Summary of EntityLabel relationships created
+  if (mockLabelId) {
+    const totalEntityLabels = await prisma.entityLabel.count({
+      where: { labelId: mockLabelId }
+    });
+    console.log(`🏷️ Created ${totalEntityLabels} EntityLabel relationships with 'mock' label`);
+    
+    // Show breakdown by entity type
+    const labelBreakdown = await prisma.entityLabel.groupBy({
+      by: ['entityType'],
+      where: { labelId: mockLabelId },
+      _count: { entityType: true }
+    });
+    
+    console.log('📊 EntityLabel breakdown by type:');
+    labelBreakdown.forEach(item => {
+      console.log(`  - ${item.entityType}: ${item._count.entityType}`);
+    });
+  }
+  
+  console.log('✅ Seeding completed successfully!');
 }
 
 main()
