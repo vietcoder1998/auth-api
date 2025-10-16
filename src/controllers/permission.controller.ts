@@ -32,15 +32,15 @@ export async function getPermissions(req: Request, res: Response) {
     if (q && typeof q === 'string' && q.trim()) {
       const searchTerm = q.trim();
       whereClause.OR = [
-        { name: { contains: searchTerm, mode: 'insensitive' } },
-        { description: { contains: searchTerm, mode: 'insensitive' } },
-        { category: { contains: searchTerm, mode: 'insensitive' } },
-        { route: { contains: searchTerm, mode: 'insensitive' } },
-        { method: { contains: searchTerm, mode: 'insensitive' } },
+        { name: { contains: searchTerm } },
+        { description: { contains: searchTerm } },
+        { category: { contains: searchTerm } },
+        { route: { contains: searchTerm } },
+        { method: { contains: searchTerm } },
         {
           roles: {
             some: {
-              name: { contains: searchTerm, mode: 'insensitive' }
+              name: { contains: searchTerm }
             }
           }
         }

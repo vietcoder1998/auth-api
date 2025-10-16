@@ -13,43 +13,78 @@ function generateApiKey(prefix: string = 'ak'): string {
 // Get all API keys (admin only)
 export async function getApiKeys(req: Request, res: Response) {
   try {
-    const { page = 1, limit = 10, search, status } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    // Extract query parameters
+    const {
+      page = '1',
+      limit = '10',
+      pageSize = limit,
+      search = '',
+      q = search,
+      status,
+      userId,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
 
-    const where: any = {};
+    // Parse pagination parameters
+    const currentPage = Math.max(1, parseInt(page as string, 10));
+    const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
+    const skip = (currentPage - 1) * currentLimit;
+
+    // Build where clause for search and filters
+    const whereClause: any = {};
     
-    if (search) {
-      where.OR = [
-        { name: { contains: search as string } },
-        { description: { contains: search as string } },
+    // Search across multiple fields
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      whereClause.OR = [
+        { name: { contains: searchTerm } },
+        { description: { contains: searchTerm } }
       ];
     }
     
+    // Status filter
     if (status === 'active') {
-      where.isActive = true;
+      whereClause.isActive = true;
     } else if (status === 'inactive') {
-      where.isActive = false;
+      whereClause.isActive = false;
     }
 
-    const [apiKeys, total] = await Promise.all([
-      prisma.apiKey.findMany({
-        where,
-        include: {
-          user: {
-            select: { id: true, email: true, nickname: true }
-          },
-          _count: {
-            select: { apiUsageLogs: true }
-          }
+    // User filter
+    if (userId && typeof userId === 'string') {
+      whereClause.userId = userId;
+    }
+
+    // Build orderBy clause
+    const orderBy: any = {};
+    if (sortBy === 'name') {
+      orderBy.name = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else if (sortBy === 'updatedAt') {
+      orderBy.updatedAt = sortOrder;
+    } else {
+      orderBy.createdAt = 'desc'; // Default
+    }
+
+    // Get total count for pagination
+    const total = await prisma.apiKey.count({ where: whereClause });
+
+    // Get API keys with pagination
+    const apiKeys = await prisma.apiKey.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: { id: true, email: true, nickname: true }
         },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limitNum,
-      }),
-      prisma.apiKey.count({ where })
-    ]);
+        _count: {
+          select: { apiUsageLogs: true }
+        }
+      },
+      orderBy,
+      skip,
+      take: currentLimit,
+    });
 
     // Hide the actual API keys in the response for security
     const sanitizedApiKeys = apiKeys.map(apiKey => ({
@@ -57,7 +92,13 @@ export async function getApiKeys(req: Request, res: Response) {
       key: `${apiKey.key.substring(0, 8)}...${apiKey.key.substring(apiKey.key.length - 4)}`,
     }));
 
-    res.json(sanitizedApiKeys);
+    res.json({
+      data: sanitizedApiKeys,
+      total,
+      page: currentPage,
+      limit: currentLimit,
+      totalPages: Math.ceil(total / currentLimit)
+    });
   } catch (err) {
     console.error('Get API keys error:', err);
     res.status(500).json({ error: 'Failed to fetch API keys' });

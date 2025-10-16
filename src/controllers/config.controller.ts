@@ -14,16 +14,91 @@ function parseConfigValue(value: string): any {
 }
 
 export async function getConfig(req: Request, res: Response) {
-  const configs = await prisma.config.findMany();
-  
-  // Return as key-value pairs with pure values
-  const configMap: Record<string, any> = {};
-  configs.forEach(config => {
-    configMap[config.key] = parseConfigValue(config.value);
-  });
-  
-  logger.info('Fetched configs', configMap);
-  res.json(configMap);
+  try {
+    // Extract query parameters
+    const {
+      page = '1',
+      limit = '10',
+      pageSize = limit,
+      search = '',
+      q = search,
+      sortBy = 'key',
+      sortOrder = 'asc',
+      asMap = 'false'
+    } = req.query;
+
+    // If asMap is true, return the old format
+    if (asMap === 'true') {
+      const configs = await prisma.config.findMany();
+      const configMap: Record<string, any> = {};
+      configs.forEach(config => {
+        configMap[config.key] = parseConfigValue(config.value);
+      });
+      logger.info('Fetched configs as map', configMap);
+      return res.json(configMap);
+    }
+
+    // Parse pagination parameters
+    const currentPage = Math.max(1, parseInt(page as string, 10));
+    const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
+    const skip = (currentPage - 1) * currentLimit;
+
+    // Build where clause for search
+    const whereClause: any = {};
+
+    // Search across key and value fields
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      whereClause.OR = [
+        { key: { contains: searchTerm } },
+        { value: { contains: searchTerm } }
+      ];
+    }
+
+    // Build orderBy clause
+    const orderBy: any = {};
+    if (sortBy === 'key') {
+      orderBy.key = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else {
+      orderBy.key = 'asc'; // Default
+    }
+
+    // Get total count for pagination
+    const total = await prisma.config.count({ where: whereClause });
+
+    // Get configs with pagination
+    const configs = await prisma.config.findMany({
+      where: whereClause,
+      orderBy,
+      skip,
+      take: currentLimit
+    });
+
+    // Parse values
+    const parsedConfigs = configs.map(config => ({
+      ...config,
+      parsedValue: parseConfigValue(config.value)
+    }));
+
+    logger.info('Fetched configs with pagination', {
+      count: configs.length,
+      total,
+      page: currentPage
+    });
+
+    res.json({
+      data: parsedConfigs,
+      total,
+      page: currentPage,
+      limit: currentLimit,
+      totalPages: Math.ceil(total / currentLimit)
+    });
+  } catch (error) {
+    logger.error('Error fetching configs:', error);
+    res.status(500).json({ error: 'Failed to fetch configs' });
+  }
 }
 
 export async function getConfigByKey(req: Request, res: Response) {
