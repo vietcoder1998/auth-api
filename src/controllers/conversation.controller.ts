@@ -8,46 +8,89 @@ const prisma = new PrismaClient();
 export async function getConversations(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
-    const { agentId, page = 1, limit = 20 } = req.query;
+    
+    // Extract query parameters
+    const {
+      agentId,
+      page = '1',
+      limit = '20',
+      pageSize = limit,
+      search = '',
+      q = search,
+      sortBy = 'updatedAt',
+      sortOrder = 'desc'
+    } = req.query;
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    // Parse pagination parameters
+    const currentPage = Math.max(1, parseInt(page as string, 10));
+    const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
+    const skip = (currentPage - 1) * currentLimit;
 
-    const where: any = { userId };
-    if (agentId) {
-      where.agentId = agentId as string;
+    // Build where clause for search and filters
+    const whereClause: any = { userId };
+    
+    // Agent filter
+    if (agentId && typeof agentId === 'string') {
+      whereClause.agentId = agentId;
     }
 
-    const [conversations, total] = await Promise.all([
-      prisma.conversation.findMany({
-        where,
-        include: {
-          user: {
-            select: { id: true, email: true, nickname: true, status: true }
-          },
-          agent: {
-            select: { id: true, name: true, model: true, isActive: true }
-          },
+    // Search across multiple fields
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      whereClause.OR = [
+        { title: { contains: searchTerm } },
+        {
           messages: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-            select: { id: true, content: true, sender: true, createdAt: true, tokens: true }
-          },
-          _count: {
-            select: { messages: true }
+            some: {
+              content: { contains: searchTerm }
+            }
           }
+        }
+      ];
+    }
+
+    // Build orderBy clause
+    const orderBy: any = {};
+    if (sortBy === 'title') {
+      orderBy.title = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else if (sortBy === 'updatedAt') {
+      orderBy.updatedAt = sortOrder;
+    } else {
+      orderBy.updatedAt = 'desc'; // Default
+    }
+
+    // Get total count for pagination
+    const total = await prisma.conversation.count({ where: whereClause });
+
+    // Get conversations with pagination
+    const conversations = await prisma.conversation.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: { id: true, email: true, nickname: true, status: true }
         },
-        orderBy: { updatedAt: 'desc' },
-        skip,
-        take: limitNum,
-      }),
-      prisma.conversation.count({ where })
-    ]);
+        agent: {
+          select: { id: true, name: true, model: true, isActive: true }
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { id: true, content: true, sender: true, createdAt: true, tokens: true }
+        },
+        _count: {
+          select: { messages: true }
+        }
+      },
+      orderBy,
+      skip,
+      take: currentLimit,
+    });
 
     // Transform the data to include lastMessage
     const transformedConversations = conversations.map(conv => ({
@@ -59,9 +102,9 @@ export async function getConversations(req: Request, res: Response) {
     res.json({
       data: transformedConversations,
       total,
-      page: pageNum,
-      limit: limitNum,
-      totalPages: Math.ceil(total / limitNum)
+      page: currentPage,
+      limit: currentLimit,
+      totalPages: Math.ceil(total / currentLimit)
     });
   } catch (err) {
     console.error('Get conversations error:', err);
@@ -154,7 +197,7 @@ export async function getConversation(req: Request, res: Response) {
     const [messages, totalMessages] = await Promise.all([
       prisma.message.findMany({
         where: { conversationId: id },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { position: 'asc' },
         skip,
         take: limitNum,
       }),
@@ -206,6 +249,13 @@ export async function addMessage(req: Request, res: Response) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
+    // Get the next position for this conversation
+    const lastMessage = await prisma.message.findFirst({
+      where: { conversationId: id },
+      orderBy: { position: 'desc' }
+    });
+    const nextPosition = (lastMessage?.position || 0) + 1;
+
     // Create user message
     const message = await prisma.message.create({
       data: {
@@ -213,6 +263,7 @@ export async function addMessage(req: Request, res: Response) {
         sender,
         content,
         metadata: metadata ? JSON.stringify(metadata) : null,
+        position: nextPosition,
       }
     });
 
@@ -226,20 +277,19 @@ export async function addMessage(req: Request, res: Response) {
     if (sender === 'user') {
       try {
         const aiResponse = await llmService.generateConversationResponse(id, content, conversation.agent.id);
-        
         const aiMessage = await prisma.message.create({
           data: {
             conversationId: id,
             sender: 'agent',
             content: aiResponse.content,
             metadata: JSON.stringify(aiResponse.metadata),
-            tokens: aiResponse.tokens
+            tokens: aiResponse.tokens,
+            position: nextPosition + 1,
           }
         });
 
         res.status(201).json({
-          userMessage: message,
-          aiMessage: aiMessage,
+          messages: [message, aiMessage],
           aiMetadata: {
             model: aiResponse.model,
             tokens: aiResponse.tokens,
@@ -250,12 +300,14 @@ export async function addMessage(req: Request, res: Response) {
         console.error('AI response generation failed:', aiError);
         // Still return the user message even if AI fails
         res.status(201).json({
-          userMessage: message,
+          messages: [message],
           aiError: 'AI response generation failed'
         });
       }
     } else {
-      res.status(201).json(message);
+      res.status(201).json({
+        messages: [message]
+      });
     }
   } catch (err) {
     console.error('Add message error:', err);

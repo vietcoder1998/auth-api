@@ -7,50 +7,93 @@ const prisma = new PrismaClient();
 export async function getAgents(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
-    const { page = 1, limit = 10, search } = req.query;
+    
+    // Extract query parameters
+    const {
+      page = '1',
+      limit = '10',
+      pageSize = limit,
+      search = '',
+      q = search,
+      model,
+      isActive,
+      sortBy = 'updatedAt',
+      sortOrder = 'desc'
+    } = req.query;
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    // Parse pagination parameters
+    const currentPage = Math.max(1, parseInt(page as string, 10));
+    const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
+    const skip = (currentPage - 1) * currentLimit;
 
-    const where: any = { userId };
+    // Build where clause for search and filters
+    const whereClause: any = { userId };
     
-    if (search) {
-      where.OR = [
-        { name: { contains: search as string } },
-        { description: { contains: search as string } },
+    // Search across multiple fields
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      whereClause.OR = [
+        { name: { contains: searchTerm } },
+        { description: { contains: searchTerm } },
+        { model: { contains: searchTerm } },
+        { systemPrompt: { contains: searchTerm } }
       ];
     }
 
-    const [agents, total] = await Promise.all([
-      prisma.agent.findMany({
-        where,
-        include: {
-          _count: {
-            select: { 
-              conversations: true,
-              memories: true,
-              tools: true
-            }
+    // Model filter
+    if (model && typeof model === 'string') {
+      whereClause.model = model;
+    }
+
+    // Active status filter
+    if (isActive !== undefined && typeof isActive === 'string') {
+      whereClause.isActive = isActive === 'true';
+    }
+
+    // Build orderBy clause
+    const orderBy: any = {};
+    if (sortBy === 'name') {
+      orderBy.name = sortOrder;
+    } else if (sortBy === 'model') {
+      orderBy.model = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else if (sortBy === 'updatedAt') {
+      orderBy.updatedAt = sortOrder;
+    } else {
+      orderBy.updatedAt = 'desc'; // Default
+    }
+
+    // Get total count for pagination
+    const total = await prisma.agent.count({ where: whereClause });
+
+    // Get agents with pagination
+    const agents = await prisma.agent.findMany({
+      where: whereClause,
+      include: {
+        _count: {
+          select: { 
+            conversations: true,
+            memories: true,
+            tools: true
           }
-        },
-        orderBy: { updatedAt: 'desc' },
-        skip,
-        take: limitNum,
-      }),
-      prisma.agent.count({ where })
-    ]);
+        }
+      },
+      orderBy,
+      skip,
+      take: currentLimit,
+    });
 
     res.json({
       data: agents,
       total,
-      page: pageNum,
-      limit: limitNum,
-      totalPages: Math.ceil(total / limitNum)
+      page: currentPage,
+      limit: currentLimit,
+      totalPages: Math.ceil(total / currentLimit)
     });
   } catch (err) {
     console.error('Get agents error:', err);

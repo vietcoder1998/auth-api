@@ -31,7 +31,6 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 	const sso = req.sso;
 
 	console.log('[RBAC] Checking permissions for:', req.originalUrl, req.method);
-	console.log('[RBAC] User permissions:', user?.permissions?.map(p => ({ name: p.name, route: p.route, method: p.method })));
 	console.log('[RBAC] SSO authentication:', !!sso);
 
 	if (req.originalUrl?.includes('/admin/auth') || req.originalUrl?.includes('/api/sso')) {
@@ -89,18 +88,45 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 
 		console.log('[RBAC] Checking route:', currentRoute, 'fullUrl:', fullUrl, 'method:', currentMethod);
 
+		// Helper function to match parameterized routes
+		const matchesParameterizedRoute = (permissionRoute: string, actualUrl: string): boolean => {
+			// Convert parameterized route pattern to regex
+			// e.g., /api/admin/conversations/:id -> /api/admin/conversations/[^/]+
+			const regexPattern = permissionRoute
+				.replace(/:[^/]+/g, '[^/]+') // Replace :param with [^/]+ (matches any non-slash chars)
+				.replace(/\//g, '\\/'); // Escape forward slashes
+			
+			const regex = new RegExp(`^${regexPattern}(?:\\?.*)?$`); // Allow query parameters
+			const match = regex.test(actualUrl);
+			
+			console.log('[RBAC] Regex match:', permissionRoute, '->', regexPattern, 'against', actualUrl, '=', match);
+			return match;
+		};
+
 		const hasRoutePermission = user.permissions.some(perm => {
 			// Check if permission matches current route and method
 			if (perm.route && perm.method) {
-				// Try both exact route match and full URL match
-				const routeMatch = (perm.route === currentRoute && perm.method === currentMethod) ||
-				                  (perm.route === fullUrl && perm.method === currentMethod);
+				// Try exact route match first
+				let routeMatch = (perm.route === currentRoute && perm.method === currentMethod) ||
+				                (perm.route === fullUrl && perm.method === currentMethod);
+				
+				// If no exact match, try parameterized route matching
+				if (!routeMatch && perm.method === currentMethod) {
+					routeMatch = matchesParameterizedRoute(perm.route, fullUrl);
+				}
+				
 				console.log('[RBAC] Permission check:', perm.name, 'route:', perm.route, 'method:', perm.method, 'matches:', routeMatch);
 				return routeMatch;
 			}
 			// Fallback to wildcard permissions
 			if (perm.route && !perm.method) {
-				const routeMatch = perm.route === currentRoute || perm.route === fullUrl;
+				let routeMatch = perm.route === currentRoute || perm.route === fullUrl;
+				
+				// Try parameterized route matching for wildcards too
+				if (!routeMatch) {
+					routeMatch = matchesParameterizedRoute(perm.route, fullUrl);
+				}
+				
 				console.log('[RBAC] Wildcard permission check:', perm.name, 'route:', perm.route, 'matches:', routeMatch);
 				return routeMatch;
 			}

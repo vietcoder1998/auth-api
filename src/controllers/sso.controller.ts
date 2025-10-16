@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
-import { logger } from '../middlewares/logger.middle';
+import { logger, logInfo, logError } from '../middlewares/logger.middle';
 import { SSOValidationUtils } from '../utils/ssoValidation';
 
 const prisma = new PrismaClient();
@@ -82,7 +82,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       sampleEntry: ssoEntries[0] || 'No entries found'
     });
 
-    logger.info(`Fetched SSO entries`, {
+    logInfo(`Fetched SSO entries`, {
       service: 'auth-api',
       count: ssoEntries.length,
       total,
@@ -102,7 +102,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    logger.error('Error fetching SSO entries', { error, service: 'auth-api' });
+    logError('Error fetching SSO entries');
     res.status(500).json({ error: 'Failed to fetch SSO entries' });
   }
 };

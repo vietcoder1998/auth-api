@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken, generateRefreshToken } from '../service/auth.service';
 import { client } from '../setup';
+import { setPaginationMeta } from '../middlewares/response.middleware';
 
 const prisma = new PrismaClient();
 
@@ -14,15 +15,62 @@ async function cacheToken(token: string, userId: string, expiresIn: number) {
 
 export async function getUsers(req: Request, res: Response) {  
   try {
-    const { search } = req.query;
-    
-    const whereClause = search ? {
-      OR: [
-        { email: { contains: String(search), mode: 'insensitive' as const } },
-        { nickname: { contains: String(search), mode: 'insensitive' as const } }
-      ]
-    } : {};
+    // Extract query parameters
+    const {
+      page = '1',
+      limit = '10',
+      pageSize = limit,
+      search = '',
+      q = search,
+      status,
+      roleId,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
 
+    // Parse pagination parameters
+    const currentPage = Math.max(1, parseInt(page as string, 10));
+    const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
+    const skip = (currentPage - 1) * currentLimit;
+
+    // Build where clause for search and filters
+    const whereClause: any = {};
+
+    // Search across multiple fields
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      whereClause.OR = [
+        { email: { contains: searchTerm } },
+        { nickname: { contains: searchTerm } }
+      ];
+    }
+
+    // Status filter
+    if (status && typeof status === 'string') {
+      whereClause.status = status;
+    }
+
+    // Role filter
+    if (roleId && typeof roleId === 'string') {
+      whereClause.roleId = roleId;
+    }
+
+    // Build orderBy clause
+    const orderBy: any = {};
+    if (sortBy === 'email') {
+      orderBy.email = sortOrder;
+    } else if (sortBy === 'nickname') {
+      orderBy.nickname = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else {
+      orderBy.createdAt = 'desc'; // Default
+    }
+
+    // Get total count for pagination
+    const total = await prisma.user.count({ where: whereClause });
+
+    // Get users with pagination
     const users = await prisma.user.findMany({
       where: whereClause,
       select: { 
@@ -39,10 +87,23 @@ export async function getUsers(req: Request, res: Response) {
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy,
+      skip,
+      take: currentLimit
+    });
+
+    // Set pagination metadata for response middleware
+    setPaginationMeta(req, total, currentPage, currentLimit);
+
+    // Return paginated response
+    res.json({
+      data: users,
+      total,
+      page: currentPage,
+      limit: currentLimit,
+      totalPages: Math.ceil(total / currentLimit)
     });
     
-    res.json(users);
   } catch (err) {
     console.error('Error fetching users:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
