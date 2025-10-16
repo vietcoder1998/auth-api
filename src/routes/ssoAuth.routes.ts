@@ -214,18 +214,40 @@ router.get('/me', ssoKeyValidation, requireSSO, async (req: Request, res: Respon
 // Direct SSO key validation endpoint - validates key without requiring authentication
 router.post('/validate-key', async (req: Request, res: Response) => {
   try {
-    const { ssoKey } = req.body;
+    const { ssoKey, key, gmail } = req.body;
+    const keyToValidate = ssoKey || key;
 
-    if (!ssoKey) {
+    if (!keyToValidate) {
       return res.status(400).json({ error: 'SSO key is required' });
     }
 
-    const validation = await SSOValidationUtils.validateSSOKey(ssoKey);
+    if (!gmail) {
+      return res.status(400).json({ error: 'Email address is required' });
+    }
+
+    // Validate email format - allow all .com domains
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/;
+    if (!emailRegex.test(gmail)) {
+      return res.status(400).json({ error: 'Please provide a valid email address (must end with .com)' });
+    }
+
+    const validation = await SSOValidationUtils.validateSSOKey(keyToValidate);
 
     if (validation.valid && validation.ssoEntry) {
+      // Additional Gmail verification - check if user email matches provided Gmail
+      if (validation.ssoEntry.user.email !== gmail) {
+        return res.status(401).json({ 
+          valid: false, 
+          success: false,
+          error: 'Gmail address does not match the SSO key owner' 
+        });
+      }
+
       res.json({
         valid: true,
+        success: true,
         matchedKeyType: validation.matchedKeyType,
+        message: 'SSO credentials verified successfully',
         sso: {
           id: validation.ssoEntry.id,
           url: validation.ssoEntry.url,
@@ -242,7 +264,8 @@ router.post('/validate-key', async (req: Request, res: Response) => {
     } else {
       res.status(401).json({
         valid: false,
-        error: validation.error || 'Invalid SSO key',
+        success: false,
+        error: validation.error || 'Invalid SSO key or credentials',
       });
     }
   } catch (error) {
