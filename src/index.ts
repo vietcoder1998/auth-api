@@ -48,7 +48,7 @@ app.use(async (req, res, next) => {
 // Swagger API docs setup
 let swaggerDocument = null;
 try {
-  console.log('Loading swagger document...', __dirname);
+  logger.info('Loading swagger document...', { dir: __dirname });
   const swaggerPath = path.join(__dirname, 'openapi.yaml');
   if (fs.existsSync(swaggerPath)) {
     const file = fs.readFileSync(swaggerPath, 'utf8');
@@ -143,8 +143,8 @@ async function checkRedisConnection() {
 }
 
 app.listen(PORT, async () => {
-  logger.info(`Auth API running on port ${PORT}`, { file: 'index.ts', line: '144' });
-  console.log(`Admin GUI available at http://localhost:${PORT}/admin`);
+  logger.info(`Auth API running on port ${PORT}`);
+  logger.info(`Admin GUI available at http://localhost:${PORT}/admin`);
   if (swaggerDocument) {
     logger.info(`API docs available at http://localhost:${PORT}/docs`, { file: 'index.ts', line: '147' });
   }

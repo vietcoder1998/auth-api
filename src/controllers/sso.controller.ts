@@ -88,7 +88,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       total,
       page,
       totalPages,
-    }, 'sso.controller.ts', '84');
+    });
 
     res.json({
       data: ssoEntries || [],

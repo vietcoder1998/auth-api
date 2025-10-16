@@ -7,30 +7,75 @@ const getCallerInfo = () => {
     const stackTrace = new Error().stack;
     if (stackTrace) {
       const lines = stackTrace.split('\n');
-      for (let i = 3; i < lines.length && i < 10; i++) {
+      
+      // Skip the first few lines (Error constructor, this function, logger functions)
+      for (let i = 1; i < lines.length && i < 15; i++) {
         const stackLine = lines[i];
+        
+        // Skip internal Node.js, winston, and logger files
         if (
           stackLine &&
           !stackLine.includes('winston') &&
           !stackLine.includes('logger.middle.ts') &&
           !stackLine.includes('node_modules') &&
-          !stackLine.includes('node:internal')
+          !stackLine.includes('node:internal') &&
+          !stackLine.includes('node:events') &&
+          !stackLine.includes('node:process') &&
+          !stackLine.includes('internal/') &&
+          !stackLine.includes('logWithLocation') &&
+          !stackLine.includes('logInfo') &&
+          !stackLine.includes('logError') &&
+          !stackLine.includes('logWarn') &&
+          !stackLine.includes('logDebug')
         ) {
+          // Enhanced patterns to catch more file path formats
           const patterns = [
+            // Standard format: at function (file:line:col)
             /at\s+.*?\s+\(([^)]+):(\d+):\d+\)/,
+            // Direct format: at file:line:col
             /at\s+([^:]+):(\d+):\d+/,
+            // Parentheses format: (file:line:col)
             /\(([^)]+):(\d+):\d+\)/,
+            // Windows absolute path: C:\path\file.ts:line:col
+            /at\s+.*?\s+\(([A-Za-z]:[\\\/][^)]+):(\d+):\d+\)/,
+            // Unix absolute path: /path/file.ts:line:col
+            /at\s+.*?\s+\((\/[^)]+):(\d+):\d+\)/,
+            // Async format: async function at file:line:col
+            /async\s+.*?\s+\(([^)]+):(\d+):\d+\)/,
           ];
+          
           for (const pattern of patterns) {
             const match = stackLine.match(pattern);
-            if (match && match[1] && (match[1].includes('.ts') || match[1].includes('.js'))) {
-              return { file: path.basename(match[1]), line: match[2] };
+            if (match && match[1]) {
+              const filePath = match[1];
+              const lineNumber = match[2];
+              
+              // Validate that it's a TypeScript or JavaScript file
+              if (filePath.includes('.ts') || filePath.includes('.js')) {
+                // Extract just the filename from full path
+                const fileName = path.basename(filePath);
+                
+                // Additional validation - make sure it's not a system file
+                if (!fileName.startsWith('node:') && 
+                    !fileName.includes('winston') && 
+                    fileName !== 'logger.middle.ts') {
+                  return { 
+                    file: fileName, 
+                    line: lineNumber,
+                    fullPath: filePath // Keep full path for debugging if needed
+                  };
+                }
+              }
             }
           }
         }
       }
     }
-  } catch {}
+  } catch (error) {
+    // Debug: log parsing errors if needed
+    console.debug('Stack trace parsing error:', error);
+  }
+  
   return { file: 'app', line: '0' };
 };
 
@@ -50,13 +95,15 @@ const customFormat = winston.format.printf((info: any) => {
     content = message;
   }
 
-  // Gán caller info
+  // Auto-detect caller info if not provided
   let fileName = file;
   let lineNumber = line;
-  if (!fileName || !lineNumber) {
+  
+  // If no explicit file/line provided, auto-detect from stack trace
+  if (!fileName || !lineNumber || fileName === 'app' || lineNumber === '0') {
     const caller = getCallerInfo();
-    fileName = fileName || caller.file;
-    lineNumber = lineNumber || caller.line;
+    fileName = caller.file;
+    lineNumber = caller.line;
   }
 
   // Meta
@@ -144,13 +191,35 @@ export const logWithLocation = (
   }
 };
 
-export const logInfo = (msg: string, meta: any = {}, f?: string, l?: string) =>
+// Enhanced helper functions with better auto-detection
+export const logInfo = (msg: string, meta: any = {}) => {
+  logger.info(msg, meta); // Let the formatter auto-detect file/line
+};
+
+export const logError = (msg: string | Error, meta: any = {}) => {
+  if (msg instanceof Error) {
+    logger.error(msg.message, { stack: msg.stack, ...meta });
+  } else {
+    logger.error(msg, meta);
+  }
+};
+
+export const logWarn = (msg: string, meta: any = {}) => {
+  logger.warn(msg, meta);
+};
+
+export const logDebug = (msg: string, meta: any = {}) => {
+  logger.debug(msg, meta);
+};
+
+// Legacy functions with explicit file/line (for backward compatibility)
+export const logInfoAt = (msg: string, meta: any = {}, f?: string, l?: string) =>
   logWithLocation('info', msg, meta, f, l);
-export const logError = (msg: string | Error, meta: any = {}, f?: string, l?: string) =>
+export const logErrorAt = (msg: string | Error, meta: any = {}, f?: string, l?: string) =>
   logWithLocation('error', msg, meta, f, l);
-export const logWarn = (msg: string, meta: any = {}, f?: string, l?: string) =>
+export const logWarnAt = (msg: string, meta: any = {}, f?: string, l?: string) =>
   logWithLocation('warn', msg, meta, f, l);
-export const logDebug = (msg: string, meta: any = {}, f?: string, l?: string) =>
+export const logDebugAt = (msg: string, meta: any = {}, f?: string, l?: string) =>
   logWithLocation('debug', msg, meta, f, l);
 
 export { logger };
