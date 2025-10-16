@@ -7,7 +7,8 @@ const prisma = new PrismaClient();
 export async function getPermissions(req: Request, res: Response) {
   try {
     const permissions = await prisma.permission.findMany({
-      include: { roles: true }
+      include: { roles: true },
+      orderBy: { createdAt: 'desc' }
     });
     res.json(permissions);
   } catch (err) {
