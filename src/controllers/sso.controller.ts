@@ -9,8 +9,8 @@ const prisma = new PrismaClient();
 
 export const getSSOEntries = async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit as string) || 10);
     const search = req.query.search as string || '';
     const userId = req.query.userId as string;
     const isActive = req.query.isActive as string;
@@ -73,7 +73,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       prisma.sSO.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil((total || 0) / (limit || 10)) || 1;
 
     console.log('Debug SSO Results:', {
       foundEntries: ssoEntries.length,
@@ -95,15 +95,27 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       pagination: {
         page,
         limit,
-        total,
-        totalPages,
+        total: total || 0,
+        totalPages: totalPages || 1,
         hasNext: page < totalPages,
         hasPrev: page > 1,
       },
     });
   } catch (error) {
-    logError('Error fetching SSO entries');
-    res.status(500).json({ error: 'Failed to fetch SSO entries' });
+    console.error('Error fetching SSO entries:', error);
+    logError('Error fetching SSO entries', { error, service: 'auth-api' });
+    res.status(500).json({ 
+      error: 'Failed to fetch SSO entries',
+      data: [],
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      }
+    });
   }
 };
 
