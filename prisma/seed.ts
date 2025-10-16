@@ -37,39 +37,49 @@ async function main() {
     
     { name: 'view_self', description: 'View own profile', category: 'user', route: '/api/profile', method: 'GET' },
     
-    // Route-based permissions
+    // Route-based permissions with full HTTP method support
     { name: 'admin_users_get', description: 'GET admin users endpoint', category: 'api', route: '/api/admin/users', method: 'GET' },
     { name: 'admin_users_post', description: 'POST admin users endpoint', category: 'api', route: '/api/admin/users', method: 'POST' },
     { name: 'admin_users_put', description: 'PUT admin users endpoint', category: 'api', route: '/api/admin/users/:id', method: 'PUT' },
+    { name: 'admin_users_patch', description: 'PATCH admin users endpoint', category: 'api', route: '/api/admin/users/:id', method: 'PATCH' },
     { name: 'admin_users_delete', description: 'DELETE admin users endpoint', category: 'api', route: '/api/admin/users/:id', method: 'DELETE' },
     
     { name: 'admin_roles_get', description: 'GET admin roles endpoint', category: 'api', route: '/api/admin/roles', method: 'GET' },
     { name: 'admin_roles_post', description: 'POST admin roles endpoint', category: 'api', route: '/api/admin/roles', method: 'POST' },
     { name: 'admin_roles_put', description: 'PUT admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'PUT' },
+    { name: 'admin_roles_patch', description: 'PATCH admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'PATCH' },
     { name: 'admin_roles_delete', description: 'DELETE admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'DELETE' },
     
     // Additional admin endpoints permissions
     { name: 'admin_permissions_get', description: 'GET admin permissions endpoint', category: 'api', route: '/api/admin/permissions', method: 'GET' },
     { name: 'admin_permissions_post', description: 'POST admin permissions endpoint', category: 'api', route: '/api/admin/permissions', method: 'POST' },
     { name: 'admin_permissions_put', description: 'PUT admin permissions endpoint', category: 'api', route: '/api/admin/permissions/:id', method: 'PUT' },
+    { name: 'admin_permissions_patch', description: 'PATCH admin permissions endpoint', category: 'api', route: '/api/admin/permissions/:id', method: 'PATCH' },
     { name: 'admin_permissions_delete', description: 'DELETE admin permissions endpoint', category: 'api', route: '/api/admin/permissions/:id', method: 'DELETE' },
     
     { name: 'admin_tokens_get', description: 'GET admin tokens endpoint', category: 'api', route: '/api/admin/tokens', method: 'GET' },
     { name: 'admin_tokens_post', description: 'POST admin tokens endpoint', category: 'api', route: '/api/admin/tokens', method: 'POST' },
+    { name: 'admin_tokens_put', description: 'PUT admin tokens endpoint', category: 'api', route: '/api/admin/tokens/:id', method: 'PUT' },
+    { name: 'admin_tokens_patch', description: 'PATCH admin tokens endpoint', category: 'api', route: '/api/admin/tokens/:id', method: 'PATCH' },
     { name: 'admin_tokens_delete', description: 'DELETE admin tokens endpoint', category: 'api', route: '/api/admin/tokens/:id', method: 'DELETE' },
     
     { name: 'admin_mail_templates_get', description: 'GET admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates', method: 'GET' },
     { name: 'admin_mail_templates_post', description: 'POST admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates', method: 'POST' },
     { name: 'admin_mail_templates_put', description: 'PUT admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'PUT' },
+    { name: 'admin_mail_templates_patch', description: 'PATCH admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'PATCH' },
     { name: 'admin_mail_templates_delete', description: 'DELETE admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'DELETE' },
     
     { name: 'admin_notification_templates_get', description: 'GET admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates', method: 'GET' },
     { name: 'admin_notification_templates_post', description: 'POST admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates', method: 'POST' },
     { name: 'admin_notification_templates_put', description: 'PUT admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'PUT' },
+    { name: 'admin_notification_templates_patch', description: 'PATCH admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'PATCH' },
     { name: 'admin_notification_templates_delete', description: 'DELETE admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'DELETE' },
     
     { name: 'admin_mails_get', description: 'GET admin mails endpoint', category: 'api', route: '/api/admin/mails', method: 'GET' },
     { name: 'admin_mails_post', description: 'POST admin mails endpoint', category: 'api', route: '/api/admin/mails', method: 'POST' },
+    { name: 'admin_mails_put', description: 'PUT admin mails endpoint', category: 'api', route: '/api/admin/mails/:id', method: 'PUT' },
+    { name: 'admin_mails_patch', description: 'PATCH admin mails endpoint', category: 'api', route: '/api/admin/mails/:id', method: 'PATCH' },
+    { name: 'admin_mails_delete', description: 'DELETE admin mails endpoint', category: 'api', route: '/api/admin/mails/:id', method: 'DELETE' },
     
     { name: 'admin_cache_get', description: 'GET admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'GET' },
     { name: 'admin_cache_post', description: 'POST admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'POST' },
@@ -82,6 +92,7 @@ async function main() {
     { name: 'admin_sso_get', description: 'GET admin SSO endpoint', category: 'api', route: '/api/admin/sso', method: 'GET' },
     { name: 'admin_sso_post', description: 'POST admin SSO endpoint', category: 'api', route: '/api/admin/sso', method: 'POST' },
     { name: 'admin_sso_put', description: 'PUT admin SSO endpoint', category: 'api', route: '/api/admin/sso/:id', method: 'PUT' },
+    { name: 'admin_sso_patch', description: 'PATCH admin SSO endpoint', category: 'api', route: '/api/admin/sso/:id', method: 'PATCH' },
     { name: 'admin_sso_delete', description: 'DELETE admin SSO endpoint', category: 'api', route: '/api/admin/sso/:id', method: 'DELETE' },
     { name: 'admin_sso_regenerate', description: 'PATCH admin SSO regenerate key endpoint', category: 'api', route: '/api/admin/sso/:id/regenerate-key', method: 'PATCH' },
     
@@ -89,6 +100,7 @@ async function main() {
     { name: 'admin_login_history_get', description: 'GET admin login history endpoint', category: 'api', route: '/api/admin/login-history', method: 'GET' },
     { name: 'admin_login_history_post', description: 'POST admin login history endpoint', category: 'api', route: '/api/admin/login-history', method: 'POST' },
     { name: 'admin_login_history_put', description: 'PUT admin login history endpoint', category: 'api', route: '/api/admin/login-history/:id', method: 'PUT' },
+    { name: 'admin_login_history_patch', description: 'PATCH admin login history endpoint', category: 'api', route: '/api/admin/login-history/:id', method: 'PATCH' },
     { name: 'admin_login_history_delete', description: 'DELETE admin login history endpoint', category: 'api', route: '/api/admin/login-history/:id', method: 'DELETE' },
     { name: 'admin_login_history_logout', description: 'PATCH admin login history logout endpoint', category: 'api', route: '/api/admin/login-history/:id/logout', method: 'PATCH' },
     
@@ -96,6 +108,7 @@ async function main() {
     { name: 'admin_logic_history_get', description: 'GET admin logic history endpoint', category: 'api', route: '/api/admin/logic-history', method: 'GET' },
     { name: 'admin_logic_history_post', description: 'POST admin logic history endpoint', category: 'api', route: '/api/admin/logic-history', method: 'POST' },
     { name: 'admin_logic_history_put', description: 'PUT admin logic history endpoint', category: 'api', route: '/api/admin/logic-history/:id', method: 'PUT' },
+    { name: 'admin_logic_history_patch', description: 'PATCH admin logic history endpoint', category: 'api', route: '/api/admin/logic-history/:id', method: 'PATCH' },
     { name: 'admin_logic_history_delete', description: 'DELETE admin logic history endpoint', category: 'api', route: '/api/admin/logic-history/:id', method: 'DELETE' },
     { name: 'admin_logic_history_notification', description: 'PATCH admin logic history notification endpoint', category: 'api', route: '/api/admin/logic-history/:id/notification-sent', method: 'PATCH' },
     
@@ -115,6 +128,7 @@ async function main() {
     { name: 'admin_api_keys_get', description: 'GET admin API keys endpoint', category: 'api', route: '/api/admin/api-keys', method: 'GET' },
     { name: 'admin_api_keys_post', description: 'POST admin API keys endpoint', category: 'api', route: '/api/admin/api-keys', method: 'POST' },
     { name: 'admin_api_keys_put', description: 'PUT admin API keys endpoint', category: 'api', route: '/api/admin/api-keys/:id', method: 'PUT' },
+    { name: 'admin_api_keys_patch', description: 'PATCH admin API keys endpoint', category: 'api', route: '/api/admin/api-keys/:id', method: 'PATCH' },
     { name: 'admin_api_keys_delete', description: 'DELETE admin API keys endpoint', category: 'api', route: '/api/admin/api-keys/:id', method: 'DELETE' },
     { name: 'admin_api_keys_regenerate', description: 'PATCH admin API keys regenerate endpoint', category: 'api', route: '/api/admin/api-keys/:id/regenerate', method: 'PATCH' },
     { name: 'admin_api_keys_stats', description: 'GET admin API keys usage statistics endpoint', category: 'api', route: '/api/admin/api-keys/stats', method: 'GET' },
@@ -128,16 +142,26 @@ async function main() {
     { name: 'admin_agents_get', description: 'GET admin agents endpoint', category: 'api', route: '/api/admin/agents', method: 'GET' },
     { name: 'admin_agents_post', description: 'POST admin agents endpoint', category: 'api', route: '/api/admin/agents', method: 'POST' },
     { name: 'admin_agents_put', description: 'PUT admin agents endpoint', category: 'api', route: '/api/admin/agents/:id', method: 'PUT' },
+    { name: 'admin_agents_patch', description: 'PATCH admin agents endpoint', category: 'api', route: '/api/admin/agents/:id', method: 'PATCH' },
     { name: 'admin_agents_delete', description: 'DELETE admin agents endpoint', category: 'api', route: '/api/admin/agents/:id', method: 'DELETE' },
     { name: 'admin_agents_memories_get', description: 'GET admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories', method: 'GET' },
     { name: 'admin_agents_memories_post', description: 'POST admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories', method: 'POST' },
+    { name: 'admin_agents_memories_put', description: 'PUT admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories/:memoryId', method: 'PUT' },
+    { name: 'admin_agents_memories_patch', description: 'PATCH admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories/:memoryId', method: 'PATCH' },
+    { name: 'admin_agents_memories_delete', description: 'DELETE admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories/:memoryId', method: 'DELETE' },
     
     // Conversation Management permissions
     { name: 'admin_conversations_get', description: 'GET admin conversations endpoint', category: 'api', route: '/api/admin/conversations', method: 'GET' },
+    { name: 'admin_conversations_get_by_id', description: 'GET admin conversation by ID endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'GET' },
     { name: 'admin_conversations_post', description: 'POST admin conversations endpoint', category: 'api', route: '/api/admin/conversations', method: 'POST' },
     { name: 'admin_conversations_put', description: 'PUT admin conversations endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'PUT' },
+    { name: 'admin_conversations_patch', description: 'PATCH admin conversations endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'PATCH' },
     { name: 'admin_conversations_delete', description: 'DELETE admin conversations endpoint', category: 'api', route: '/api/admin/conversations/:id', method: 'DELETE' },
+    { name: 'admin_conversations_messages_get', description: 'GET admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages', method: 'GET' },
     { name: 'admin_conversations_messages_post', description: 'POST admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages', method: 'POST' },
+    { name: 'admin_conversations_messages_put', description: 'PUT admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'PUT' },
+    { name: 'admin_conversations_messages_patch', description: 'PATCH admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'PATCH' },
+    { name: 'admin_conversations_messages_delete', description: 'DELETE admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'DELETE' },
     
     // High-level AI agent management permissions
     { name: 'manage_ai_agents', description: 'Full AI agent management access', category: 'ai' },
@@ -1013,42 +1037,85 @@ async function main() {
       agentId: createdAgents[0]?.id,
       userId: superadminUser?.id || '',
       title: 'Getting Started with AI Agents',
-      summary: 'Initial conversation about setting up and configuring AI agents for the platform',
+      summary: 'Initial conversation about setting up and configuring AI agents for the platform (Priority: High, Category: Onboarding)',
       isActive: true
     },
     {
       agentId: createdAgents[1]?.id,
       userId: superadminUser?.id || '',
       title: 'Code Review Session',
-      summary: 'Discussion about TypeScript implementation and best practices for API middleware',
+      summary: 'Discussion about TypeScript implementation and best practices for API middleware (Priority: Medium, Category: Development)',
       isActive: true
     },
     {
       agentId: createdAgents[2]?.id,
       userId: adminUser?.id || '',
       title: 'Business Strategy Discussion',
-      summary: 'Analysis of AI integration opportunities and market positioning',
+      summary: 'Analysis of AI integration opportunities and market positioning (Priority: High, Category: Strategy)',
       isActive: true
     },
     {
       agentId: createdAgents[4]?.id,
       userId: regularUser?.id || '',
       title: 'Learning TypeScript',
-      summary: 'Step-by-step tutorial for learning TypeScript fundamentals',
+      summary: 'Step-by-step tutorial for learning TypeScript fundamentals (Priority: Low, Category: Education)',
       isActive: true
     },
     {
       agentId: createdAgents[3]?.id,
       userId: adminUser?.id || '',
       title: 'Creative Writing Project',
-      summary: 'Collaboration on creative content and marketing materials',
+      summary: 'Collaboration on creative content and marketing materials (Priority: Low, Category: Creative)',
       isActive: false
     },
     {
       agentId: createdAgents[0]?.id,
       userId: regularUser?.id || '',
       title: 'General Questions',
-      summary: 'Various questions about platform features and functionality',
+      summary: 'Various questions about platform features and functionality (Priority: Medium, Category: Support)',
+      isActive: true
+    },
+    // Additional conversations for more comprehensive testing
+    {
+      agentId: createdAgents[1]?.id,
+      userId: adminUser?.id || '',
+      title: 'API Performance Optimization',
+      summary: 'Analyzing and improving API response times and database query performance (Priority: High, Category: Performance)',
+      isActive: true
+    },
+    {
+      agentId: createdAgents[2]?.id,
+      userId: superadminUser?.id || '',
+      title: 'Quarterly Business Review',
+      summary: 'Comprehensive analysis of quarterly metrics and strategic recommendations (Priority: High, Category: Business Review)',
+      isActive: true
+    },
+    {
+      agentId: createdAgents[4]?.id,
+      userId: adminUser?.id || '',
+      title: 'Advanced React Patterns',
+      summary: 'Deep dive into advanced React patterns and state management solutions (Priority: Medium, Category: Education)',
+      isActive: true
+    },
+    {
+      agentId: createdAgents[0]?.id,
+      userId: adminUser?.id || '',
+      title: 'System Integration Planning',
+      summary: 'Planning integration with third-party services and API endpoints (Priority: Medium, Category: Integration)',
+      isActive: false
+    },
+    {
+      agentId: createdAgents[3]?.id,
+      userId: regularUser?.id || '',
+      title: 'Blog Content Strategy',
+      summary: 'Developing content strategy and writing guidelines for company blog (Priority: Low, Category: Content)',
+      isActive: true
+    },
+    {
+      agentId: createdAgents[1]?.id,
+      userId: regularUser?.id || '',
+      title: 'Debugging Session',
+      summary: 'Troubleshooting complex bug in user authentication flow (Priority: High, Category: Debugging)',
       isActive: true
     }
   ];
@@ -1101,41 +1168,149 @@ async function main() {
   console.log('📝 Seeding Messages...');
   
   const messages = [
-    // Getting Started conversation
+    // Getting Started conversation (Enhanced)
     {
       conversationId: createdConversations[0]?.id,
       sender: 'user',
-      content: 'Hi! I\'d like to learn how to set up AI agents effectively. Can you guide me through the process?'
+      content: 'Hi! I\'d like to learn how to set up AI agents effectively. Can you guide me through the process?',
+      metadata: JSON.stringify({ timestamp: Date.now() - 3600000, device: 'desktop' })
     },
     {
       conversationId: createdConversations[0]?.id,
       sender: 'agent',
       content: 'Hello! I\'d be happy to help you set up AI agents. Let\'s start with the basics:\n\n1. **Define the Purpose**: What specific tasks do you want your agent to handle?\n2. **Choose the Right Model**: Select between GPT-4 for complex tasks or GPT-3.5 for simpler ones\n3. **Configure Personality**: Set traits and tone that match your use case\n4. **Write System Prompts**: Create clear instructions for consistent behavior\n\nWhat type of AI agent are you looking to create?',
-      tokens: 85
+      tokens: 85,
+      metadata: JSON.stringify({ response_time: 1200, model_used: 'gpt-4' })
     },
-    // Code Review conversation
+    {
+      conversationId: createdConversations[0]?.id,
+      sender: 'user',
+      content: 'I want to create a customer support agent that can handle common inquiries about our SaaS platform. It should be professional but friendly.',
+      metadata: JSON.stringify({ timestamp: Date.now() - 3500000, device: 'desktop' })
+    },
+    {
+      conversationId: createdConversations[0]?.id,
+      sender: 'agent',
+      content: 'Perfect! A customer support agent is an excellent starting point. Here\'s how to configure it:\n\n**Model Selection:** GPT-4 for better understanding of complex queries\n\n**Personality Configuration:**\n```json\n{\n  "traits": ["helpful", "patient", "professional", "empathetic"],\n  "tone": "friendly and professional",\n  "style": "clear and solution-focused"\n}\n```\n\n**System Prompt Example:**\n"You are a helpful customer support agent for [Company]. Always be polite, provide accurate information, and escalate complex technical issues to human agents when necessary."\n\n**Key Features to Enable:**\n• Knowledge base integration\n• Ticket creation capability\n• Escalation workflows\n• Response templates\n\nWould you like me to help you write the complete system prompt?',
+      tokens: 156,
+      metadata: JSON.stringify({ response_time: 1800, model_used: 'gpt-4' })
+    },
+
+    // Code Review conversation (Enhanced)
     {
       conversationId: createdConversations[1]?.id,
       sender: 'user',
-      content: 'I\'m having TypeScript compilation errors in my API middleware. The compiler complains about null handling and response override issues.'
+      content: 'I\'m having TypeScript compilation errors in my API middleware. The compiler complains about null handling and response override issues.',
+      metadata: JSON.stringify({ timestamp: Date.now() - 7200000, device: 'desktop' })
     },
     {
       conversationId: createdConversations[1]?.id,
       sender: 'agent',
       content: 'I can help you resolve those TypeScript issues. Common middleware problems include:\n\n**Null Handling:**\n```typescript\n// Use optional chaining and nullish coalescing\nconst userId = req.user?.id ?? null;\nif (!userId) {\n  return res.status(401).json({ error: \'Unauthorized\' });\n}\n```\n\n**Response Override:**\n```typescript\n// Ensure proper typing for response methods\nres.status(200).json({ data }).end();\n// Or use proper middleware flow\nnext();\n```\n\nCould you share the specific error messages?',
-      tokens: 120
+      tokens: 120,
+      metadata: JSON.stringify({ response_time: 900, model_used: 'gpt-4' })
     },
-    // Business Strategy conversation
+    {
+      conversationId: createdConversations[1]?.id,
+      sender: 'user',
+      content: 'Here are the errors:\n1. "Object is possibly \'null\'" on req.user.id\n2. "Cannot redeclare block-scoped variable \'res\'" in middleware chain\n3. "Type \'void\' is not assignable to type \'Response\'"\n\nThe middleware is for JWT authentication and user permission checking.',
+      metadata: JSON.stringify({ timestamp: Date.now() - 7100000, device: 'desktop' })
+    },
+    {
+      conversationId: createdConversations[1]?.id,
+      sender: 'agent',
+      content: 'I see the issues! Let me provide specific solutions:\n\n**1. Null Safety (req.user.id):**\n```typescript\ninterface AuthenticatedRequest extends Request {\n  user?: { id: string; role: string } | null;\n}\n\n// In middleware:\nif (!req.user?.id) {\n  return res.status(401).json({ error: \'User not authenticated\' });\n}\n// Now TypeScript knows req.user.id exists\nconst userId: string = req.user.id;\n```\n\n**2. Variable Redeclaration:**\n```typescript\n// Don\'t redeclare res, use the existing one\nexport const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {\n  // Your logic here\n};\n```\n\n**3. Return Type Issue:**\n```typescript\n// Middleware should return void or call next()\nif (!isAuthorized) {\n  return res.status(403).json({ error: \'Forbidden\' }); // This returns void\n}\nnext(); // Continue to next middleware\n```\n\nWant me to review your complete middleware code?',
+      tokens: 198,
+      metadata: JSON.stringify({ response_time: 2100, model_used: 'gpt-4' })
+    },
+
+    // Business Strategy conversation (Enhanced)
     {
       conversationId: createdConversations[2]?.id,
       sender: 'user',
-      content: 'What are the key opportunities for AI integration in our current business model?'
+      content: 'What are the key opportunities for AI integration in our current business model?',
+      metadata: JSON.stringify({ timestamp: Date.now() - 14400000, device: 'desktop' })
     },
     {
       conversationId: createdConversations[2]?.id,
       sender: 'agent',
-      content: 'Based on current market trends, here are key AI integration opportunities:\n\n**Immediate Opportunities:**\n• **Customer Support**: AI chatbots for 24/7 service\n• **Content Creation**: Automated documentation and marketing copy\n• **Data Analysis**: Intelligent insights from business metrics\n\n**Strategic Advantages:**\n• **Personalization**: Tailored user experiences\n• **Automation**: Streamlined workflows and processes\n• **Competitive Edge**: Early adoption in your market segment\n\n**ROI Potential:**\n• 30-40% reduction in support costs\n• 50% faster content production\n• Improved customer satisfaction scores\n\nWhich area would you like to prioritize first?',
-      tokens: 140
+      content: 'Based on current market trends and your business context, here are key AI integration opportunities:\n\n**Immediate Opportunities (0-6 months):**\n• **Customer Support**: AI chatbots for 24/7 service\n• **Content Creation**: Automated documentation and marketing copy\n• **Data Analysis**: Intelligent insights from business metrics\n• **Lead Qualification**: Automated lead scoring and routing\n\n**Strategic Advantages (6-12 months):**\n• **Personalization**: Tailored user experiences and recommendations\n• **Process Automation**: Streamlined workflows and approvals\n• **Predictive Analytics**: Forecasting and trend analysis\n• **Competitive Intelligence**: Market monitoring and analysis\n\n**ROI Potential:**\n• 30-40% reduction in support costs\n• 50% faster content production\n• 25% improvement in lead conversion\n• 60% reduction in manual data processing\n\nWhich area aligns best with your current priorities and budget?',
+      tokens: 168,
+      metadata: JSON.stringify({ response_time: 1500, model_used: 'gpt-4-turbo' })
+    },
+    {
+      conversationId: createdConversations[2]?.id,
+      sender: 'user',
+      content: 'Customer support seems like the best starting point. We\'re getting about 200 tickets per day, and our response time is currently 4-6 hours. What\'s the implementation roadmap?',
+      metadata: JSON.stringify({ timestamp: Date.now() - 14300000, device: 'desktop' })
+    },
+    {
+      conversationId: createdConversations[2]?.id,
+      sender: 'agent',
+      content: 'Excellent choice! With 200 daily tickets, AI can significantly impact your operations. Here\'s a phased implementation roadmap:\n\n**Phase 1: Foundation (Weeks 1-4)**\n• Ticket categorization and routing\n• Knowledge base integration\n• Basic FAQ automation\n• Expected impact: 30% ticket reduction\n\n**Phase 2: Intelligence (Weeks 5-8)**\n• Intent recognition and smart responses\n• Conversation handoff to human agents\n• Sentiment analysis and priority scoring\n• Expected impact: 50% faster first response\n\n**Phase 3: Optimization (Weeks 9-12)**\n• Machine learning from agent interactions\n• Proactive issue detection\n• Multi-language support\n• Expected impact: 70% automation rate\n\n**Investment Requirements:**\n• Initial setup: $15K-25K\n• Monthly operational: $2K-5K\n• Training and integration: 2-3 FTE weeks\n\n**ROI Timeline:**\n• Break-even: Month 4-5\n• Full ROI: Month 8-10\n\nShall we dive deeper into Phase 1 technical requirements?',
+      tokens: 204,
+      metadata: JSON.stringify({ response_time: 2200, model_used: 'gpt-4-turbo' })
+    },
+
+    // Learning TypeScript conversation (Enhanced)
+    {
+      conversationId: createdConversations[3]?.id,
+      sender: 'user',
+      content: 'I\'m new to TypeScript and coming from JavaScript. What\'s the best learning path?',
+      metadata: JSON.stringify({ timestamp: Date.now() - 21600000, device: 'mobile' })
+    },
+    {
+      conversationId: createdConversations[3]?.id,
+      sender: 'agent',
+      content: 'Welcome to TypeScript! Since you have JavaScript experience, you\'re already ahead. Here\'s a structured learning path:\n\n**Week 1: Foundations**\n• Basic types (string, number, boolean, arrays)\n• Type annotations and inference\n• Interfaces and type aliases\n• Practice: Convert simple JS functions to TS\n\n**Week 2: Advanced Types**\n• Union and intersection types\n• Generics basics\n• Function types and overloads\n• Practice: Build a typed utility library\n\n**Week 3: Real-world Application**\n• Classes and inheritance\n• Modules and namespaces\n• Working with external libraries\n• Practice: Convert a small JS project\n\n**Week 4: Advanced Concepts**\n• Advanced generics\n• Conditional types\n• Utility types (Pick, Omit, etc.)\n• Practice: Build a type-safe API client\n\n**Resources:**\n• TypeScript Handbook (official docs)\n• TypeScript Playground for experimentation\n• Practice exercises: type-challenges on GitHub\n\nWould you like to start with a specific concept, or do you have a particular project in mind?',
+      tokens: 189,
+      metadata: JSON.stringify({ response_time: 1400, model_used: 'gpt-3.5-turbo' })
+    },
+
+    // Additional conversations for better testing coverage
+    // API Performance Optimization conversation
+    {
+      conversationId: createdConversations[6]?.id,
+      sender: 'user',
+      content: 'Our API response times have increased to 2-3 seconds under load. Database queries seem to be the bottleneck. How can we optimize this?',
+      metadata: JSON.stringify({ timestamp: Date.now() - 28800000, device: 'desktop' })
+    },
+    {
+      conversationId: createdConversations[6]?.id,
+      sender: 'agent',
+      content: 'API performance issues with database bottlenecks are common but solvable. Let\'s analyze the problem systematically:\n\n**1. Query Analysis:**\n• Identify N+1 query problems\n• Review query execution plans\n• Check for missing indexes\n• Analyze slow query logs\n\n**2. Immediate Optimizations:**\n```sql\n-- Add composite indexes for common queries\nCREATE INDEX idx_user_status_created ON users(status, created_at);\n\n-- Use SELECT specific fields instead of *\nSELECT id, name, email FROM users WHERE status = \'active\';\n```\n\n**3. Caching Strategy:**\n• Redis for frequently accessed data\n• Application-level query result caching\n• Database query plan caching\n\n**4. Database Connection Optimization:**\n• Connection pooling configuration\n• Prepared statement usage\n• Read replica implementation\n\nCan you share some of your most frequent/slow queries? I\'ll provide specific optimization recommendations.',
+      tokens: 167,
+      metadata: JSON.stringify({ response_time: 1600, model_used: 'gpt-4' })
+    },
+
+    // Quarterly Business Review conversation
+    {
+      conversationId: createdConversations[7]?.id,
+      sender: 'user',
+      content: 'I need to prepare our Q4 business review. What metrics should I focus on and how should I structure the analysis?',
+      metadata: JSON.stringify({ timestamp: Date.now() - 86400000, device: 'desktop' })
+    },
+    {
+      conversationId: createdConversations[7]?.id,
+      sender: 'agent',
+      content: 'A comprehensive Q4 business review should tell a complete story. Here\'s a strategic framework:\n\n**1. Executive Summary (5 minutes)**\n• Key achievements vs. goals\n• Critical metrics snapshot\n• Major challenges and solutions\n• Q1 outlook preview\n\n**2. Financial Performance (10 minutes)**\n• Revenue growth (YoY, QoQ)\n• Customer acquisition cost (CAC)\n• Lifetime value (LTV)\n• Monthly recurring revenue (MRR)\n• Churn rate and retention metrics\n\n**3. Operational Excellence (10 minutes)**\n• Customer satisfaction scores\n• Product adoption metrics\n• Team productivity indicators\n• Process improvement outcomes\n\n**4. Market & Competitive Analysis (5 minutes)**\n• Market share evolution\n• Competitive positioning\n• New market opportunities\n\n**5. Strategic Initiatives (10 minutes)**\n• Innovation pipeline\n• Technology investments\n• Partnership developments\n• Talent acquisition\n\n**Key Visualizations:**\n• Trend charts for growth metrics\n• Cohort analysis for retention\n• Geographic/segment breakdowns\n• Funnel analysis for conversion\n\nWhat\'s your primary business model? This will help me customize the metrics framework.',
+      tokens: 223,
+      metadata: JSON.stringify({ response_time: 2500, model_used: 'gpt-4-turbo' })
+    },
+
+    // Debugging Session conversation
+    {
+      conversationId: createdConversations[11]?.id,
+      sender: 'user',
+      content: 'I have a weird bug where users are getting logged out randomly, but only on mobile devices. The session appears valid in the database, but the frontend shows "unauthorized". Any debugging strategies?',
+      metadata: JSON.stringify({ timestamp: Date.now() - 43200000, device: 'desktop' })
+    },
+    {
+      conversationId: createdConversations[11]?.id,
+      sender: 'agent',
+      content: 'Mobile-specific authentication issues are tricky! Let\'s debug this systematically:\n\n**1. Data Collection:**\n```javascript\n// Add comprehensive logging\nconsole.log(\'Session Debug:\', {\n  sessionId: req.sessionID,\n  userId: req.session?.userId,\n  userAgent: req.get(\'User-Agent\'),\n  timestamp: new Date().toISOString(),\n  cookies: req.headers.cookie\n});\n```\n\n**2. Common Mobile Issues:**\n• **iOS Safari**: Aggressive cookie clearing\n• **Android Chrome**: Different session handling\n• **Background app refresh**: Session interruption\n• **Network switching**: WiFi ↔ Cellular transitions\n\n**3. Investigation Steps:**\n```javascript\n// Check session middleware configuration\napp.use(session({\n  cookie: {\n    secure: process.env.NODE_ENV === \'production\', // HTTPS only\n    sameSite: \'lax\', // Mobile compatibility\n    maxAge: 24 * 60 * 60 * 1000 // 24 hours\n  },\n  rolling: true // Reset expiry on activity\n}));\n```\n\n**4. Debugging Tools:**\n• Browser dev tools on mobile (Chrome://inspect)\n• Network tab to check cookie transmission\n• Application tab to verify localStorage/sessionStorage\n\nCan you check if the issue occurs:\n1. Only on specific mobile browsers?\n2. After the app goes to background?\n3. When switching networks?\n\nThis will help narrow down the root cause.',
+      tokens: 267,
+      metadata: JSON.stringify({ response_time: 1900, model_used: 'gpt-4' })
     }
   ];
 
