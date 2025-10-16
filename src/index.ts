@@ -16,7 +16,7 @@ import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
 import { cacheMiddleware } from './middlewares/cache.middleware';
-import { logger, loggerMiddleware } from './middlewares/logger.middle';
+import { logError, logger, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
 
@@ -99,13 +99,15 @@ app.use(
       const shouldSkip = skipPaths.some(path => req.originalUrl.startsWith(path));
       
       // Debug logging
-      console.log(`[CACHE] Cache check for ${req.originalUrl}:`, {
+      logger.debug(`[CACHE] Cache check for ${req.originalUrl}:`, {
         method: req.method,
         shouldSkip,
         matchedPath: skipPaths.find(path => req.originalUrl.startsWith(path)) || 'none'
       });
       
       logger.info('Cache middleware check:', {
+        file: 'index.ts',
+        line: '108',
         url: req.originalUrl,
         method: req.method,
         shouldSkip,
@@ -132,19 +134,19 @@ async function checkRedisConnection() {
     // Import the Redis client from setup
     const { client } = await import('./setup');
     await client.ping();
-    console.log('✅ Redis connection successful');
+    logInfo('✅ Redis connection successful', { file: 'index.ts', line: '135' });
     return true;
   } catch (error) {
-    console.error('❌ Redis connection failed:', error);
+    logError('❌ Redis connection failed:', { file: 'index.ts', line: '138', error });
     return false;
   }
 }
 
 app.listen(PORT, async () => {
-  console.log(`Auth API running on port ${PORT}`);
+  logger.info(`Auth API running on port ${PORT}`, { file: 'index.ts', line: '144' });
   console.log(`Admin GUI available at http://localhost:${PORT}/admin`);
   if (swaggerDocument) {
-    console.log(`API docs available at http://localhost:${PORT}/docs`);
+    logger.info(`API docs available at http://localhost:${PORT}/docs`, { file: 'index.ts', line: '147' });
   }
   
   // Check Redis connection

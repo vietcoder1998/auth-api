@@ -31,7 +31,6 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 	const sso = req.sso;
 
 	console.log('[RBAC] Checking permissions for:', req.originalUrl, req.method);
-	console.log('[RBAC] User permissions:', user?.permissions?.map(p => ({ name: p.name, route: p.route, method: p.method })));
 	console.log('[RBAC] SSO authentication:', !!sso);
 
 	if (req.originalUrl?.includes('/admin/auth') || req.originalUrl?.includes('/api/sso')) {
