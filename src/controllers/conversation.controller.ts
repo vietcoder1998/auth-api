@@ -197,7 +197,7 @@ export async function getConversation(req: Request, res: Response) {
     const [messages, totalMessages] = await Promise.all([
       prisma.message.findMany({
         where: { conversationId: id },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { position: 'asc' },
         skip,
         take: limitNum,
       }),
@@ -249,6 +249,13 @@ export async function addMessage(req: Request, res: Response) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
+    // Get the next position for this conversation
+    const lastMessage = await prisma.message.findFirst({
+      where: { conversationId: id },
+      orderBy: { position: 'desc' }
+    });
+    const nextPosition = (lastMessage?.position || 0) + 1;
+
     // Create user message
     const message = await prisma.message.create({
       data: {
@@ -256,6 +263,7 @@ export async function addMessage(req: Request, res: Response) {
         sender,
         content,
         metadata: metadata ? JSON.stringify(metadata) : null,
+        position: nextPosition,
       }
     });
 
@@ -269,20 +277,19 @@ export async function addMessage(req: Request, res: Response) {
     if (sender === 'user') {
       try {
         const aiResponse = await llmService.generateConversationResponse(id, content, conversation.agent.id);
-        
         const aiMessage = await prisma.message.create({
           data: {
             conversationId: id,
             sender: 'agent',
             content: aiResponse.content,
             metadata: JSON.stringify(aiResponse.metadata),
-            tokens: aiResponse.tokens
+            tokens: aiResponse.tokens,
+            position: nextPosition + 1,
           }
         });
 
         res.status(201).json({
-          userMessage: message,
-          aiMessage: aiMessage,
+          messages: [message, aiMessage],
           aiMetadata: {
             model: aiResponse.model,
             tokens: aiResponse.tokens,
@@ -293,12 +300,14 @@ export async function addMessage(req: Request, res: Response) {
         console.error('AI response generation failed:', aiError);
         // Still return the user message even if AI fails
         res.status(201).json({
-          userMessage: message,
+          messages: [message],
           aiError: 'AI response generation failed'
         });
       }
     } else {
-      res.status(201).json(message);
+      res.status(201).json({
+        messages: [message]
+      });
     }
   } catch (err) {
     console.error('Add message error:', err);

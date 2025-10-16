@@ -296,9 +296,11 @@ model Message {
   content        String       @db.Text
   metadata       String?      @db.Text // JSON (tool calls, attachments, etc.)
   tokens         Int?         // Token count for this message
+  position       Int          @default(0) // Position/order in conversation
   
   createdAt      DateTime     @default(now())
 
+  @@index([conversationId, position])
   @@map("message")
 }
 
