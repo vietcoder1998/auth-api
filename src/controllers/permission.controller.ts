@@ -1,22 +1,98 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import { logInfo, logError } from '../middlewares/logger.middle';
+import { setPaginationMeta } from '../middlewares/response.middleware';
 
 const prisma = new PrismaClient();
 
 export async function getPermissions(req: Request, res: Response) {
   try {
+    // Extract query parameters
+    const {
+      page = '1',
+      limit = '10',
+      pageSize = limit,
+      search = '',
+      q = search,
+      category,
+      method,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Parse pagination parameters
+    const currentPage = Math.max(1, parseInt(page as string, 10));
+    const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
+    const skip = (currentPage - 1) * currentLimit;
+
+    // Build where clause for search and filters
+    const whereClause: any = {};
+
+    // Search across multiple fields
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      whereClause.OR = [
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { description: { contains: searchTerm, mode: 'insensitive' } },
+        { category: { contains: searchTerm, mode: 'insensitive' } },
+        { route: { contains: searchTerm, mode: 'insensitive' } },
+        { method: { contains: searchTerm, mode: 'insensitive' } },
+        {
+          roles: {
+            some: {
+              name: { contains: searchTerm, mode: 'insensitive' }
+            }
+          }
+        }
+      ];
+    }
+
+    // Category filter
+    if (category && typeof category === 'string') {
+      whereClause.category = category;
+    }
+
+    // Method filter
+    if (method && typeof method === 'string') {
+      whereClause.method = method;
+    }
+
+    // Build orderBy clause
+    const orderBy: any = {};
+    if (sortBy === 'name') {
+      orderBy.name = sortOrder;
+    } else if (sortBy === 'category') {
+      orderBy.category = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else {
+      orderBy.createdAt = 'desc'; // Default
+    }
+
+    // Get total count for pagination
+    const total = await prisma.permission.count({ where: whereClause });
+
+    // Get permissions with pagination
     const permissions = await prisma.permission.findMany({
-      include: { roles: true },
-      orderBy: { createdAt: 'desc' }
+      where: whereClause,
+      include: { 
+        roles: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
+      orderBy,
+      skip,
+      take: currentLimit
     });
 
-    // Add usage count calculation
+    // Add usage count calculation (simulation)
     // NOTE: This is a simulation. For production, implement real usage tracking by:
     // 1. Creating a PermissionUsage table with permissionId, userId, timestamp
     // 2. Logging usage in middleware when permissions are checked
     // 3. Aggregating counts with: SELECT permissionId, COUNT(*) FROM permission_usage GROUP BY permissionId
-    // This simulation provides realistic data based on permission characteristics
     const permissionsWithUsage = permissions.map(permission => {
       let baseUsage = 0;
       
@@ -39,9 +115,10 @@ export async function getPermissions(req: Request, res: Response) {
       // Route-based usage (routes get more hits than abstract permissions)
       const routeBonus = permission.route ? 100 : 0;
       
-      // Calculate final usage with some randomness
+      // Calculate final usage with some randomness (but consistent per permission)
+      const seed = permission.id.charCodeAt(0) + permission.name.length;
+      const randomFactor = 0.5 + ((seed % 100) / 100); // Consistent randomness
       baseUsage = roleMultiplier + categoryUsage + routeBonus;
-      const randomFactor = 0.5 + (Math.random() * 1.0); // 50% to 150% of base
       
       return {
         ...permission,
@@ -49,7 +126,20 @@ export async function getPermissions(req: Request, res: Response) {
       };
     });
 
-    res.json(permissionsWithUsage);
+    // Set pagination metadata for response middleware
+    setPaginationMeta(req, total, currentPage, currentLimit);
+
+    // Return paginated response
+    res.json({
+      data: permissionsWithUsage,
+      total,
+      page: currentPage,
+      limit: currentLimit,
+      totalPages: Math.ceil(total / currentLimit),
+      hasNextPage: currentPage < Math.ceil(total / currentLimit),
+      hasPrevPage: currentPage > 1
+    });
+
   } catch (err) {
     logError('Failed to fetch permissions:', err);
     res.status(500).json({ error: 'Failed to fetch permissions' });
