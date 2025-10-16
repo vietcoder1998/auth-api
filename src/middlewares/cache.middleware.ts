@@ -10,28 +10,127 @@ function generateCacheKey(req: Request): string {
   return `cache:${crypto.createHash('md5').update(data).digest('hex')}`;
 }
 
+// Generate a URL-based cache key for easier pattern matching
+function generateUrlBasedCacheKey(req: Request): string {
+  const cleanUrl = req.originalUrl.split('?')[0]; // Remove query params for the pattern
+  const queryString = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
+  const hash = crypto.createHash('md5').update(JSON.stringify({ method: req.method, body: req.body, query: req.query })).digest('hex').substring(0, 8);
+  
+  // Create a key that includes the URL path for pattern matching
+  return `cache:url:${cleanUrl.replace(/\//g, ':')}:${hash}${queryString ? ':' + Buffer.from(queryString).toString('base64').substring(0, 8) : ''}`;
+}
+
+// Invalidate cache by URL path pattern
+async function invalidateCacheByUrlPattern(urlPath: string): Promise<number> {
+  try {
+    if (!client.isOpen) {
+      logger.info('Redis not connected, skipping cache invalidation');
+      return 0;
+    }
+
+    // Clean the URL path
+    const cleanPath = urlPath.split('?')[0].replace(/\//g, ':');
+    
+    // Get all cache keys that match the URL pattern
+    const pattern = `cache:url:${cleanPath}*`;
+    const matchingKeys = await client.keys(pattern);
+    
+    // Also check for parent paths - if we're invalidating /api/admin/conversions/123
+    // we should also invalidate /api/admin/conversions
+    const pathParts = urlPath.split('/').filter(part => part.length > 0);
+    let allKeysToDelete = [...matchingKeys];
+    
+    for (let i = 1; i < pathParts.length; i++) {
+      const parentPath = '/' + pathParts.slice(0, i).join('/');
+      const parentPattern = `cache:url:${parentPath.replace(/\//g, ':')}*`;
+      const parentKeys = await client.keys(parentPattern);
+      allKeysToDelete = [...allKeysToDelete, ...parentKeys];
+    }
+    
+    // Remove duplicates
+    const uniqueKeys = [...new Set(allKeysToDelete)];
+    
+    if (uniqueKeys.length > 0) {
+      await client.del(uniqueKeys);
+      logger.info(`Invalidated ${uniqueKeys.length} cache entries for URL pattern: ${urlPath}`);
+      return uniqueKeys.length;
+    }
+
+    return 0;
+  } catch (error) {
+    logger.error('Cache invalidation by URL pattern error:', error);
+    return 0;
+  }
+}
+
 // Cache middleware factory
 export function cacheMiddleware(
   options: {
     ttl?: number; // Time to live in seconds
     skipCache?: (req: Request) => boolean; // Function to determine if caching should be skipped
     keyGenerator?: (req: Request) => string; // Custom key generator
+    useUrlBasedKeys?: boolean; // Use URL-based keys for easier pattern matching
   } = {},
 ) {
   const {
     ttl = 300, // Default 5 minutes
     skipCache = () => false,
     keyGenerator = generateCacheKey,
+    useUrlBasedKeys = true, // Default to true for better cache invalidation
   } = options;
 
   return async (req: Request, res: Response, next: NextFunction) => {
+    // Handle cache invalidation for non-GET requests
+    if (['PUT', 'POST', 'DELETE', 'PATCH'].includes(req.method)) {
+      try {
+        const urlPath = req.originalUrl.split('?')[0];
+        
+        // Invalidate cache for the current path and its parent paths
+        // For example: PUT /api/admin/conversions/123 should invalidate:
+        // - /api/admin/conversions/123
+        // - /api/admin/conversions  
+        // - /api/admin
+        // - /api
+        const pathParts = urlPath.split('/').filter(part => part.length > 0);
+        const pathsToInvalidate = [];
+        
+        // Add the full path
+        pathsToInvalidate.push(urlPath);
+        
+        // Add parent paths
+        for (let i = pathParts.length - 1; i > 0; i--) {
+          const parentPath = '/' + pathParts.slice(0, i).join('/');
+          pathsToInvalidate.push(parentPath);
+        }
+        
+        let totalInvalidated = 0;
+        for (const path of pathsToInvalidate) {
+          const count = await invalidateCacheByUrlPattern(path);
+          totalInvalidated += count;
+        }
+        
+        if (totalInvalidated > 0) {
+          logger.info(`Cache invalidation completed for ${req.method} ${urlPath}`, {
+            method: req.method,
+            url: urlPath,
+            invalidatedPaths: pathsToInvalidate,
+            totalInvalidated
+          });
+        }
+      } catch (error) {
+        logger.error('Cache invalidation error:', error);
+      }
+      
+      return next();
+    }
+
     // Skip caching for non-GET requests or when explicitly skipped
     if (req.method !== 'GET' || skipCache(req)) {
       return next();
     }
 
     try {
-      const cacheKey = keyGenerator(req);
+      const cacheKey = useUrlBasedKeys ? generateUrlBasedCacheKey(req) : keyGenerator(req);
       logger.info('Cache middleware processing:', {
         method: req.method,
         url: req.originalUrl,
@@ -162,6 +261,9 @@ export async function invalidateCache(pattern: string = '*') {
     return 0;
   }
 }
+
+// Export the URL-based cache invalidation function
+export { invalidateCacheByUrlPattern };
 
 // Cache statistics
 export async function getCacheStats() {
