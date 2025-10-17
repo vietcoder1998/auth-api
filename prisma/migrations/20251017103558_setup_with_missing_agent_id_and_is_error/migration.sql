@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `message` ADD COLUMN `agentId` VARCHAR(191) NULL,
+    ADD COLUMN `isError` BOOLEAN NOT NULL DEFAULT false;
