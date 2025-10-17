@@ -194,7 +194,26 @@ export const mockPermissions = [
   { name: 'manage_logs', description: 'Full log management access including clear and export', category: 'logs' },
   { name: 'create_logs', description: 'Create manual log entries', category: 'logs' },
   { name: 'export_logs', description: 'Export logs for analysis and reporting', category: 'logs' },
-  { name: 'clear_old_logs', description: 'Clear old log entries to manage storage', category: 'logs' }
+  { name: 'clear_old_logs', description: 'Clear old log entries to manage storage', category: 'logs' },
+
+  // Database Connection Management permissions
+  { name: 'admin_database_connections_get', description: 'GET admin database connections endpoint', category: 'api', route: '/api/admin/database-connections', method: 'GET' },
+  { name: 'admin_database_connections_post', description: 'POST admin database connections endpoint', category: 'api', route: '/api/admin/database-connections', method: 'POST' },
+  { name: 'admin_database_connections_put', description: 'PUT admin database connections endpoint', category: 'api', route: '/api/admin/database-connections/:id', method: 'PUT' },
+  { name: 'admin_database_connections_delete', description: 'DELETE admin database connections endpoint', category: 'api', route: '/api/admin/database-connections/:id', method: 'DELETE' },
+  { name: 'admin_database_connections_test', description: 'POST admin database connections test endpoint', category: 'api', route: '/api/admin/database-connections/:id/test', method: 'POST' },
+  { name: 'admin_database_connections_check', description: 'POST admin database connections check endpoint', category: 'api', route: '/api/admin/database-connections/:id/check', method: 'POST' },
+  { name: 'admin_database_connections_backup', description: 'POST admin database connections backup endpoint', category: 'api', route: '/api/admin/database-connections/:id/backup', method: 'POST' },
+  { name: 'admin_database_connections_stats', description: 'GET admin database connections statistics endpoint', category: 'api', route: '/api/admin/database-connections/stats', method: 'GET' },
+
+  // High-level database connection permissions
+  { name: 'view_database_connections', description: 'View database connections and their status', category: 'database' },
+  { name: 'manage_database_connections', description: 'Full database connection management access', category: 'database' },
+  { name: 'create_database_connections', description: 'Create new database connections', category: 'database' },
+  { name: 'update_database_connections', description: 'Update existing database connections', category: 'database' },
+  { name: 'delete_database_connections', description: 'Delete database connections', category: 'database' },
+  { name: 'test_database_connections', description: 'Test database connections for connectivity', category: 'database' },
+  { name: 'backup_databases', description: 'Create backups of connected databases', category: 'database' }
 ];
 
 // Mock data for roles and their permission mappings
@@ -214,7 +233,11 @@ export const mockRoles = [
       'admin_logic_history_get',
       'admin_cache_get',
       'admin_cache_post',
-      'admin_cache_delete'
+      'admin_cache_delete',
+      'view_logs',
+      'manage_logs',
+      'view_database_connections',
+      'manage_database_connections'
     ].includes(p.name)
   },
   {

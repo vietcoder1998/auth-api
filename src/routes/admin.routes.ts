@@ -17,6 +17,7 @@ import conversationRouter from './conversation.routes';
 import labelRouter from './label.routes';
 import seedRouter from './seed.routes';
 import loggerRouter from './logger.routes';
+import databaseConnectionRouter from './database-connection.routes';
 
 const router = Router();
 
@@ -37,5 +38,6 @@ router.use('/conversations', conversationRouter);
 router.use('/labels', labelRouter);
 router.use('/seed', seedRouter);
 router.use('/logs', loggerRouter);
+router.use('/database-connections', databaseConnectionRouter);
 
 export default router;

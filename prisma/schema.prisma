@@ -368,6 +368,42 @@ model EntityLabel {
   @@map("entity_label")
 }
 
+// Database Connection Management
+model DatabaseConnection {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.Text
+  type        String   // 'mysql', 'postgresql', 'mongodb', 'sqlite'
+  host        String
+  port        Int      @default(3306)
+  database    String
+  username    String
+  password    String   // Should be encrypted in production
+  
+  // Connection options
+  ssl         Boolean  @default(false)
+  timeout     Int      @default(30000) // Connection timeout in milliseconds
+  options     String?  @db.Text // JSON string for additional connection options
+  
+  // Status and monitoring
+  isActive    Boolean  @default(true)
+  lastTested  DateTime?
+  testStatus  String?  // 'success', 'failed', 'pending'
+  testError   String?  @db.Text
+  
+  // Backup settings
+  backupEnabled Boolean @default(false)
+  backupPath    String?
+  lastBackup    DateTime?
+  
+  // Metadata
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("database_connection")
+}
+
 // Application Logs
 model LogEntry {
   id           String   @id @default(uuid())
