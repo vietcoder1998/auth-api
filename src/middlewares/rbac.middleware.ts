@@ -1,5 +1,6 @@
 
 import { NextFunction, Request, Response } from 'express';
+import { logInfo, logError, logWarn } from './logger.middle';
 
 // Extend Express Request interface to include 'user'
 declare global {
@@ -30,23 +31,19 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 	const user = req.user;
 	const sso = req.sso;
 
-	console.log('[RBAC] Checking permissions for:', req.originalUrl, req.method);
-	console.log('[RBAC] SSO authentication:', !!sso);
-
 	if (req.originalUrl?.includes('/admin/auth') || req.originalUrl?.includes('/api/sso')) {
-		console.log('[RBAC] Auth/SSO route, skipping RBAC');
 		return next()
 	}
 
-	// Temporary: Skip RBAC for history endpoints to test if controllers work
-	if (req.originalUrl?.includes('/admin/login-history') || req.originalUrl?.includes('/admin/logic-history')) {
-		console.log('[RBAC] Temporarily skipping RBAC for history endpoints');
+	// Temporary: Skip RBAC for history endpoints and logs to test if controllers work
+	if (req.originalUrl?.includes('/admin/login-history') || 
+		req.originalUrl?.includes('/admin/logic-history') ||
+		req.originalUrl?.includes('/admin/logs')) {
 		return next();
 	}
 
 	// If SSO authentication but no user permissions loaded, load them
 	if (sso && (!user || !user.permissions)) {
-		console.log('[RBAC] Loading permissions for SSO user');
 		try {
 			const userWithPermissions = await require('@prisma/client').PrismaClient().user.findUnique({
 				where: { id: sso.userId },
@@ -69,14 +66,26 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 						method: p.method,
 					})),
 				};
+				logInfo('RBAC SSO user permissions loaded', {
+					userId: sso.userId,
+					roleName: userWithPermissions.role.name,
+					permissionCount: userWithPermissions.role.permissions.length
+				});
 			}
 		} catch (error) {
-			console.error('[RBAC] Error loading SSO user permissions:', error);
+			logError('RBAC failed to load SSO user permissions', {
+				userId: sso.userId,
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
 		}
 	}
 
 	if (!user && !sso) {
-		console.log('[RBAC] No user or SSO found, returning 401');
+		logWarn('RBAC access denied - no authentication', {
+			endpoint: req.originalUrl,
+			method: req.method,
+			reason: 'No user or SSO found'
+		});
 		return res.status(401).json({ error: 'Unauthorized' });
 	}
 
@@ -85,8 +94,6 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 		const currentRoute = req.route?.path || req.path;
 		const fullUrl = req.originalUrl; // Use the full URL for matching
 		const currentMethod = req.method.toUpperCase();
-
-		console.log('[RBAC] Checking route:', currentRoute, 'fullUrl:', fullUrl, 'method:', currentMethod);
 
 		// Helper function to match parameterized routes
 		const matchesParameterizedRoute = (permissionRoute: string, actualUrl: string): boolean => {
@@ -97,10 +104,7 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 				.replace(/\//g, '\\/'); // Escape forward slashes
 			
 			const regex = new RegExp(`^${regexPattern}(?:\\?.*)?$`); // Allow query parameters
-			const match = regex.test(actualUrl);
-			
-			console.log('[RBAC] Regex match:', permissionRoute, '->', regexPattern, 'against', actualUrl, '=', match);
-			return match;
+			return regex.test(actualUrl);
 		};
 
 		const hasRoutePermission = user.permissions.some(perm => {
@@ -115,7 +119,6 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 					routeMatch = matchesParameterizedRoute(perm.route, fullUrl);
 				}
 				
-				console.log('[RBAC] Permission check:', perm.name, 'route:', perm.route, 'method:', perm.method, 'matches:', routeMatch);
 				return routeMatch;
 			}
 			// Fallback to wildcard permissions
@@ -127,21 +130,28 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
 					routeMatch = matchesParameterizedRoute(perm.route, fullUrl);
 				}
 				
-				console.log('[RBAC] Wildcard permission check:', perm.name, 'route:', perm.route, 'matches:', routeMatch);
 				return routeMatch;
 			}
 			return false;
 		});
 
-		console.log('[RBAC] Final permission result:', hasRoutePermission);
-
 		if (hasRoutePermission) {
+			logInfo('RBAC access granted', {
+				endpoint: req.originalUrl,
+				method: req.method,
+				userEmail: user.email,
+				userId: user.id
+			});
 			return next();
 		}
-	} else {
-		console.log('[RBAC] User has no permissions');
 	}
 
-	console.log('[RBAC] Access denied, returning 403');
+	logWarn('RBAC access denied - insufficient privileges', {
+		endpoint: req.originalUrl,
+		method: req.method,
+		userEmail: user?.email,
+		userId: user?.id,
+		hasPermissions: !!user?.permissions?.length
+	});
 	return res.status(403).json({ error: 'Forbidden: insufficient privileges' });
 };
