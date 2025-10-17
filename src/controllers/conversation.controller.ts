@@ -221,6 +221,55 @@ export async function getConversation(req: Request, res: Response) {
   }
 }
 
+// Get all messages for a conversation
+export async function getMessages(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params; // conversation id
+    const { page = 1, limit = 100, sortOrder = 'asc' } = req.query;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Check if conversation belongs to user
+    const conversation = await prisma.conversation.findFirst({
+      where: { id, userId }
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get messages with pagination
+    const [messages, totalMessages] = await Promise.all([
+      prisma.message.findMany({
+        where: { conversationId: id },
+        orderBy: { position: sortOrder === 'desc' ? 'desc' : 'asc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.message.count({ where: { conversationId: id } })
+    ]);
+
+    res.json({
+      data: messages,
+      total: totalMessages,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(totalMessages / limitNum),
+      conversationId: id
+    });
+  } catch (err) {
+    console.error('Get messages error:', err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+}
+
 // Add message to conversation
 export async function addMessage(req: Request, res: Response) {
   try {
@@ -290,6 +339,8 @@ export async function addMessage(req: Request, res: Response) {
         });
 
         res.status(201).json({
+          userMessage: message,
+          aiMessage: aiMessage,
           messages: [message, aiMessage],
           aiMetadata: {
             model: aiResponse.model,
@@ -301,12 +352,16 @@ export async function addMessage(req: Request, res: Response) {
         console.error('AI response generation failed:', aiError);
         // Still return the user message even if AI fails
         res.status(201).json({
+          userMessage: message,
+          aiMessage: null,
           messages: [message],
           aiError: 'AI response generation failed'
         });
       }
     } else {
       res.status(201).json({
+        userMessage: message,
+        aiMessage: null,
         messages: [message]
       });
     }

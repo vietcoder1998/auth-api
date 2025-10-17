@@ -3,6 +3,7 @@ import {
   getConversations,
   createConversation,
   getConversation,
+  getMessages,
   addMessage,
   updateConversation,
   deleteConversation,
@@ -19,6 +20,7 @@ router.put('/:id', updateConversation);
 router.delete('/:id', deleteConversation);
 
 // Message operations
+router.get('/:id/messages', getMessages);
 router.post('/:id/messages', addMessage);
 
 // Command operations
