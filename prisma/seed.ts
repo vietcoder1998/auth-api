@@ -401,7 +401,7 @@ async function main() {
     userEmail: undefined // Remove the userEmail field as it's not part of the schema
   }));
 
-  const createdSSOEntries = [];
+  const createdSSOEntries: any[] = [];
   for (const sso of ssoEntries) {
     if (sso.userId) {
       const createdSSO = await prisma.sSO.upsert({
@@ -910,6 +910,27 @@ async function main() {
       skipDuplicates: true
     });
   }
+
+  // Seed mock socket and events
+  const mockSocket = await prisma.socketConfig.upsert({
+    where: { id: 'mock-socket' },
+    update: {},
+    create: {
+      id: 'mock-socket',
+      name: 'Mock Socket',
+      host: 'localhost',
+      port: 4001,
+      isActive: true,
+    },
+  });
+  await prisma.socketEvent.createMany({
+    data: [
+      { socketConfigId: mockSocket.id, type: 'user', event: 'user_joined' },
+      { socketConfigId: mockSocket.id, type: 'user', event: 'user_left' },
+      { socketConfigId: mockSocket.id, type: 'message', event: 'message' },
+    ],
+    skipDuplicates: true,
+  });
 
   console.log('✅ AI seeding completed successfully!');
   

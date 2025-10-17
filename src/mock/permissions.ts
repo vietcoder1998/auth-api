@@ -284,7 +284,17 @@ export const mockPermissions = [
   { name: 'update_database_connections', description: 'Update existing database connections', category: 'database' },
   { name: 'delete_database_connections', description: 'Delete database connections', category: 'database' },
   { name: 'test_database_connections', description: 'Test database connections for connectivity', category: 'database' },
-  { name: 'backup_databases', description: 'Create backups of connected databases', category: 'database' }
+  { name: 'backup_databases', description: 'Create backups of connected databases', category: 'database' },
+
+  // Socket and Socket Event permissions
+  { name: 'socket_view', description: 'View socket configurations', category: 'socket', route: '/api/admin/sockets', method: 'GET' },
+  { name: 'socket_create', description: 'Create socket configuration', category: 'socket', route: '/api/admin/sockets', method: 'POST' },
+  { name: 'socket_update', description: 'Update socket configuration', category: 'socket', route: '/api/admin/sockets/:id', method: 'PUT' },
+  { name: 'socket_delete', description: 'Delete socket configuration', category: 'socket', route: '/api/admin/sockets/:id', method: 'DELETE' },
+  { name: 'socket_event_view', description: 'View socket events', category: 'socket_event', route: '/api/admin/sockets/:socketConfigId/events', method: 'GET' },
+  { name: 'socket_event_create', description: 'Create socket event', category: 'socket_event', route: '/api/admin/sockets/:socketConfigId/events', method: 'POST' },
+  { name: 'socket_event_delete', description: 'Delete socket event', category: 'socket_event', route: '/api/admin/sockets/events/:id', method: 'DELETE' },
+  { name: 'socket_event_add_user', description: 'Add user to socket event', category: 'socket_event', route: '/api/admin/sockets/:socketConfigId/add-user', method: 'POST' }
 ];
 
 // Mock data for roles and their permission mappings
