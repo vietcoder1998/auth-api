@@ -18,10 +18,57 @@ export interface LLMMessage {
 export class LLMService {
   private apiKey: string;
   private baseUrl: string;
+  private isApiConnected: boolean = false;
 
   constructor() {
     this.apiKey = process.env.OPENAI_API_KEY || '';
     this.baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+    
+    // Ping OpenAI API on initialization
+    this.pingOpenAI();
+  }
+
+  /**
+   * Ping OpenAI API to test connection
+   */
+  private async pingOpenAI(): Promise<void> {
+    try {
+      if (!this.apiKey) {
+        console.log('⚠️  OpenAI API key not configured');
+        this.isApiConnected = false;
+        return;
+      }
+
+      console.log('🔄 Testing OpenAI API connection...');
+      
+      const response = await fetch(`${this.baseUrl}/models`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const modelCount = data.data?.length || 0;
+        console.log(`✅ OpenAI API connected successfully! Available models: ${modelCount}`);
+        this.isApiConnected = true;
+      } else {
+        console.error(`❌ OpenAI API connection failed: ${response.status} ${response.statusText}`);
+        this.isApiConnected = false;
+      }
+    } catch (error) {
+      console.error('❌ OpenAI API ping failed:', error instanceof Error ? error.message : error);
+      this.isApiConnected = false;
+    }
+  }
+
+  /**
+   * Get API connection status
+   */
+  isConnected(): boolean {
+    return this.isApiConnected;
   }
 
   /**
@@ -39,9 +86,9 @@ export class LLMService {
     const startTime = Date.now();
     
     try {
-      // If no API key is configured, return mock response
-      if (!this.apiKey) {
-        console.log('OpenAI API key not configured, returning mock response');
+      // If API is not connected, return mock response
+      if (!this.isApiConnected) {
+        console.log('OpenAI API not connected, returning mock response');
         return this.generateMockResponse();
       }
 
