@@ -24,18 +24,17 @@ export class TokenService {
     this.accessTokenExpiry = process.env.ACCESS_TOKEN_EXPIRY || '1h';
     this.refreshTokenExpiry = process.env.REFRESH_TOKEN_EXPIRY || '7d';
   }
-
   /**
    * Generate JWT tokens
    */
-  generateTokens(payload: TokenPayload) {
-    const accessToken = jwt.sign(payload, this.jwtSecret as jwt.Secret, {
+  generateTokens(payload: TokenPayload): { accessToken: string; refreshToken: string } {
+    const accessToken = jwt.sign(payload, this.jwtSecret, {
       expiresIn: this.accessTokenExpiry
-    });
+    } as jwt.SignOptions);
 
-    const refreshToken = jwt.sign(payload, this.jwtSecret as jwt.Secret, {
+    const refreshToken = jwt.sign(payload, this.jwtSecret, {
       expiresIn: this.refreshTokenExpiry
-    });
+    } as jwt.SignOptions);
 
     return { accessToken, refreshToken };
   }
