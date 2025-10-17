@@ -2,7 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 // Update the path below to the correct location of your Redis client setup file
 import { client } from '../setup';
-import { generateToken, generateRefreshToken, validateToken } from '../service/auth.service';
+import { generateToken, generateRefreshToken, validateToken } from '../services/auth.service';
 import { HistoryService } from '../services/history.service';
 import { Request, Response } from 'express';
 const prisma = new PrismaClient();

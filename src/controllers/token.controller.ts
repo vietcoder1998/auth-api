@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import { client } from '../setup';
-import { generateToken, generateRefreshToken } from '../service/auth.service';
+import { generateToken, generateRefreshToken } from '../services/auth.service';
 const prisma = new PrismaClient();
 
 export async function revokeToken(req: Request, res: Response) {

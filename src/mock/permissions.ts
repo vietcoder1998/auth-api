@@ -180,7 +180,21 @@ export const mockPermissions = [
   { name: 'manage_database_seed', description: 'Full database seeding management access', category: 'system' },
   { name: 'view_database_stats', description: 'View database statistics and counts', category: 'system' },
   { name: 'seed_data', description: 'Seed database with default data', category: 'system' },
-  { name: 'clear_database', description: 'Clear all data from database (dangerous)', category: 'system' }
+  { name: 'clear_database', description: 'Clear all data from database (dangerous)', category: 'system' },
+
+  // Logging Management permissions
+  { name: 'admin_logs_get', description: 'GET admin logs endpoint', category: 'api', route: '/api/admin/logs', method: 'GET' },
+  { name: 'admin_logs_post', description: 'POST admin logs endpoint', category: 'api', route: '/api/admin/logs', method: 'POST' },
+  { name: 'admin_logs_stats', description: 'GET admin logs statistics endpoint', category: 'api', route: '/api/admin/logs/stats', method: 'GET' },
+  { name: 'admin_logs_export', description: 'GET admin logs export endpoint', category: 'api', route: '/api/admin/logs/export', method: 'GET' },
+  { name: 'admin_logs_clear', description: 'DELETE admin logs clear old logs endpoint', category: 'api', route: '/api/admin/logs/clear', method: 'DELETE' },
+
+  // High-level logging permissions
+  { name: 'view_logs', description: 'View application logs and audit trail', category: 'logs' },
+  { name: 'manage_logs', description: 'Full log management access including clear and export', category: 'logs' },
+  { name: 'create_logs', description: 'Create manual log entries', category: 'logs' },
+  { name: 'export_logs', description: 'Export logs for analysis and reporting', category: 'logs' },
+  { name: 'clear_old_logs', description: 'Clear old log entries to manage storage', category: 'logs' }
 ];
 
 // Mock data for roles and their permission mappings

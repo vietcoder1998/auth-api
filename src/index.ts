@@ -87,6 +87,7 @@ app.use(
         '/api/admin/cache', // Don't cache the cache management endpoints
         '/api/admin/login-history', // Don't cache login history (real-time data)
         '/api/admin/logic-history', // Don't cache logic history (real-time data)
+        '/api/admin/logs', // Don't cache logs (real-time data)
       ];
       
       // Skip caching for POST, PUT, DELETE, PATCH requests (only cache GET requests)

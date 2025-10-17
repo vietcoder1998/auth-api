@@ -34,6 +34,7 @@ model User {
   apiKeys      ApiKey[]       // API keys created by this user
   agents       Agent[]        // AI agents owned by this user
   conversations Conversation[] // Conversations this user participated in
+  logEntries   LogEntry[]     // Log entries created by this user
   status       String         @default("active")
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -365,4 +366,27 @@ model EntityLabel {
   @@index([labelId])
   @@index([entityType])
   @@map("entity_label")
+}
+
+// Application Logs
+model LogEntry {
+  id           String   @id @default(uuid())
+  level        String   // 'error', 'warn', 'info', 'debug'
+  message      String   @db.Text
+  metadata     String?  @db.Text // JSON metadata
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  ipAddress    String?
+  userAgent    String?  @db.Text
+  endpoint     String?
+  method       String?  // HTTP method
+  statusCode   Int?
+  responseTime Int?     // Response time in milliseconds
+  timestamp    DateTime @default(now())
+
+  @@index([level])
+  @@index([userId])
+  @@index([timestamp])
+  @@index([endpoint])
+  @@map("log_entry")
 }

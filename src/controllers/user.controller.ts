@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { generateToken, generateRefreshToken } from '../service/auth.service';
+import { generateToken, generateRefreshToken } from '../services/auth.service';
 import { client } from '../setup';
 import { setPaginationMeta } from '../middlewares/response.middleware';
 

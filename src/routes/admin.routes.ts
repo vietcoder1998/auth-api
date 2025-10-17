@@ -16,6 +16,7 @@ import agentRouter from './agent.routes';
 import conversationRouter from './conversation.routes';
 import labelRouter from './label.routes';
 import seedRouter from './seed.routes';
+import loggerRouter from './logger.routes';
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use('/agents', agentRouter);
 router.use('/conversations', conversationRouter);
 router.use('/labels', labelRouter);
 router.use('/seed', seedRouter);
+router.use('/logs', loggerRouter);
 
 export default router;
