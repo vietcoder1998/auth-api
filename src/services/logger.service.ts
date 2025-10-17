@@ -5,10 +5,10 @@ import path from 'path';
 const prisma = new PrismaClient();
 
 export enum LogLevel {
-  ERROR = 'error',
-  WARN = 'warn',
-  INFO = 'info',
-  DEBUG = 'debug'
+  ERROR = 'ERROR',
+  WARN = 'WARN',
+  INFO = 'INFO',
+  DEBUG = 'DEBUG'
 }
 
 export interface LogEntry {
@@ -232,7 +232,7 @@ export class LoggerService {
     infoCount: number;
     debugCount: number;
     todayLogs: number;
-    recentErrorRate: number;
+    avgResponseTime: number;
   }> {
     try {
       const today = new Date();
@@ -245,7 +245,7 @@ export class LoggerService {
         infoCount,
         debugCount,
         todayLogs,
-        recentLogs
+        avgResponseTimeResult
       ] = await Promise.all([
         prisma.logEntry.count(),
         prisma.logEntry.count({ where: { level: LogLevel.ERROR } }),
@@ -253,18 +253,17 @@ export class LoggerService {
         prisma.logEntry.count({ where: { level: LogLevel.INFO } }),
         prisma.logEntry.count({ where: { level: LogLevel.DEBUG } }),
         prisma.logEntry.count({ where: { timestamp: { gte: today } } }),
-        prisma.logEntry.findMany({
+        prisma.logEntry.aggregate({
           where: {
-            timestamp: {
-              gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-            }
+            responseTime: { not: null }
           },
-          select: { level: true }
+          _avg: {
+            responseTime: true
+          }
         })
       ]);
 
-      const recentErrorCount = recentLogs.filter(log => log.level === LogLevel.ERROR).length;
-      const recentErrorRate = recentLogs.length > 0 ? (recentErrorCount / recentLogs.length) * 100 : 0;
+      const avgResponseTime = avgResponseTimeResult._avg.responseTime || 0;
 
       return {
         totalLogs,
@@ -273,7 +272,7 @@ export class LoggerService {
         infoCount,
         debugCount,
         todayLogs,
-        recentErrorRate: Math.round(recentErrorRate * 100) / 100
+        avgResponseTime: Math.round(avgResponseTime * 100) / 100
       };
 
     } catch (error) {

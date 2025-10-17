@@ -145,6 +145,26 @@ if (process.env.NODE_ENV !== 'production') {
 // === Middleware ===
 export function loggerMiddleware(req: Request, res: Response, next: NextFunction) {
   const startTime = Date.now();
+  
+  // Import LoggerService dynamically to avoid circular dependency
+  import('../services/logger.service').then(({ loggerService, LogLevel }) => {
+    // Log request start (optional, only for debug)
+    if (process.env.NODE_ENV === 'development') {
+      loggerService.debug('Request started', {
+        endpoint: req.originalUrl,
+        method: req.method,
+        userAgent: req.get('User-Agent'),
+        ip: req.ip,
+        body: req.method !== 'GET' ? req.body : undefined,
+      }, {
+        userId: (req as any).user?.id,
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
+        method: req.method
+      });
+    }
+  });
 
   logger.info('Request started', {
     file: 'logger.middle.ts',
@@ -159,6 +179,43 @@ export function loggerMiddleware(req: Request, res: Response, next: NextFunction
   const originalSend = res.send;
   res.send = function (body) {
     const duration = Date.now() - startTime;
+    const statusCode = res.statusCode;
+    
+    // Log to database using LoggerService
+    import('../services/logger.service').then(({ loggerService, LogLevel }) => {
+      let level = LogLevel.INFO;
+      let message = 'Request completed';
+      
+      // Determine log level based on status code
+      if (statusCode >= 500) {
+        level = LogLevel.ERROR;
+        message = 'Request failed with server error';
+      } else if (statusCode >= 400) {
+        level = LogLevel.WARN;
+        message = 'Request failed with client error';
+      } else if (statusCode >= 300) {
+        level = LogLevel.INFO;
+        message = 'Request redirected';
+      }
+      
+      // Log to database
+      loggerService.log({
+        level,
+        message,
+        metadata: {
+          contentLength: res.get('Content-Length'),
+          responseBody: statusCode >= 400 ? body : undefined // Only log body for errors
+        },
+        userId: (req as any).user?.id,
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
+        method: req.method,
+        statusCode,
+        responseTime: duration
+      });
+    });
+
     logger.info('Request completed', {
       file: 'logger.middle.ts',
       line: '82',
