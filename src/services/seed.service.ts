@@ -529,6 +529,146 @@ export class SeedService {
       };
     }
   }
+
+  /**
+   * Get seed data for viewing
+   */
+  async getSeedData(): Promise<any> {
+    try {
+      const [
+        users,
+        roles,
+        permissions,
+        configs,
+        agents,
+        apiKeys
+      ] = await Promise.all([
+        prisma.user.findMany({
+          select: {
+            id: true,
+            email: true,
+            nickname: true,
+            status: true,
+            role: {
+              select: {
+                name: true
+              }
+            },
+            createdAt: true
+          },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.role.findMany({
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            _count: {
+              select: {
+                permissions: true,
+                users: true
+              }
+            },
+            createdAt: true
+          },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.permission.findMany({
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            route: true,
+            method: true,
+            description: true,
+            createdAt: true
+          },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.config.findMany({
+          select: {
+            id: true,
+            key: true,
+            value: true
+          }
+        }),
+        prisma.agent.findMany({
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            model: true,
+            isActive: true,
+            user: {
+              select: {
+                email: true
+              }
+            },
+            createdAt: true
+          },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.apiKey.findMany({
+          select: {
+            id: true,
+            name: true,
+            key: true,
+            isActive: true,
+            expiresAt: true,
+            user: {
+              select: {
+                email: true
+              }
+            },
+            createdAt: true
+          },
+          orderBy: { createdAt: 'desc' }
+        })
+      ]);
+
+      // Transform data for better display
+      const transformedData = {
+        users: users.map(user => ({
+          ...user,
+          roleName: user.role?.name || 'No Role'
+        })),
+        roles: roles.map(role => ({
+          ...role,
+          permissionCount: role._count.permissions,
+          userCount: role._count.users
+        })),
+        permissions,
+        configs: configs.map(config => ({
+          ...config,
+          value: typeof config.value === 'string' && config.value.length > 100 
+            ? config.value.substring(0, 100) + '...' 
+            : config.value
+        })),
+        agents: agents.map(agent => ({
+          ...agent,
+          userEmail: agent.user?.email || 'No User'
+        })),
+        apiKeys: apiKeys.map(key => ({
+          ...key,
+          keyMasked: key.key ? `${key.key.substring(0, 10)}...` : 'No Key',
+          userEmail: key.user?.email || 'No User'
+        }))
+      };
+
+      return {
+        success: true,
+        message: 'Seed data retrieved successfully',
+        data: transformedData
+      };
+    } catch (error) {
+      console.error('Get seed data error:', error);
+      return {
+        success: false,
+        message: 'Failed to retrieve seed data',
+        errors: [error instanceof Error ? error.message : 'Unknown error']
+      };
+    }
+  }
 }
 
 export const seedService = new SeedService();

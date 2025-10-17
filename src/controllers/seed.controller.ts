@@ -190,3 +190,23 @@ export async function getStats(req: Request, res: Response) {
     });
   }
 }
+
+// Get seed data for viewing
+export async function getSeedData(req: Request, res: Response) {
+  try {
+    const result = await seedService.getSeedData();
+    
+    if (result.success) {
+      res.status(200).json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  } catch (error) {
+    console.error('Get seed data controller error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve seed data',
+      errors: [error instanceof Error ? error.message : 'Unknown error']
+    });
+  }
+}

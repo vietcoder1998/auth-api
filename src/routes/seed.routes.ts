@@ -8,13 +8,17 @@ import {
   seedAgents,
   seedApiKeys,
   clearAll,
-  getStats
+  getStats,
+  getSeedData
 } from '../controllers/seed.controller';
 
 const router = Router();
 
 // Get database statistics
 router.get('/stats', getStats);
+
+// Get seed data for viewing
+router.get('/data', getSeedData);
 
 // Seed all data
 router.post('/all', seedAll);
