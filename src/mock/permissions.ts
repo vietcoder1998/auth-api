@@ -32,6 +32,28 @@ export const mockPermissions = [
   
   { name: 'view_self', description: 'View own profile', category: 'user', route: '/api/profile', method: 'GET' },
   
+  // Auth endpoints permissions  
+  { name: 'auth_health', description: 'GET auth health check endpoint', category: 'api', route: '/api/auth/health', method: 'GET' },
+  { name: 'auth_login', description: 'POST auth login endpoint', category: 'api', route: '/api/auth/login', method: 'POST' },
+  { name: 'auth_register', description: 'POST auth register endpoint', category: 'api', route: '/api/auth/register', method: 'POST' },
+  { name: 'auth_validate', description: 'POST auth validate endpoint', category: 'api', route: '/api/auth/validate', method: 'POST' },
+  { name: 'auth_me', description: 'GET auth me endpoint', category: 'api', route: '/api/auth/me', method: 'GET' },
+  { name: 'auth_handover_user_status', description: 'POST auth handover user status endpoint', category: 'api', route: '/api/auth/handover-user-status', method: 'POST' },
+
+  // Config endpoints permissions
+  { name: 'config_get', description: 'GET config endpoint', category: 'api', route: '/api/config', method: 'GET' },
+  { name: 'config_get_by_key', description: 'GET config by key endpoint', category: 'api', route: '/api/config/:key', method: 'GET' },
+  { name: 'config_post', description: 'POST config endpoint', category: 'api', route: '/api/config', method: 'POST' },
+  { name: 'config_put', description: 'PUT config endpoint', category: 'api', route: '/api/config', method: 'PUT' },
+  { name: 'config_delete', description: 'DELETE config endpoint', category: 'api', route: '/api/config/:key', method: 'DELETE' },
+
+  // SSO Auth endpoints permissions
+  { name: 'sso_auth_login', description: 'POST SSO auth login endpoint', category: 'api', route: '/api/sso-auth/login', method: 'POST' },
+  { name: 'sso_auth_logout', description: 'POST SSO auth logout endpoint', category: 'api', route: '/api/sso-auth/logout', method: 'POST' },
+  { name: 'sso_auth_me', description: 'GET SSO auth me endpoint', category: 'api', route: '/api/sso-auth/me', method: 'GET' },
+  { name: 'sso_auth_validate_key', description: 'POST SSO auth validate key endpoint', category: 'api', route: '/api/sso-auth/validate-key', method: 'POST' },
+  { name: 'sso_auth_validate', description: 'GET SSO auth validate endpoint', category: 'api', route: '/api/sso-auth/validate', method: 'GET' },
+  
   // Route-based permissions with full HTTP method support
   { name: 'admin_users_get', description: 'GET admin users endpoint', category: 'api', route: '/api/admin/users', method: 'GET' },
   { name: 'admin_users_post', description: 'POST admin users endpoint', category: 'api', route: '/api/admin/users', method: 'POST' },
@@ -46,6 +68,34 @@ export const mockPermissions = [
   { name: 'admin_roles_delete', description: 'DELETE admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'DELETE' },
   { name: 'admin_roles_permissions_available', description: 'GET admin roles available permissions endpoint', category: 'api', route: '/api/admin/roles/:id/permissions/available', method: 'GET' },
   { name: 'admin_roles_permissions_add', description: 'POST admin roles add permissions endpoint', category: 'api', route: '/api/admin/roles/:id/permissions/add', method: 'POST' },
+  
+  // Additional Permission endpoints
+  { name: 'admin_permissions_with_superadmin', description: 'POST admin permissions with superadmin endpoint', category: 'api', route: '/api/admin/permissions/with-superadmin', method: 'POST' },
+  { name: 'admin_permissions_add_to_superadmin', description: 'POST admin permissions add to superadmin endpoint', category: 'api', route: '/api/admin/permissions/:permissionId/add-to-superadmin', method: 'POST' },
+  
+  // Additional User endpoints
+  { name: 'admin_users_search', description: 'GET admin users search endpoint', category: 'api', route: '/api/admin/users/search', method: 'GET' },
+  { name: 'admin_users_delete_by_email', description: 'DELETE admin users by email endpoint', category: 'api', route: '/api/admin/users/:email', method: 'DELETE' },
+  
+  // Token endpoints  
+  { name: 'admin_tokens_revoke', description: 'POST admin tokens revoke endpoint', category: 'api', route: '/api/admin/tokens/revoke', method: 'POST' },
+  { name: 'admin_tokens_grant', description: 'POST admin tokens grant endpoint', category: 'api', route: '/api/admin/tokens/grant', method: 'POST' },
+  
+  // Mail Management permissions
+  { name: 'admin_mails_patch_sent', description: 'PATCH admin mails mark as sent endpoint', category: 'api', route: '/api/admin/mails/:id/sent', method: 'PATCH' },
+  { name: 'admin_mails_patch_failed', description: 'PATCH admin mails mark as failed endpoint', category: 'api', route: '/api/admin/mails/:id/failed', method: 'PATCH' },
+  { name: 'admin_mails_patch_resend', description: 'PATCH admin mails resend endpoint', category: 'api', route: '/api/admin/mails/:id/resend', method: 'PATCH' },
+
+  // Mail Template Management permissions
+  { name: 'admin_mail_templates_get_by_id', description: 'GET admin mail template by ID endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'GET' },
+
+  // Conversation Management permissions
+  { name: 'admin_conversations_messages_get', description: 'GET admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages', method: 'GET' },
+  { name: 'admin_conversations_messages_post', description: 'POST admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages', method: 'POST' },
+  { name: 'admin_conversations_messages_put', description: 'PUT admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'PUT' },
+  { name: 'admin_conversations_messages_patch', description: 'PATCH admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'PATCH' },
+  { name: 'admin_conversations_messages_delete', description: 'DELETE admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'DELETE' },
+  { name: 'admin_conversations_command', description: 'POST admin conversation command endpoint', category: 'api', route: '/api/admin/conversations/:id/command', method: 'POST' },
   
   // Additional admin endpoints permissions
   { name: 'admin_permissions_get', description: 'GET admin permissions endpoint', category: 'api', route: '/api/admin/permissions', method: 'GET' },
@@ -65,18 +115,25 @@ export const mockPermissions = [
   { name: 'admin_mail_templates_put', description: 'PUT admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'PUT' },
   { name: 'admin_mail_templates_patch', description: 'PATCH admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'PATCH' },
   { name: 'admin_mail_templates_delete', description: 'DELETE admin mail templates endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'DELETE' },
+  { name: 'admin_mail_templates_get_by_id', description: 'GET admin mail template by ID endpoint', category: 'api', route: '/api/admin/mail-templates/:id', method: 'GET' },
   
   { name: 'admin_notification_templates_get', description: 'GET admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates', method: 'GET' },
   { name: 'admin_notification_templates_post', description: 'POST admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates', method: 'POST' },
   { name: 'admin_notification_templates_put', description: 'PUT admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'PUT' },
   { name: 'admin_notification_templates_patch', description: 'PATCH admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'PATCH' },
   { name: 'admin_notification_templates_delete', description: 'DELETE admin notification templates endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'DELETE' },
+  { name: 'admin_notification_templates_get_by_id', description: 'GET admin notification template by ID endpoint', category: 'api', route: '/api/admin/notification-templates/:id', method: 'GET' },
   
   { name: 'admin_mails_get', description: 'GET admin mails endpoint', category: 'api', route: '/api/admin/mails', method: 'GET' },
   { name: 'admin_mails_post', description: 'POST admin mails endpoint', category: 'api', route: '/api/admin/mails', method: 'POST' },
   { name: 'admin_mails_put', description: 'PUT admin mails endpoint', category: 'api', route: '/api/admin/mails/:id', method: 'PUT' },
   { name: 'admin_mails_patch', description: 'PATCH admin mails endpoint', category: 'api', route: '/api/admin/mails/:id', method: 'PATCH' },
   { name: 'admin_mails_delete', description: 'DELETE admin mails endpoint', category: 'api', route: '/api/admin/mails/:id', method: 'DELETE' },
+  { name: 'admin_mails_stats', description: 'GET admin mails statistics endpoint', category: 'api', route: '/api/admin/mails/stats', method: 'GET' },
+  { name: 'admin_mails_get_by_id', description: 'GET admin mail by ID endpoint', category: 'api', route: '/api/admin/mails/:id', method: 'GET' },
+  { name: 'admin_mails_sent', description: 'PATCH admin mails mark as sent endpoint', category: 'api', route: '/api/admin/mails/:id/sent', method: 'PATCH' },
+  { name: 'admin_mails_failed', description: 'PATCH admin mails mark as failed endpoint', category: 'api', route: '/api/admin/mails/:id/failed', method: 'PATCH' },
+  { name: 'admin_mails_resend', description: 'PATCH admin mails resend endpoint', category: 'api', route: '/api/admin/mails/:id/resend', method: 'PATCH' },
   
   { name: 'admin_cache_get', description: 'GET admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'GET' },
   { name: 'admin_cache_post', description: 'POST admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'POST' },
@@ -84,6 +141,9 @@ export const mockPermissions = [
   { name: 'admin_cache_delete', description: 'DELETE admin cache endpoint', category: 'api', route: '/api/admin/cache', method: 'DELETE' },
   { name: 'admin_cache_clear', description: 'DELETE admin cache clear endpoint', category: 'api', route: '/api/admin/cache/clear', method: 'DELETE' },
   { name: 'admin_cache_stats', description: 'GET admin cache statistics endpoint', category: 'api', route: '/api/admin/cache/stats', method: 'GET' },
+  { name: 'admin_cache_get_by_key', description: 'GET admin cache by key endpoint', category: 'api', route: '/api/admin/cache/:key', method: 'GET' },
+  { name: 'admin_cache_delete_by_key', description: 'DELETE admin cache by key endpoint', category: 'api', route: '/api/admin/cache/:key', method: 'DELETE' },
+  { name: 'admin_cache_clear_pattern', description: 'POST admin cache clear by pattern endpoint', category: 'api', route: '/api/admin/cache/clear', method: 'POST' },
   
   // SSO Management permissions
   { name: 'admin_sso_get', description: 'GET admin SSO endpoint', category: 'api', route: '/api/admin/sso', method: 'GET' },
@@ -92,6 +152,8 @@ export const mockPermissions = [
   { name: 'admin_sso_patch', description: 'PATCH admin SSO endpoint', category: 'api', route: '/api/admin/sso/:id', method: 'PATCH' },
   { name: 'admin_sso_delete', description: 'DELETE admin SSO endpoint', category: 'api', route: '/api/admin/sso/:id', method: 'DELETE' },
   { name: 'admin_sso_regenerate', description: 'PATCH admin SSO regenerate key endpoint', category: 'api', route: '/api/admin/sso/:id/regenerate-key', method: 'PATCH' },
+  { name: 'admin_sso_stats', description: 'GET admin SSO statistics endpoint', category: 'api', route: '/api/admin/sso/stats', method: 'GET' },
+  { name: 'admin_sso_get_by_id', description: 'GET admin SSO by ID endpoint', category: 'api', route: '/api/admin/sso/:id', method: 'GET' },
   
   // Login History permissions
   { name: 'admin_login_history_get', description: 'GET admin login history endpoint', category: 'api', route: '/api/admin/login-history', method: 'GET' },
@@ -100,6 +162,8 @@ export const mockPermissions = [
   { name: 'admin_login_history_patch', description: 'PATCH admin login history endpoint', category: 'api', route: '/api/admin/login-history/:id', method: 'PATCH' },
   { name: 'admin_login_history_delete', description: 'DELETE admin login history endpoint', category: 'api', route: '/api/admin/login-history/:id', method: 'DELETE' },
   { name: 'admin_login_history_logout', description: 'PATCH admin login history logout endpoint', category: 'api', route: '/api/admin/login-history/:id/logout', method: 'PATCH' },
+  { name: 'admin_login_history_stats', description: 'GET admin login history statistics endpoint', category: 'api', route: '/api/admin/login-history/stats', method: 'GET' },
+  { name: 'admin_login_history_get_by_id', description: 'GET admin login history by ID endpoint', category: 'api', route: '/api/admin/login-history/:id', method: 'GET' },
   
   // Logic History permissions
   { name: 'admin_logic_history_get', description: 'GET admin logic history endpoint', category: 'api', route: '/api/admin/logic-history', method: 'GET' },
@@ -108,18 +172,20 @@ export const mockPermissions = [
   { name: 'admin_logic_history_patch', description: 'PATCH admin logic history endpoint', category: 'api', route: '/api/admin/logic-history/:id', method: 'PATCH' },
   { name: 'admin_logic_history_delete', description: 'DELETE admin logic history endpoint', category: 'api', route: '/api/admin/logic-history/:id', method: 'DELETE' },
   { name: 'admin_logic_history_notification', description: 'PATCH admin logic history notification endpoint', category: 'api', route: '/api/admin/logic-history/:id/notification-sent', method: 'PATCH' },
+  { name: 'admin_logic_history_stats', description: 'GET admin logic history statistics endpoint', category: 'api', route: '/api/admin/logic-history/stats', method: 'GET' },
+  { name: 'admin_logic_history_get_by_id', description: 'GET admin logic history by ID endpoint', category: 'api', route: '/api/admin/logic-history/:id', method: 'GET' },
   
   // High-level SSO and History management permissions
-  { name: 'manage_sso', description: 'Full SSO management access', category: 'sso' },
-  { name: 'view_login_history', description: 'View login history', category: 'history' },
-  { name: 'manage_login_history', description: 'Full login history management', category: 'history' },
-  { name: 'view_logic_history', description: 'View logic history and audit trail', category: 'history' },
-  { name: 'manage_logic_history', description: 'Full logic history management', category: 'history' },
+  { name: 'manage_sso', description: 'Full SSO management access', category: 'sso', route: '/api/admin/sso', method: 'ALL' },
+  { name: 'view_login_history', description: 'View login history', category: 'history', route: '/api/admin/login-history', method: 'GET' },
+  { name: 'manage_login_history', description: 'Full login history management', category: 'history', route: '/api/admin/login-history', method: 'ALL' },
+  { name: 'view_logic_history', description: 'View logic history and audit trail', category: 'history', route: '/api/admin/logic-history', method: 'GET' },
+  { name: 'manage_logic_history', description: 'Full logic history management', category: 'history', route: '/api/admin/logic-history', method: 'ALL' },
   
   // Cache management permissions
-  { name: 'view_cache', description: 'View cache information and statistics', category: 'cache' },
-  { name: 'manage_cache', description: 'Full cache management access including clear and modify', category: 'cache' },
-  { name: 'cache_admin', description: 'Administrative cache operations and monitoring', category: 'cache' },
+  { name: 'view_cache', description: 'View cache information and statistics', category: 'cache', route: '/api/admin/cache', method: 'GET' },
+  { name: 'manage_cache', description: 'Full cache management access including clear and modify', category: 'cache', route: '/api/admin/cache', method: 'ALL' },
+  { name: 'cache_admin', description: 'Administrative cache operations and monitoring', category: 'cache', route: '/api/admin/cache', method: 'ALL' },
   
   // API Key Management permissions
   { name: 'admin_api_keys_get', description: 'GET admin API keys endpoint', category: 'api', route: '/api/admin/api-keys', method: 'GET' },
@@ -130,6 +196,7 @@ export const mockPermissions = [
   { name: 'admin_api_keys_regenerate', description: 'PATCH admin API keys regenerate endpoint', category: 'api', route: '/api/admin/api-keys/:id/regenerate', method: 'PATCH' },
   { name: 'admin_api_keys_stats', description: 'GET admin API keys usage statistics endpoint', category: 'api', route: '/api/admin/api-keys/stats', method: 'GET' },
   { name: 'admin_api_keys_logs', description: 'GET admin API keys usage logs endpoint', category: 'api', route: '/api/admin/api-keys/:id/logs', method: 'GET' },
+  { name: 'admin_api_keys_specific_stats', description: 'GET admin API key specific statistics endpoint', category: 'api', route: '/api/admin/api-keys/:id/stats', method: 'GET' },
   
   // High-level API key management permissions
   { name: 'manage_api_keys', description: 'Full API key management access', category: 'api' },
@@ -146,6 +213,7 @@ export const mockPermissions = [
   { name: 'admin_agents_memories_put', description: 'PUT admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories/:memoryId', method: 'PUT' },
   { name: 'admin_agents_memories_patch', description: 'PATCH admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories/:memoryId', method: 'PATCH' },
   { name: 'admin_agents_memories_delete', description: 'DELETE admin agent memories endpoint', category: 'api', route: '/api/admin/agents/:id/memories/:memoryId', method: 'DELETE' },
+  { name: 'admin_agents_get_by_id', description: 'GET admin agent by ID endpoint', category: 'api', route: '/api/admin/agents/:id', method: 'GET' },
   
   // Conversation Management permissions
   { name: 'admin_conversations_get', description: 'GET admin conversations endpoint', category: 'api', route: '/api/admin/conversations', method: 'GET' },
@@ -159,6 +227,7 @@ export const mockPermissions = [
   { name: 'admin_conversations_messages_put', description: 'PUT admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'PUT' },
   { name: 'admin_conversations_messages_patch', description: 'PATCH admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'PATCH' },
   { name: 'admin_conversations_messages_delete', description: 'DELETE admin conversation messages endpoint', category: 'api', route: '/api/admin/conversations/:id/messages/:messageId', method: 'DELETE' },
+  { name: 'admin_conversations_command', description: 'POST admin conversation command endpoint', category: 'api', route: '/api/admin/conversations/:id/command', method: 'POST' },
   
   // High-level AI agent management permissions
   { name: 'manage_ai_agents', description: 'Full AI agent management access', category: 'ai' },
@@ -167,6 +236,7 @@ export const mockPermissions = [
 
   // Database Seed Management permissions
   { name: 'admin_seed_stats', description: 'GET admin seed statistics endpoint', category: 'api', route: '/api/admin/seed/stats', method: 'GET' },
+  { name: 'admin_seed_data', description: 'GET admin seed data endpoint', category: 'api', route: '/api/admin/seed/data', method: 'GET' },
   { name: 'admin_seed_all', description: 'POST admin seed all data endpoint', category: 'api', route: '/api/admin/seed/all', method: 'POST' },
   { name: 'admin_seed_permissions', description: 'POST admin seed permissions endpoint', category: 'api', route: '/api/admin/seed/permissions', method: 'POST' },
   { name: 'admin_seed_roles', description: 'POST admin seed roles endpoint', category: 'api', route: '/api/admin/seed/roles', method: 'POST' },
@@ -198,6 +268,7 @@ export const mockPermissions = [
 
   // Database Connection Management permissions
   { name: 'admin_database_connections_get', description: 'GET admin database connections endpoint', category: 'api', route: '/api/admin/database-connections', method: 'GET' },
+  { name: 'admin_database_connections_get_by_id', description: 'GET admin database connection by ID endpoint', category: 'api', route: '/api/admin/database-connections/:id', method: 'GET' },
   { name: 'admin_database_connections_post', description: 'POST admin database connections endpoint', category: 'api', route: '/api/admin/database-connections', method: 'POST' },
   { name: 'admin_database_connections_put', description: 'PUT admin database connections endpoint', category: 'api', route: '/api/admin/database-connections/:id', method: 'PUT' },
   { name: 'admin_database_connections_delete', description: 'DELETE admin database connections endpoint', category: 'api', route: '/api/admin/database-connections/:id', method: 'DELETE' },
