@@ -119,7 +119,32 @@ async function main() {
           'view_messages',
           'send_messages',
           'view_ai_agents',
-          'chat_with_agents'
+          'chat_with_agents',
+          // Database connection permissions
+          'admin_database_connections_get',
+          'admin_database_connections_post',
+          'admin_database_connections_put',
+          'admin_database_connections_delete',
+          'admin_database_connections_test',
+          'admin_database_connections_check',
+          'admin_database_connections_backup',
+          'admin_database_connections_stats',
+          'view_database_connections',
+          'manage_database_connections',
+          'create_database_connections',
+          'update_database_connections',
+          'delete_database_connections',
+          'test_database_connections',
+          'backup_databases',
+          // Log management permissions
+          'admin_logs_get',
+          'admin_logs_post',
+          'admin_logs_stats',
+          'admin_logs_export',
+          'admin_logs_clear',
+          'view_logs',
+          'manage_logs',
+          'create_logs'
         ].includes(p.name)).map(p => ({ id: p.id }))
       }
     },
@@ -155,7 +180,32 @@ async function main() {
           'view_messages',
           'send_messages',
           'view_ai_agents',
-          'chat_with_agents'
+          'chat_with_agents',
+          // Database connection permissions
+          'admin_database_connections_get',
+          'admin_database_connections_post',
+          'admin_database_connections_put',
+          'admin_database_connections_delete',
+          'admin_database_connections_test',
+          'admin_database_connections_check',
+          'admin_database_connections_backup',
+          'admin_database_connections_stats',
+          'view_database_connections',
+          'manage_database_connections',
+          'create_database_connections',
+          'update_database_connections',
+          'delete_database_connections',
+          'test_database_connections',
+          'backup_databases',
+          // Log management permissions
+          'admin_logs_get',
+          'admin_logs_post',
+          'admin_logs_stats',
+          'admin_logs_export',
+          'admin_logs_clear',
+          'view_logs',
+          'manage_logs',
+          'create_logs'
         ].includes(p.name)).map(p => ({ id: p.id }))
       }
     }

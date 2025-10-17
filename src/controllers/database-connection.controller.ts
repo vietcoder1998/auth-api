@@ -17,7 +17,6 @@ export class DatabaseConnectionController {
       });
 
       res.json({
-        success: true,
         data: connections,
         total: connections.length
       });
@@ -27,10 +26,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.status(500).json({
-        success: false,
-        message: 'Failed to retrieve database connections',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to retrieve database connections'
       });
     }
   }
@@ -42,9 +39,8 @@ export class DatabaseConnectionController {
       const connection = await databaseConnectionService.findById(id);
 
       if (!connection) {
-        return res.status(404).json({
-          success: false,
-          message: 'Database connection not found'
+        return res.status(404).json({ 
+          error: 'Database connection not found' 
         });
       }
 
@@ -54,10 +50,7 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.json({
-        success: true,
-        data: connection
-      });
+      res.json(connection);
     } catch (error) {
       logError('Failed to retrieve database connection', {
         connectionId: req.params.id,
@@ -65,10 +58,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.status(500).json({
-        success: false,
-        message: 'Failed to retrieve database connection',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to retrieve database connection'
       });
     }
   }
@@ -91,12 +82,8 @@ export class DatabaseConnectionController {
       });
 
       res.status(201).json({
-        success: true,
-        message: 'Database connection created successfully',
-        data: {
-          ...connection,
-          password: '***encrypted***'
-        }
+        ...connection,
+        password: '***encrypted***'
       });
     } catch (error) {
       logError('Failed to create database connection', {
@@ -105,10 +92,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.status(400).json({
-        success: false,
-        message: 'Failed to create database connection',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to create database connection'
       });
     }
   }
@@ -128,12 +113,8 @@ export class DatabaseConnectionController {
       });
 
       res.json({
-        success: true,
-        message: 'Database connection updated successfully',
-        data: {
-          ...connection,
-          password: '***encrypted***'
-        }
+        ...connection,
+        password: '***encrypted***'
       });
     } catch (error) {
       logError('Failed to update database connection', {
@@ -142,10 +123,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.status(400).json({
-        success: false,
-        message: 'Failed to update database connection',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to update database connection'
       });
     }
   }
@@ -157,9 +136,8 @@ export class DatabaseConnectionController {
       const success = await databaseConnectionService.delete(id);
 
       if (!success) {
-        return res.status(404).json({
-          success: false,
-          message: 'Database connection not found'
+        return res.status(404).json({ 
+          error: 'Database connection not found' 
         });
       }
 
@@ -168,9 +146,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.json({
-        success: true,
-        message: 'Database connection deleted successfully'
+      res.json({ 
+        message: 'Database connection deleted successfully' 
       });
     } catch (error) {
       logError('Failed to delete database connection', {
@@ -179,10 +156,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.status(500).json({
-        success: false,
-        message: 'Failed to delete database connection',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to delete database connection'
       });
     }
   }
@@ -207,10 +182,7 @@ export class DatabaseConnectionController {
         });
       }
 
-      res.json({
-        success: true,
-        data: result
-      });
+      res.json(result);
     } catch (error) {
       logError('Failed to test database connection', {
         connectionId: req.params.id,
@@ -218,10 +190,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.status(500).json({
-        success: false,
-        message: 'Failed to test database connection',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to test database connection'
       });
     }
   }
@@ -238,10 +208,7 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.json({
-        success: true,
-        data: result
-      });
+      res.json(result);
     } catch (error) {
       logError('Failed to check database connection', {
         connectionId: req.params.id,
@@ -249,10 +216,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.status(500).json({
-        success: false,
-        message: 'Failed to check database connection',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to check database connection'
       });
     }
   }
@@ -276,10 +241,7 @@ export class DatabaseConnectionController {
         });
       }
 
-      res.json({
-        success: true,
-        data: result
-      });
+      res.json(result);
     } catch (error) {
       logError('Failed to create database backup', {
         connectionId: req.params.id,
@@ -287,10 +249,8 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.status(500).json({
-        success: false,
-        message: 'Failed to create database backup',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to create database backup'
       });
     }
   }
@@ -305,20 +265,15 @@ export class DatabaseConnectionController {
         userId: req.user?.id
       });
 
-      res.json({
-        success: true,
-        data: stats
-      });
+      res.json(stats);
     } catch (error) {
       logError('Failed to retrieve connection statistics', {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId: req.user?.id
       });
 
-      res.status(500).json({
-        success: false,
-        message: 'Failed to retrieve connection statistics',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({ 
+        error: 'Failed to retrieve connection statistics'
       });
     }
   }
