@@ -67,6 +67,54 @@ app.use(loggerMiddleware);
 // API path config
 app.use('/api/auth', authRouter);
 
+// Health check endpoint for status monitoring (no auth required)
+app.get('/api/config/health', async (req, res) => {
+  try {
+    // Check database connection
+    let databaseStatus = false;
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      databaseStatus = true;
+    } catch (dbError) {
+      logger.error('Database health check failed:', { error: dbError });
+    }
+
+    // Check Redis connection
+    let redisStatus = false;
+    try {
+      const { client } = await import('./setup');
+      await client.ping();
+      redisStatus = true;
+    } catch (redisError) {
+      logger.error('Redis health check failed:', { error: redisError });
+    }
+
+    const healthStatus = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      api: true,
+      database: databaseStatus,
+      redis: redisStatus,
+      uptime: process.uptime(),
+    };
+
+    // Return 200 if all services are healthy, 503 if any are down
+    const statusCode = databaseStatus && redisStatus ? 200 : 503;
+    
+    res.status(statusCode).json(healthStatus);
+  } catch (error) {
+    logger.error('Health check endpoint error:', { error });
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      api: true,
+      database: false,
+      redis: false,
+      error: 'Health check failed',
+    });
+  }
+});
+
 // SSO authentication routes (no JWT required)
 app.use('/api/sso', ssoAuthRouter);
 
@@ -77,6 +125,7 @@ app.use(jwtTokenValidation); // Fallback to JWT if no API key
 app.use(rbac);
 
 app.use('/api/config', configRouter);
+
 app.use(
   '/api/admin',
   cacheMiddleware({
