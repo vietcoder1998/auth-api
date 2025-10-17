@@ -40,5 +40,4 @@ export async function testLogger() {
   }
 }
 
-// Export for use in other files
-export { testLogger };
+// Function is already exported above
