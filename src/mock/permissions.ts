@@ -44,6 +44,8 @@ export const mockPermissions = [
   { name: 'admin_roles_put', description: 'PUT admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'PUT' },
   { name: 'admin_roles_patch', description: 'PATCH admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'PATCH' },
   { name: 'admin_roles_delete', description: 'DELETE admin roles endpoint', category: 'api', route: '/api/admin/roles/:id', method: 'DELETE' },
+  { name: 'admin_roles_permissions_available', description: 'GET admin roles available permissions endpoint', category: 'api', route: '/api/admin/roles/:id/permissions/available', method: 'GET' },
+  { name: 'admin_roles_permissions_add', description: 'POST admin roles add permissions endpoint', category: 'api', route: '/api/admin/roles/:id/permissions/add', method: 'POST' },
   
   // Additional admin endpoints permissions
   { name: 'admin_permissions_get', description: 'GET admin permissions endpoint', category: 'api', route: '/api/admin/permissions', method: 'GET' },
