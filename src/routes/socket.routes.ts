@@ -9,6 +9,8 @@ import {
   createSocketEvent,
   deleteSocketEvent,
   addUserToSocketEvent,
+  pingSocket,
+  testSocketEvent,
 } from '../controllers/socket.controller';
 
 const router = Router();
@@ -22,5 +24,7 @@ router.get('/:socketConfigId/events', getSocketEvents);
 router.post('/:socketConfigId/events', createSocketEvent);
 router.delete('/events/:id', deleteSocketEvent);
 router.post('/:socketConfigId/add-user', addUserToSocketEvent);
+router.post('/:id/ping', pingSocket);
+router.post('/:id/test-event', testSocketEvent);
 
 export default router;

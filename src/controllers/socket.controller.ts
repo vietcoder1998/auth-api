@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import * as socketService from '../services/socket.service';
 
 const prisma = new PrismaClient();
 
@@ -68,4 +69,25 @@ export const addUserToSocketEvent = async (req: Request, res: Response) => {
   // Here you can implement logic to associate a user with a socket event, e.g. store in a join table or emit event
   // For mock/demo, just return success
   res.json({ message: `User ${userId} added to event ${eventType} on socket ${socketConfigId}` });
+};
+
+export const pingSocket = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const result = await socketService.pingSocket(id);
+    res.json({ message: result });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Ping failed' });
+  }
+};
+
+export const testSocketEvent = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { event, payload } = req.body;
+  try {
+    const result = await socketService.testSocketEvent(id, event, payload);
+    res.json({ message: result });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message || 'Test event failed' });
+  }
 };

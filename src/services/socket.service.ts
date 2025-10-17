@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
+import net from 'net';
 
 const prisma = new PrismaClient();
 
@@ -59,4 +60,27 @@ export function mockSocketWithDb(config: SocketConfig, events: MockEvent[]) {
     io.emit(event.type, event.payload);
   }, 2000);
   return io;
+}
+
+export async function pingSocket(id: string): Promise<string> {
+  const socketConfig = await prisma.socketConfig.findUnique({ where: { id } });
+  if (!socketConfig) throw new Error('Socket not found');
+  return new Promise((resolve, reject) => {
+    const client = net.createConnection({ host: socketConfig.host, port: socketConfig.port }, () => {
+      client.end();
+      resolve('Socket is reachable');
+    });
+    client.on('error', (err) => {
+      reject(new Error('Socket is not reachable: ' + err.message));
+    });
+  });
+}
+
+export async function testSocketEvent(id: string, event: string, payload: any): Promise<string> {
+  // This is a mock/test implementation. In a real app, you would emit to a real socket server.
+  const socketConfig = await prisma.socketConfig.findUnique({ where: { id } });
+  if (!socketConfig) throw new Error('Socket not found');
+  // Simulate event emission
+  // You can integrate with your actual socket server here
+  return `Test event '${event}' sent to socket '${socketConfig.name}' with payload: ${JSON.stringify(payload)}`;
 }
