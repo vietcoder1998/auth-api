@@ -330,7 +330,7 @@ model AgentTool {
   enabled   Boolean  @default(true)
   
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@map("agent_tool")
 }
@@ -347,7 +347,7 @@ model AgentTask {
   startedAt DateTime?
   
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@map("agent_task")
 }
@@ -400,7 +400,7 @@ model DatabaseConnection {
   // Metadata
   createdBy   String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now())
 
   @@map("database_connection")
 }
@@ -426,4 +426,29 @@ model LogEntry {
   @@index([timestamp])
   @@index([endpoint])
   @@map("log_entry")
+}
+
+model SocketConfig {
+  id        String        @id @default(uuid())
+  name      String
+  host      String
+  port      Int
+  isActive  Boolean       @default(true)
+  events    SocketEvent[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("socket_config")
+}
+
+model SocketEvent {
+  id            String      @id @default(uuid())
+  socketConfigId String
+  type          String
+  event         String
+  socketConfig  SocketConfig @relation(fields: [socketConfigId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now())
+
+  @@map("socket_event")
 }

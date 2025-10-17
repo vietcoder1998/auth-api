@@ -1,4 +1,3 @@
-
 import { Router } from 'express';
 import userRouter from './user.routes';
 import roleRouter from './role.routes';
@@ -18,6 +17,7 @@ import labelRouter from './label.routes';
 import seedRouter from './seed.routes';
 import loggerRouter from './logger.routes';
 import databaseConnectionRouter from './database-connection.routes';
+import socketRoutes from './socket.routes';
 
 const router = Router();
 
@@ -39,5 +39,6 @@ router.use('/labels', labelRouter);
 router.use('/seed', seedRouter);
 router.use('/logs', loggerRouter);
 router.use('/database-connections', databaseConnectionRouter);
+router.use('/sockets', socketRoutes);
 
 export default router;
