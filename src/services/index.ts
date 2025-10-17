@@ -22,6 +22,9 @@ export { commandService } from './command.service';
 export { historyService } from './history.service';
 export { entityLabelService } from './entityLabel.service';
 
+// Database Management
+export { seedService } from './seed.service';
+
 // Service types
 export type {
   CreateUserData,

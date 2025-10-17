@@ -163,7 +163,24 @@ export const mockPermissions = [
   // High-level AI agent management permissions
   { name: 'manage_ai_agents', description: 'Full AI agent management access', category: 'ai' },
   { name: 'view_ai_agents', description: 'View AI agents and conversations', category: 'ai' },
-  { name: 'chat_with_agents', description: 'Chat with AI agents and create conversations', category: 'ai' }
+  { name: 'chat_with_agents', description: 'Chat with AI agents and create conversations', category: 'ai' },
+
+  // Database Seed Management permissions
+  { name: 'admin_seed_stats', description: 'GET admin seed statistics endpoint', category: 'api', route: '/api/admin/seed/stats', method: 'GET' },
+  { name: 'admin_seed_all', description: 'POST admin seed all data endpoint', category: 'api', route: '/api/admin/seed/all', method: 'POST' },
+  { name: 'admin_seed_permissions', description: 'POST admin seed permissions endpoint', category: 'api', route: '/api/admin/seed/permissions', method: 'POST' },
+  { name: 'admin_seed_roles', description: 'POST admin seed roles endpoint', category: 'api', route: '/api/admin/seed/roles', method: 'POST' },
+  { name: 'admin_seed_users', description: 'POST admin seed users endpoint', category: 'api', route: '/api/admin/seed/users', method: 'POST' },
+  { name: 'admin_seed_configs', description: 'POST admin seed configs endpoint', category: 'api', route: '/api/admin/seed/configs', method: 'POST' },
+  { name: 'admin_seed_agents', description: 'POST admin seed agents endpoint', category: 'api', route: '/api/admin/seed/agents', method: 'POST' },
+  { name: 'admin_seed_api_keys', description: 'POST admin seed API keys endpoint', category: 'api', route: '/api/admin/seed/api-keys', method: 'POST' },
+  { name: 'admin_seed_clear_all', description: 'DELETE admin clear all data endpoint', category: 'api', route: '/api/admin/seed/clear-all', method: 'DELETE' },
+
+  // High-level seed management permissions
+  { name: 'manage_database_seed', description: 'Full database seeding management access', category: 'system' },
+  { name: 'view_database_stats', description: 'View database statistics and counts', category: 'system' },
+  { name: 'seed_data', description: 'Seed database with default data', category: 'system' },
+  { name: 'clear_database', description: 'Clear all data from database (dangerous)', category: 'system' }
 ];
 
 // Mock data for roles and their permission mappings

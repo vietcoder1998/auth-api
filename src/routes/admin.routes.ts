@@ -15,6 +15,7 @@ import apiKeyRouter from './apiKey.routes';
 import agentRouter from './agent.routes';
 import conversationRouter from './conversation.routes';
 import labelRouter from './label.routes';
+import seedRouter from './seed.routes';
 
 const router = Router();
 
@@ -33,5 +34,6 @@ router.use('/api-keys', apiKeyRouter);
 router.use('/agents', agentRouter);
 router.use('/conversations', conversationRouter);
 router.use('/labels', labelRouter);
+router.use('/seed', seedRouter);
 
 export default router;
