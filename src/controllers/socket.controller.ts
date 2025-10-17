@@ -4,21 +4,21 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const getAllSockets = async (req: Request, res: Response) => {
-  const sockets = await prisma.databaseConnection.findMany({ where: { type: 'socket' } });
+  const sockets = await prisma.socketConfig.findMany();
   res.json(sockets);
 };
 
 export const getSocketById = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const socket = await prisma.databaseConnection.findUnique({ where: { id } });
+  const socket = await prisma.socketConfig.findUnique({ where: { id } });
   if (!socket) return res.status(404).json({ error: 'Socket config not found' });
   res.json(socket);
 };
 
 export const createSocket = async (req: Request, res: Response) => {
-  const { name, host, port, isActive } = req.body;
-  const socket = await prisma.databaseConnection.create({
-    data: { name, host, port, type: 'socket', isActive: isActive ?? true },
+  const { name, host, port, isActive = true } = req.body;
+  const socket = await prisma.socketConfig.create({
+    data: { name, host, port, isActive },
   });
   res.status(201).json(socket);
 };
@@ -26,7 +26,7 @@ export const createSocket = async (req: Request, res: Response) => {
 export const updateSocket = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { name, host, port, isActive } = req.body;
-  const socket = await prisma.databaseConnection.update({
+  const socket = await prisma.socketConfig.update({
     where: { id },
     data: { name, host, port, isActive },
   });
@@ -35,7 +35,7 @@ export const updateSocket = async (req: Request, res: Response) => {
 
 export const deleteSocket = async (req: Request, res: Response) => {
   const { id } = req.params;
-  await prisma.databaseConnection.delete({ where: { id } });
+  await prisma.socketConfig.delete({ where: { id } });
   res.status(204).send();
 };
 
