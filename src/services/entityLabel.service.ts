@@ -154,3 +154,5 @@ export class EntityLabelService {
     });
   }
 }
+
+export const entityLabelService = EntityLabelService;

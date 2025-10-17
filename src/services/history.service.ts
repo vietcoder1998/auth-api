@@ -248,3 +248,5 @@ export class HistoryService {
     }
   }
 }
+
+export const historyService = new HistoryService();

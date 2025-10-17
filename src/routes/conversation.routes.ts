@@ -5,7 +5,8 @@ import {
   getConversation,
   addMessage,
   updateConversation,
-  deleteConversation
+  deleteConversation,
+  executeCommand
 } from '../controllers/conversation.controller';
 
 const router = Router();
@@ -19,5 +20,8 @@ router.delete('/:id', deleteConversation);
 
 // Message operations
 router.post('/:id/messages', addMessage);
+
+// Command operations
+router.post('/:id/command', executeCommand);
 
 export default router;

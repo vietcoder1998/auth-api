@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import { llmService } from '../services/llm.service';
+import { commandService } from '../services/command.service';
 
 const prisma = new PrismaClient();
 
@@ -393,3 +394,59 @@ export async function deleteConversation(req: Request, res: Response) {
   }
 }
 
+// LLM conversation control
+
+// Execute command in conversation
+export async function executeCommand(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { id: conversationId } = req.params;
+    const { type, parameters } = req.body;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    if (!type) {
+      return res.status(400).json({ error: 'Command type is required' });
+    }
+
+    // Check if conversation belongs to user
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+      include: { agent: true }
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Execute command
+    const result = await commandService.processCommand({
+      conversationId,
+      userId,
+      agentId: conversation.agentId,
+      type,
+      parameters
+    });
+
+    // Log the command execution
+    await prisma.message.create({
+      data: {
+        conversationId,
+        sender: 'system',
+        content: `Command executed: /${type} - ${result.message}`,
+        metadata: JSON.stringify({
+          command: type,
+          parameters,
+          result: result.success
+        })
+      }
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Execute command error:', err);
+    res.status(500).json({ error: 'Failed to execute command' });
+  }
+}
