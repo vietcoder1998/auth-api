@@ -18,6 +18,7 @@ import seedRouter from './seed.routes';
 import loggerRouter from './logger.routes';
 import databaseConnectionRouter from './database-connection.routes';
 import socketRoutes from './socket.routes';
+import { searchAllEntities } from '../controllers/search.controller';
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use('/seed', seedRouter);
 router.use('/logs', loggerRouter);
 router.use('/database-connections', databaseConnectionRouter);
 router.use('/sockets', socketRoutes);
+router.get('/search', searchAllEntities);
 
 export default router;
