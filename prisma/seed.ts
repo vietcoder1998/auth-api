@@ -911,6 +911,71 @@ async function main() {
     });
   }
 
+  // Seed Database Connections
+  console.log('🔌 Seeding Database Connections...');
+  const mockDatabaseConnections = [
+    {
+      name: 'Main MySQL',
+      description: 'Primary MySQL database for production',
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      database: 'calendation_prod',
+      username: 'root',
+      password: 'password',
+      isActive: true,
+      ssl: false,
+      timeout: 30000,
+      backupEnabled: true,
+      backupPath: '/backups/prod',
+      createdBy: superadminUser?.id || '',
+    },
+    {
+      name: 'Dev MySQL',
+      description: 'Development MySQL database',
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      database: 'calendation_dev',
+      username: 'devuser',
+      password: 'devpass',
+      isActive: true,
+      ssl: false,
+      timeout: 30000,
+      backupEnabled: false,
+      backupPath: null,
+      createdBy: adminUser?.id || '',
+    },
+  ];
+  const createdDatabaseConnections: any[] = [];
+  for (const dbConn of mockDatabaseConnections) {
+    try {
+      const existingConn = await prisma.databaseConnection.findUnique({ where: { name: dbConn.name } });
+      if (!existingConn) {
+        const createdConn = await prisma.databaseConnection.create({ data: dbConn });
+        createdDatabaseConnections.push(createdConn);
+        console.log(`✓ Created database connection: ${dbConn.name}`);
+      } else {
+        createdDatabaseConnections.push(existingConn);
+        console.log(`✓ Found existing database connection: ${dbConn.name}`);
+      }
+    } catch (error) {
+      console.log(`⚠ Error creating database connection ${dbConn.name}:`, error);
+    }
+  }
+  // Add mock label to all database connections
+  if (mockLabelId && createdDatabaseConnections.length > 0) {
+    const dbConnLabels = createdDatabaseConnections.map(conn => ({
+      entityId: conn.id,
+      entityType: 'databaseConnection',
+      labelId: mockLabelId
+    }));
+    await prisma.entityLabel.createMany({
+      data: dbConnLabels,
+      skipDuplicates: true
+    });
+  }
+
   // Seed mock socket and events
   const mockSocket = await prisma.socketConfig.upsert({
     where: { id: 'mock-socket' },
