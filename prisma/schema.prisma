@@ -1,6 +1,7 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
@@ -21,23 +22,24 @@ model Label {
 }
 
 model User {
-  id           String         @id @default(uuid())
-  email        String         @unique
-  password     String
-  nickname     String?
-  roleId       String?
-  role         Role?          @relation(fields: [roleId], references: [id])
-  tokens       Token[]
-  ssos         SSO[]
-  loginHistory LoginHistory[]
-  logicHistory LogicHistory[]
-  apiKeys      ApiKey[]       // API keys created by this user
-  agents       Agent[]        // AI agents owned by this user
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  nickname      String?
+  roleId        String?
+  role          Role?          @relation(fields: [roleId], references: [id])
+  tokens        Token[]
+  ssos          SSO[]
+  loginHistory  LoginHistory[]
+  logicHistory  LogicHistory[]
+  apiKeys       ApiKey[] // API keys created by this user
+  agents        Agent[] // AI agents owned by this user
   conversations Conversation[] // Conversations this user participated in
-  logEntries   LogEntry[]     // Log entries created by this user
-  status       String         @default("active")
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  logEntries    LogEntry[] // Log entries created by this user
+  status        String         @default("active")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  File          File[]
 
   @@map("user")
 }
@@ -60,7 +62,7 @@ model Permission {
   description String?
   category    String   @default("other")
   route       String?
-  method      String?  // GET, POST, PUT, DELETE, PATCH
+  method      String? // GET, POST, PUT, DELETE, PATCH
   roles       Role[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -80,16 +82,15 @@ model Token {
   @@map("token")
 }
 
-
 model MailTemplate {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  subject     String
-  body        String   @db.Text
-  active      Boolean  @default(true)
-  mails       Mail[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String   @unique
+  subject   String
+  body      String   @db.Text
+  active    Boolean  @default(true)
+  mails     Mail[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("mail_template")
 }
@@ -108,41 +109,41 @@ model NotificationTemplate {
 }
 
 model Config {
-  id      String @id @default(uuid())
-  key     String @unique
-  value   String
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
 
   @@map("config")
 }
 
 model ApiKey {
-  id          String   @id @default(uuid())
-  name        String   // Friendly name for the API key
-  key         String   @unique @db.VarChar(255) // The actual API key
-  description String?  @db.Text
-  userId      String?  // Optional: associate with a user
-  user        User?    @relation(fields: [userId], references: [id])
-  
+  id          String  @id @default(uuid())
+  name        String // Friendly name for the API key
+  key         String  @unique @db.VarChar(255) // The actual API key
+  description String? @db.Text
+  userId      String? // Optional: associate with a user
+  user        User?   @relation(fields: [userId], references: [id])
+
   // Access control
-  isActive    Boolean  @default(true)
-  permissions String?  @db.Text // JSON array of allowed permissions/scopes
-  allowedIPs  String?  @db.Text // JSON array of allowed IP addresses
-  
+  isActive    Boolean @default(true)
+  permissions String? @db.Text // JSON array of allowed permissions/scopes
+  allowedIPs  String? @db.Text // JSON array of allowed IP addresses
+
   // Rate limiting
-  rateLimit   Int?     @default(1000) // Requests per hour
-  
+  rateLimit Int? @default(1000) // Requests per hour
+
   // Usage tracking
-  usageCount  Int      @default(0)
-  lastUsedAt  DateTime?
-  
+  usageCount Int       @default(0)
+  lastUsedAt DateTime?
+
   // Expiration
-  expiresAt   DateTime?
-  
+  expiresAt DateTime?
+
   // Metadata
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String?  // User ID who created this API key
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String? // User ID who created this API key
+
   // Usage logs
   apiUsageLogs ApiUsageLog[]
 
@@ -150,155 +151,155 @@ model ApiKey {
 }
 
 model ApiUsageLog {
-  id          String   @id @default(uuid())
-  apiKeyId    String
-  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(uuid())
+  apiKeyId String
+  apiKey   ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
   // Request details
-  endpoint    String   // The API endpoint called
-  method      String   // HTTP method (GET, POST, etc.)
-  ipAddress   String?
-  userAgent   String?  @db.Text
-  
+  endpoint  String // The API endpoint called
+  method    String // HTTP method (GET, POST, etc.)
+  ipAddress String?
+  userAgent String? @db.Text
+
   // Response details
-  statusCode  Int      // HTTP status code
-  responseTime Int?    // Response time in milliseconds
-  
+  statusCode   Int // HTTP status code
+  responseTime Int? // Response time in milliseconds
+
   // Request/Response data (optional, for debugging)
   requestBody  String? @db.Text
   responseBody String? @db.Text
-  
+
   // Metadata
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@map("api_usage_log")
 }
 
 model Mail {
-  id              String   @id @default(uuid())
-  to              String
-  from            String?
-  subject         String
-  body            String   @db.Text
-  status          String   @default("pending") // pending, sent, failed
-  templateId      String?
-  template        MailTemplate? @relation(fields: [templateId], references: [id])
-  sentAt          DateTime?
-  failedReason    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String        @id @default(uuid())
+  to           String
+  from         String?
+  subject      String
+  body         String        @db.Text
+  status       String        @default("pending") // pending, sent, failed
+  templateId   String?
+  template     MailTemplate? @relation(fields: [templateId], references: [id])
+  sentAt       DateTime?
+  failedReason String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@map("mail")
 }
 
 model SSO {
-  id          String   @id @default(uuid())
-  url         String
-  key         String   @unique
-  ssoKey      String?  @unique // Additional SSO key field for identification
-  userId      String
-  deviceIP    String?
+  id           String         @id @default(uuid())
+  url          String
+  key          String         @unique
+  ssoKey       String?        @unique // Additional SSO key field for identification
+  userId       String
+  deviceIP     String?
   loginHistory LoginHistory[]
-  user        User     @relation(fields: [userId], references: [id])
-  isActive    Boolean  @default(true)
-  expiresAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  user         User           @relation(fields: [userId], references: [id])
+  isActive     Boolean        @default(true)
+  expiresAt    DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now())
 
   @@map("sso")
 }
 
 model LoginHistory {
-  id          String   @id @default(uuid())
-  ssoId       String?
-  userId      String
-  deviceIP    String?
-  userAgent   String?
-  loginAt     DateTime @default(now())
-  logoutAt    DateTime?
-  status      String   @default("active") // active, logged_out, expired
-  location    String?
-  sso         SSO?     @relation(fields: [ssoId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String    @id @default(uuid())
+  ssoId     String?
+  userId    String
+  deviceIP  String?
+  userAgent String?
+  loginAt   DateTime  @default(now())
+  logoutAt  DateTime?
+  status    String    @default("active") // active, logged_out, expired
+  location  String?
+  sso       SSO?      @relation(fields: [ssoId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
 
   @@map("login_history")
 }
 
 model LogicHistory {
-  id                        String                 @id @default(uuid())
-  userId                    String
-  action                    String                 // login, logout, password_change, profile_update, etc.
-  entityType                String?                // user, role, permission, etc.
-  entityId                  String?
-  oldValues                 String?                @db.Text // JSON string of old values
-  newValues                 String?                @db.Text // JSON string of new values
-  ipAddress                 String?
-  userAgent                 String?
-  notificationTemplateId    String?
-  notificationSent          Boolean                @default(false)
-  user                      User                   @relation(fields: [userId], references: [id])
-  notificationTemplate      NotificationTemplate?  @relation(fields: [notificationTemplateId], references: [id])
-  createdAt                 DateTime               @default(now())
+  id                     String                @id @default(uuid())
+  userId                 String
+  action                 String // login, logout, password_change, profile_update, etc.
+  entityType             String? // user, role, permission, etc.
+  entityId               String?
+  oldValues              String?               @db.Text // JSON string of old values
+  newValues              String?               @db.Text // JSON string of new values
+  ipAddress              String?
+  userAgent              String?
+  notificationTemplateId String?
+  notificationSent       Boolean               @default(false)
+  user                   User                  @relation(fields: [userId], references: [id])
+  notificationTemplate   NotificationTemplate? @relation(fields: [notificationTemplateId], references: [id])
+  createdAt              DateTime              @default(now())
 
   @@map("logic_history")
 }
 
 // AI Agent Management Models
 model Agent {
-  id            String         @id @default(uuid())
-  userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  description   String?        @db.Text
-  model         String         @default("gpt-4") // LLM model (gpt-4, claude-3, etc.)
-  personality   String?        @db.Text // JSON config for personality
-  systemPrompt  String?        @db.Text
-  config        String?        @db.Text // JSON config (temperature, max_tokens, etc.)
-  isActive      Boolean        @default(true)
-  
+  id           String  @id @default(uuid())
+  userId       String
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  description  String? @db.Text
+  model        String  @default("gpt-4") // LLM model (gpt-4, claude-3, etc.)
+  personality  String? @db.Text // JSON config for personality
+  systemPrompt String? @db.Text
+  config       String? @db.Text // JSON config (temperature, max_tokens, etc.)
+  isActive     Boolean @default(true)
+
   // Relationships
   memories      AgentMemory[]
   conversations Conversation[]
   tools         AgentTool[]
   tasks         AgentTask[]
-  
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("agent")
 }
 
 model AgentMemory {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   agentId    String
-  agent      Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  type       String   // 'short_term', 'long_term', 'knowledge_base'
-  content    String   @db.Text
-  embedding  String?  @db.Text // JSON array for vector embeddings
-  metadata   String?  @db.Text // JSON metadata (tags, source, date, etc.)
-  importance Int      @default(1) // 1-10 importance score
-  
-  createdAt  DateTime @default(now())
+  agent      Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type       String // 'short_term', 'long_term', 'knowledge_base'
+  content    String  @db.Text
+  embedding  String? @db.Text // JSON array for vector embeddings
+  metadata   String? @db.Text // JSON metadata (tags, source, date, etc.)
+  importance Int     @default(1) // 1-10 importance score
+
+  createdAt DateTime @default(now())
 
   @@map("agent_memory")
 }
 
 model Conversation {
-  id        String    @id @default(uuid())
-  agentId   String
-  agent     Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String?
-  summary   String?   @db.Text // Auto-generated summary of conversation
-  isActive  Boolean   @default(true)
-  
-  messages  Message[]
-  
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id       String  @id @default(uuid())
+  agentId  String
+  agent    Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title    String?
+  summary  String? @db.Text // Auto-generated summary of conversation
+  isActive Boolean @default(true)
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
   @@map("conversation")
 }
@@ -307,12 +308,12 @@ model Message {
   id             String       @id @default(uuid())
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         String       // 'user', 'agent', 'system'
+  sender         String // 'user', 'agent', 'system'
   content        String       @db.Text
   metadata       String?      @db.Text // JSON (tool calls, attachments, etc.)
-  tokens         Int?         // Token count for this message
+  tokens         Int? // Token count for this message
   position       Int          @default(0) // Position/order in conversation
-  agentId        String?      // Optional: associate message with an agent
+  agentId        String? // Optional: associate message with an agent
   isError        Boolean      @default(false) // Mark if this message is an error
   createdAt      DateTime     @default(now())
 
@@ -321,14 +322,14 @@ model Message {
 }
 
 model AgentTool {
-  id        String   @id @default(uuid())
-  agentId   String
-  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  name      String   // Tool name (e.g., "web_search", "calculator", "email_sender")
-  type      String   // 'api', 'function', 'system', 'plugin'
-  config    String?  @db.Text // JSON configuration for the tool
-  enabled   Boolean  @default(true)
-  
+  id      String  @id @default(uuid())
+  agentId String
+  agent   Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name    String // Tool name (e.g., "web_search", "calculator", "email_sender")
+  type    String // 'api', 'function', 'system', 'plugin'
+  config  String? @db.Text // JSON configuration for the tool
+  enabled Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
@@ -336,16 +337,16 @@ model AgentTool {
 }
 
 model AgentTask {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   agentId   String
-  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agent     Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
   name      String
-  input     String?  @db.Text // JSON input data
-  output    String?  @db.Text // JSON output result
-  status    String   @default("pending") // 'pending', 'running', 'completed', 'failed'
-  error     String?  @db.Text
+  input     String?   @db.Text // JSON input data
+  output    String?   @db.Text // JSON output result
+  status    String    @default("pending") // 'pending', 'running', 'completed', 'failed'
+  error     String?   @db.Text
   startedAt DateTime?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
@@ -359,7 +360,7 @@ model EntityLabel {
   entityType String // Type of entity (user, role, permission, token, etc.)
   labelId    String
   label      Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
 
   @@unique([entityId, entityType, labelId])
@@ -371,36 +372,36 @@ model EntityLabel {
 
 // Database Connection Management
 model DatabaseConnection {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?  @db.Text
-  type        String   // 'mysql', 'postgresql', 'mongodb', 'sqlite'
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String? @db.Text
+  type        String // 'mysql', 'postgresql', 'mongodb', 'sqlite'
   host        String
-  port        Int      @default(3306)
+  port        Int     @default(3306)
   database    String
   username    String
-  password    String   // Should be encrypted in production
-  
+  password    String // Should be encrypted in production
+
   // Connection options
-  ssl         Boolean  @default(false)
-  timeout     Int      @default(30000) // Connection timeout in milliseconds
-  options     String?  @db.Text // JSON string for additional connection options
-  
+  ssl     Boolean @default(false)
+  timeout Int     @default(30000) // Connection timeout in milliseconds
+  options String? @db.Text // JSON string for additional connection options
+
   // Status and monitoring
-  isActive    Boolean  @default(true)
-  lastTested  DateTime?
-  testStatus  String?  // 'success', 'failed', 'pending'
-  testError   String?  @db.Text
-  
+  isActive   Boolean   @default(true)
+  lastTested DateTime?
+  testStatus String? // 'success', 'failed', 'pending'
+  testError  String?   @db.Text
+
   // Backup settings
-  backupEnabled Boolean @default(false)
+  backupEnabled Boolean   @default(false)
   backupPath    String?
   lastBackup    DateTime?
-  
+
   // Metadata
-  createdBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 
   @@map("database_connection")
 }
@@ -408,7 +409,7 @@ model DatabaseConnection {
 // Application Logs
 model LogEntry {
   id           String   @id @default(uuid())
-  level        String   // 'error', 'warn', 'info', 'debug'
+  level        String // 'error', 'warn', 'info', 'debug'
   message      String   @db.Text
   metadata     String?  @db.Text // JSON metadata
   userId       String?
@@ -416,9 +417,9 @@ model LogEntry {
   ipAddress    String?
   userAgent    String?  @db.Text
   endpoint     String?
-  method       String?  // HTTP method
+  method       String? // HTTP method
   statusCode   Int?
-  responseTime Int?     // Response time in milliseconds
+  responseTime Int? // Response time in milliseconds
   timestamp    DateTime @default(now())
 
   @@index([level])
@@ -442,13 +443,26 @@ model SocketConfig {
 }
 
 model SocketEvent {
-  id            String      @id @default(uuid())
+  id             String       @id @default(uuid())
   socketConfigId String
-  type          String
-  event         String
-  socketConfig  SocketConfig @relation(fields: [socketConfigId], references: [id])
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @default(now())
+  type           String
+  event          String
+  socketConfig   SocketConfig @relation(fields: [socketConfigId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now())
 
   @@map("socket_event")
+}
+
+model File {
+  id           String   @id @default(uuid())
+  filename     String   @unique
+  originalname String
+  mimetype     String
+  size         Int
+  uploaderId   String?
+  uploader     User?    @relation(fields: [uploaderId], references: [id])
+  type         String   @default("other") // e.g. agent, document, etc.
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
