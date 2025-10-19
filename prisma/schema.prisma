@@ -466,3 +466,12 @@ model File {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+model UiConfig {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  value     String   @db.Text // JSON string for UI config (sidebar, menu, etc.)
+  role      String?  // Role for which this config applies
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

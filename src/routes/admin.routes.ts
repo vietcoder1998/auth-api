@@ -19,6 +19,7 @@ import loggerRouter from './logger.routes';
 import databaseConnectionRouter from './database-connection.routes';
 import socketRoutes from './socket.routes';
 import documentRouter from './document.routes';
+import uiConfigRouter from './uiconfig.routes';
 import { searchAllEntities } from '../controllers/search.controller';
 import { upload, uploadFile, getFile, deleteFile } from '../controllers/file.controller';
 
@@ -44,6 +45,7 @@ router.use('/logs', loggerRouter);
 router.use('/database-connections', databaseConnectionRouter);
 router.use('/sockets', socketRoutes);
 router.use('/documents', documentRouter);
+router.use('/ui-config', uiConfigRouter);
 router.get('/search', searchAllEntities);
 router.post('/files/upload', upload.single('file'), uploadFile);
 router.get('/files/:filename', getFile);
