@@ -177,19 +177,8 @@ async function main() {
     mockPermissions.map((permission: any) =>
       prisma.permission.upsert({
         where: { name: permission.name },
-        update: {
-          description: permission.description,
-          category: permission.category,
-          route: permission.route,
-          method: permission.method,
-        },
-        create: {
-          name: permission.name,
-          description: permission.description,
-          category: permission.category,
-          route: permission.route,
-          method: permission.method,
-        },
+        update: {}, // or update fields if needed
+        create: permission,
       }),
     ),
   );
