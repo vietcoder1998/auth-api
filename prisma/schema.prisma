@@ -518,6 +518,7 @@ model Faq {
   messages       Message[]      // Link FAQ to messages (question/answer)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  description    String?
 
   @@map("faq")
 }

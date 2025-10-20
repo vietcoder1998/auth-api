@@ -57,7 +57,33 @@ export async function createFaq(req: Request, res: Response) {
 export async function updateFaq(req: Request, res: Response) {
   const { id } = req.params;
   try {
-    const faq = await prisma.faq.update({ where: { id }, data: req.body });
+    // Only allow scalar fields and relation IDs
+    const {
+      question,
+      answer,
+      type,
+      promptId,
+      conversationId,
+      aiAgentId,
+      createdAt,
+      updatedAt,
+      description,
+    } = req.body;
+
+    const faq = await prisma.faq.update({
+      where: { id },
+      data: {
+        question,
+        answer,
+        type,
+        promptId,
+        conversationId,
+        aiAgentId,
+        createdAt,
+        updatedAt,
+        description,
+      },
+    });
     res.json({ success: true, data: faq });
   } catch (error) {
     res
