@@ -11,13 +11,13 @@ import { mockSSOEntries } from '../src/mock/sso';
 import { mockLoginHistoryEntries } from '../src/mock/login-history';
 import { mockLogicHistoryEntries } from '../src/mock/logic-history';
 import { mockLabels } from '../src/mock/labels';
+import { mockFaqs } from '../src/mock/faq';
 
 const prisma = new PrismaClient();
 
 async function main() {
   // Seed FAQs and related messages
   console.log('❓ Seeding FAQs and FAQ Messages...');
-  const { mockFaqs } = await import('../src/mock/faq');
   // Build a mapping from mock agent IDs (names or symbolic IDs) to real agent IDs
   const allAgents = await prisma.agent.findMany();
   const agentIdMap: Record<string, string> = {};
