@@ -18,7 +18,8 @@ import { mockPrompts } from '../src/mock/prompts';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Seed FAQs and related messages
+  // ...existing code...
+  // Seed FAQs and related messages (moved to end)
   console.log('❓ Seeding FAQs and FAQ Messages...');
   // Build a mapping from mock agent IDs (names or symbolic IDs) to real agent IDs
   const allAgents = await prisma.agent.findMany();
