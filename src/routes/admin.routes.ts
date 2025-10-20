@@ -55,7 +55,6 @@ router.use('/database-connections', databaseConnectionRouter);
 router.use('/sockets', socketRoutes);
 router.use('/documents', documentRouter);
 router.use('/faqs', faqRouter);
-router.use('/', promptHistoryRouter);
 router.use('/ui-config', uiConfigRouter);
 router.use('/jobs', jobRouter);
 router.get('/search', searchAllEntities);
@@ -63,5 +62,6 @@ router.post('/files/upload', upload.single('file'), uploadFile);
 router.get('/files/:filename', getFile);
 router.get('/files/download/:filename', downloadDocument);
 router.delete('/files/:filename', deleteFile);
+router.use('/prompts', promptHistoryRouter);
 
 export default router;
