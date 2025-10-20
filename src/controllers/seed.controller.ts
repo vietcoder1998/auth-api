@@ -1,5 +1,14 @@
 import { Request, Response } from 'express';
 import { seedService } from '../services/seed.service';
+// Get seeding progress
+export async function getSeedProgress(req: Request, res: Response) {
+  try {
+    const progress = seedService.getProgress();
+    res.status(200).json({ success: true, data: progress });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to get seed progress', errors: [error instanceof Error ? error.message : 'Unknown error'] });
+  }
+}
 
 // Seed all data
 export async function seedAll(req: Request, res: Response) {

@@ -19,20 +19,50 @@ export interface SeedResult {
   errors?: string[];
 }
 
+export interface SeedProgress {
+  status: 'idle' | 'running' | 'completed' | 'error';
+  step: string;
+  percent: number;
+  message?: string;
+  error?: string;
+}
+
 export class SeedService {
+  private progress: SeedProgress = { status: 'idle', step: '', percent: 0 };
+
+  getProgress(): SeedProgress {
+    return this.progress;
+  }
+
+  private setProgress(progress: Partial<SeedProgress>) {
+    this.progress = { ...this.progress, ...progress };
+  }
   /**
    * Seed all data
    */
   async seedAll(): Promise<SeedResult> {
+    this.setProgress({ status: 'running', step: 'Starting seeding', percent: 0 });
     try {
-      const results = await Promise.allSettled([
-        this.seedPermissions(),
-        this.seedRoles(),
-        this.seedUsers(),
-        this.seedConfigs(),
-        this.seedAgents(),
-        this.seedApiKeys(),
-      ]);
+
+      const steps = [
+        { fn: this.seedPermissions.bind(this), name: 'Permissions' },
+        { fn: this.seedRoles.bind(this), name: 'Roles' },
+        { fn: this.seedUsers.bind(this), name: 'Users' },
+        { fn: this.seedConfigs.bind(this), name: 'Configs' },
+        { fn: this.seedAgents.bind(this), name: 'Agents' },
+        { fn: this.seedApiKeys.bind(this), name: 'API Keys' },
+      ];
+      const results: any[] = [];
+      for (let i = 0; i < steps.length; i++) {
+        this.setProgress({ step: `Seeding ${steps[i].name}`, percent: Math.round((i / steps.length) * 100) });
+        try {
+          const result = await steps[i].fn();
+          results.push({ status: 'fulfilled', value: result });
+        } catch (err: any) {
+          results.push({ status: 'rejected', reason: err });
+        }
+      }
+      this.setProgress({ step: 'Finalizing', percent: 100 });
 
       const successCount = results.filter((r) => r.status === 'fulfilled').length;
       const errors = results
@@ -48,6 +78,7 @@ export class SeedService {
         apiKeys: await prisma.apiKey.count(),
       };
 
+      this.setProgress({ status: 'completed', step: 'Completed', percent: 100 });
       return {
         success: successCount === results.length,
         message: `Seeded ${successCount}/${results.length} components successfully`,
@@ -55,6 +86,7 @@ export class SeedService {
         errors: errors.length > 0 ? errors : undefined,
       };
     } catch (error) {
+      this.setProgress({ status: 'error', step: 'Error', percent: 100, error: error instanceof Error ? error.message : 'Unknown error' });
       console.error('Seed all error:', error);
       return {
         success: false,

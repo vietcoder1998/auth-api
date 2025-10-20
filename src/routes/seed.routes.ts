@@ -10,6 +10,7 @@ import {
   clearAll,
   getStats,
   getSeedData,
+  getSeedProgress,
 } from '../controllers/seed.controller';
 
 const router = Router();
@@ -33,5 +34,6 @@ router.post('/api-keys', seedApiKeys);
 
 // Dangerous operations
 router.delete('/clear-all', clearAll);
+router.get('/progress', getSeedProgress);
 
 export default router;
