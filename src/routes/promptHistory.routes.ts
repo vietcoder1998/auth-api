@@ -11,6 +11,9 @@ import {
 
 const router = Router();
 
+// GET /prompts (all prompts, not bound to conversation, not under /api/admin)
+router.get('/', getAllPromptHistories);
+
 // POST /api/admin/conversations/:conversationId/prompts
 router.post('/conversations/:conversationId/prompts', createPromptHistory);
 
