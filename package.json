@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "nodemon",
+    "docker:local": "docker-compose -f docker-compose.local.yml up -d --build",
     "start": "node dist/index.js",
     "build": "tsc",
     "test": "jest --config jest.config.js --coverage",
