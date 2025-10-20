@@ -4,7 +4,24 @@ const prisma = new PrismaClient();
 
 export async function listFaqs(req: Request, res: Response) {
   try {
-    const faqs = await prisma.faq.findMany({ orderBy: { createdAt: 'desc' } });
+    const { q } = req.query;
+    const where: any = {};
+    if (q && typeof q === 'string' && q.trim()) {
+      where.OR = [
+        { question: { contains: q, mode: 'insensitive' } },
+        { answer: { contains: q, mode: 'insensitive' } },
+        { type: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+    const faqs = await prisma.faq.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        prompt: true,
+        conversation: true,
+        agent: true,
+      },
+    });
     res.json({ success: true, data: faqs });
   } catch (error) {
     res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
