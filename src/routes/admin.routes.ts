@@ -46,7 +46,7 @@ router.use('/logs', loggerRouter);
 router.use('/database-connections', databaseConnectionRouter);
 router.use('/sockets', socketRoutes);
 router.use('/documents', documentRouter);
-router.use('/prompts', promptHistoryRouter);
+router.use('/', promptHistoryRouter);
 router.use('/ui-config', uiConfigRouter);
 router.get('/search', searchAllEntities);
 router.post('/files/upload', upload.single('file'), uploadFile);
