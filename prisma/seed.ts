@@ -15,6 +15,54 @@ import { mockLabels } from '../src/mock/labels';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Seed FAQs and related messages
+  console.log('❓ Seeding FAQs and FAQ Messages...');
+  const { mockFaqs } = await import('../src/mock/faq');
+  for (const faq of mockFaqs) {
+    // Create FAQ
+    const createdFaq = await prisma.faq.create({
+      data: {
+        question: faq.question,
+        answer: faq.answer,
+        type: faq.type,
+        promptId: (faq as any).promptId || undefined,
+        conversationId: (faq as any).conversationId || undefined,
+        aiAgentId: (faq as any).aiAgentId || undefined,
+        createdAt: faq.createdAt,
+        updatedAt: faq.updatedAt,
+      }
+    });
+
+    // Create a new conversation for FAQ messages if not mapped
+    let conversationId = (faq as any).conversationId;
+    if (!conversationId) {
+      const conv = await prisma.conversation.create({
+        data: {
+          agentId: (faq as any).aiAgentId || undefined,
+          userId: (faq as any).userId || undefined,
+          title: `FAQ: ${faq.question}`,
+          summary: faq.answer,
+          isActive: true,
+        }
+      });
+      conversationId = conv.id;
+      // Update FAQ with conversationId
+      await prisma.faq.update({ where: { id: createdFaq.id }, data: { conversationId } });
+    }
+
+    // Create messages for FAQ (question/answer)
+    for (const [idx, msg] of (faq.messages || []).entries()) {
+      await prisma.message.create({
+        data: {
+          conversation: { connect: { id: conversationId } },
+          sender: msg.sender,
+          content: msg.content,
+          faq: { connect: { id: createdFaq.id } },
+          position: idx + 1,
+        }
+      });
+    }
+  }
   // Seed labels first (required for all other entities)
   console.log('🏷️ Seeding Labels...');
   const createdLabels: Record<string, any> = {};
@@ -23,10 +71,12 @@ async function main() {
     const createdLabel = await prisma.label.upsert({
       where: { name: label.name },
       update: {
-        description: label.description,
         color: label.color
       },
-      create: label
+      create: {
+        name: label.name,
+        color: label.color
+      }
     });
     createdLabels[label.name] = createdLabel;
   }

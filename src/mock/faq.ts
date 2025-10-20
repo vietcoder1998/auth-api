@@ -9,6 +9,18 @@ export const mockFaqs = [
     type: 'manual',
     createdAt: new Date(),
     updatedAt: new Date(),
+    messages: [
+      {
+        sender: 'user',
+        content: 'How do I reset my password?',
+        type: 'question',
+      },
+      {
+        sender: 'agent',
+        content: 'To reset your password, go to the login page and click on "Forgot Password". Follow the instructions sent to your email.',
+        type: 'answer',
+      },
+    ],
   },
   {
     question: 'What is an AI Agent?',
@@ -17,6 +29,18 @@ export const mockFaqs = [
     aiAgentId: mockAgents[0]?.id,
     createdAt: new Date(),
     updatedAt: new Date(),
+    messages: [
+      {
+        sender: 'user',
+        content: 'What is an AI Agent?',
+        type: 'question',
+      },
+      {
+        sender: 'agent',
+        content: 'An AI Agent is a virtual assistant that can help you with various tasks using artificial intelligence.',
+        type: 'answer',
+      },
+    ],
   },
   {
     question: 'How do I view my conversation history?',
@@ -24,6 +48,18 @@ export const mockFaqs = [
     type: 'manual',
     createdAt: new Date(),
     updatedAt: new Date(),
+    messages: [
+      {
+        sender: 'user',
+        content: 'How do I view my conversation history?',
+        type: 'question',
+      },
+      {
+        sender: 'agent',
+        content: 'Navigate to the Conversations page from the sidebar to view your conversation history.',
+        type: 'answer',
+      },
+    ],
   },
   {
     question: 'How do I use prompt history?',
@@ -32,6 +68,38 @@ export const mockFaqs = [
     promptId: mockConversations[0]?.id,
     createdAt: new Date(),
     updatedAt: new Date(),
+    messages: [
+      {
+        sender: 'user',
+        content: 'How do I use prompt history?',
+        type: 'question',
+      },
+      {
+        sender: 'agent',
+        content: 'Prompt history allows you to review and reuse previous prompts in your conversations.',
+        type: 'answer',
+      },
+    ],
+  },
+  // New FAQ for completed chatbot
+  {
+    question: 'How do I know when the chatbot has completed my request?',
+    answer: 'The chatbot will notify you with a completion message and display the results in the chat window.',
+    type: 'manual',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    messages: [
+      {
+        sender: 'user',
+        content: 'How do I know when the chatbot has completed my request?',
+        type: 'question',
+      },
+      {
+        sender: 'agent',
+        content: 'The chatbot will notify you with a completion message and display the results in the chat window.',
+        type: 'answer',
+      },
+    ],
   },
 ];
 

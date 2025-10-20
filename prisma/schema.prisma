@@ -7,18 +7,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MessageType {
+  question
+  answer
+}
+
 model Label {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  color       String?  @default("#007bff") // Hex color code for UI
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id    String   @id @default(uuid())
+  name  String   @unique
+  color String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Single generic relationship for all entities
   entityLabels EntityLabel[]
-
   @@map("label")
+}
+
+
+model Message {
+  id              String         @id @default(uuid())
+  conversationId  String
+  conversation    Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          String // 'user', 'agent', 'system'
+  content         String         @db.Text
+  metadata        String?        @db.Text
+  tokens          Int?
+  position        Int            @default(0)
+  agentId         String?
+  isError         Boolean        @default(false)
+  promptHistoryId String? // <-- Reference to PromptHistory
+  promptHistory   PromptHistory? @relation(fields: [promptHistoryId], references: [id])
+  type            MessageType    @default(question) // 'question' or 'answer'
+  faqId           String?
+  faq             Faq?           @relation(fields: [faqId], references: [id])
+  createdAt       DateTime       @default(now())
+
+  @@index([conversationId, position])
+  @@map("message")
 }
 
 model User {
@@ -321,25 +346,6 @@ model PromptHistory {
   @@map("prompt_history")
 }
 
-model Message {
-  id              String         @id @default(uuid())
-  conversationId  String
-  conversation    Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender          String // 'user', 'agent', 'system'
-  content         String         @db.Text
-  metadata        String?        @db.Text
-  tokens          Int?
-  position        Int            @default(0)
-  agentId         String?
-  isError         Boolean        @default(false)
-  promptHistoryId String? // <-- Reference to PromptHistory
-  promptHistory   PromptHistory? @relation(fields: [promptHistoryId], references: [id])
-  createdAt       DateTime       @default(now())
-
-  @@index([conversationId, position])
-  @@map("message")
-}
-
 model AgentTool {
   id      String  @id @default(uuid())
   agentId String
@@ -509,6 +515,7 @@ model Faq {
   conversation   Conversation?  @relation(fields: [conversationId], references: [id])
   aiAgentId      String?
   agent          Agent?         @relation(fields: [aiAgentId], references: [id])
+  messages       Message[]      // Link FAQ to messages (question/answer)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
