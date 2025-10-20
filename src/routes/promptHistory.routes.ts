@@ -7,7 +7,6 @@ import {
   deletePromptHistory,
   getAllPromptHistories
 } from '../controllers/promptHistory.controller';
-// GET /api/admin/prompts (all prompts, not bound to conversation)
 
 const router = Router();
 
@@ -19,6 +18,16 @@ router.post('/conversations/:conversationId/prompts', createPromptHistory);
 
 // GET /api/admin/conversations/:conversationId/prompts
 router.get('/conversations/:conversationId/prompts', getPromptHistories);
+
+// POST /api/admin/prompts/generate (AI generate endpoint)
+router.post('/prompts/generate', async (req, res) => {
+  // TODO: Implement AI generation logic or proxy to AI service
+  // For now, return a placeholder response
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+  // Replace this with actual AI generation logic
+  res.json({ data: `AI generated content for: ${prompt}` });
+});
 
 // GET /api/admin/prompts/:id
 router.get('/prompts/:id', getPromptHistoryById);
