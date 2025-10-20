@@ -12,6 +12,8 @@ import { mockLoginHistoryEntries } from '../src/mock/login-history';
 import { mockLogicHistoryEntries } from '../src/mock/logic-history';
 import { mockLabels } from '../src/mock/labels';
 import { mockFaqs } from '../src/mock/faq';
+import { mockJobs } from '../src/mock/jobs';
+import { mockPrompts } from '../src/mock/prompts';
 
 const prisma = new PrismaClient();
 
@@ -101,6 +103,49 @@ async function main() {
           position: idx + 1,
         },
       });
+    }
+  }
+
+  // Seed Prompts
+  console.log('💡 Seeding Prompts...');
+  for (const prompt of mockPrompts) {
+    try {
+      if (!prompt.conversationId) {
+        console.warn(`⚠ Skipping prompt: '${prompt.prompt}' (missing conversationId)`);
+        continue;
+      }
+      const convExists = await prisma.conversation.findUnique({ where: { id: prompt.conversationId } });
+      if (!convExists) {
+        console.warn(`⚠ Skipping prompt: '${prompt.prompt}' (invalid conversationId: ${prompt.conversationId})`);
+        continue;
+      }
+      await prisma.promptHistory.create({
+        data: {
+          conversationId: prompt.conversationId,
+          prompt: prompt.prompt,
+          createdAt: prompt.createdAt,
+        },
+      });
+    } catch (error) {
+      console.log(`⚠ Error creating prompt:`, error);
+    }
+  }
+
+  // Seed Jobs
+  console.log('🧑‍💼 Seeding Jobs...');
+  for (const job of mockJobs) {
+    try {
+      await prisma.job.create({
+        data: {
+          type: job.type,
+          status: job.status,
+          result: job.result,
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+        },
+      });
+    } catch (error) {
+      console.log(`⚠ Error creating job:`, error);
     }
   }
   // Seed labels first (required for all other entities)
