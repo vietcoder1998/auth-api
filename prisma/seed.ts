@@ -18,28 +18,66 @@ async function main() {
   // Seed FAQs and related messages
   console.log('❓ Seeding FAQs and FAQ Messages...');
   const { mockFaqs } = await import('../src/mock/faq');
+  // Build a mapping from mock agent IDs (names or symbolic IDs) to real agent IDs
+  const allAgents = await prisma.agent.findMany();
+  const agentIdMap: Record<string, string> = {};
+  for (const agent of allAgents) {
+    // Map by name and by id for flexibility
+    agentIdMap[agent.name] = agent.id;
+    agentIdMap[agent.id] = agent.id;
+  }
+
+  // Build a mapping from mock prompt IDs (symbolic or actual) to real PromptHistory IDs
+  const allPrompts = await prisma.promptHistory.findMany();
+  const promptIdMap: Record<string, string> = {};
+  for (const prompt of allPrompts) {
+    // Map by prompt text and by id for flexibility
+    promptIdMap[prompt.prompt] = prompt.id;
+    promptIdMap[prompt.id] = prompt.id;
+  }
+
   for (const faq of mockFaqs) {
-    // Create FAQ
+    // Map aiAgentId from mock to real agent ID if present
+    let mappedAgentId = undefined;
+    if ((faq as any).aiAgentId) {
+      mappedAgentId = agentIdMap[(faq as any).aiAgentId] || undefined;
+    }
+    // Map promptId from mock to real prompt ID if present
+    let mappedPromptId = undefined;
+    if ((faq as any).promptId) {
+      mappedPromptId = promptIdMap[(faq as any).promptId] || undefined;
+    }
+    const faqData: any = {
+      question: faq.question,
+      answer: faq.answer,
+      type: faq.type,
+      conversationId: (faq as any).conversationId || undefined,
+      createdAt: faq.createdAt,
+      updatedAt: faq.updatedAt,
+    };
+    if (mappedAgentId) {
+      faqData.aiAgentId = mappedAgentId;
+    }
+    if (mappedPromptId) {
+      faqData.promptId = mappedPromptId;
+    }
     const createdFaq = await prisma.faq.create({
-      data: {
-        question: faq.question,
-        answer: faq.answer,
-        type: faq.type,
-        promptId: (faq as any).promptId || undefined,
-        conversationId: (faq as any).conversationId || undefined,
-        aiAgentId: (faq as any).aiAgentId || undefined,
-        createdAt: faq.createdAt,
-        updatedAt: faq.updatedAt,
-      }
+      data: faqData
     });
 
     // Create a new conversation for FAQ messages if not mapped
     let conversationId = (faq as any).conversationId;
     if (!conversationId) {
+      const agentId = (faq as any).aiAgentId;
+      const userId = (faq as any).userId;
+      if (!agentId || !userId) {
+        console.warn(`⚠️ Skipping FAQ conversation creation for question: '${faq.question}' (missing agentId or userId)`);
+        continue;
+      }
       const conv = await prisma.conversation.create({
         data: {
-          agentId: (faq as any).aiAgentId || undefined,
-          userId: (faq as any).userId || undefined,
+          agentId,
+          userId,
           title: `FAQ: ${faq.question}`,
           summary: faq.answer,
           isActive: true,
