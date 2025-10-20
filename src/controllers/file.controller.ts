@@ -1,3 +1,5 @@
+
+
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -57,4 +59,12 @@ export async function deleteFile(req: Request, res: Response) {
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
   fs.unlinkSync(filePath);
   res.json({ success: true });
+}
+
+// Download document by filename
+export async function downloadDocument(req: Request, res: Response) {
+  const { filename } = req.params;
+  const filePath = path.join(uploadDir, filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+  res.download(filePath, filename);
 }

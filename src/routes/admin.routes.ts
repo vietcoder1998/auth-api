@@ -22,7 +22,7 @@ import documentRouter from './document.routes';
 import promptHistoryRouter from './promptHistory.routes';
 import uiConfigRouter from './uiconfig.routes';
 import { searchAllEntities } from '../controllers/search.controller';
-import { upload, uploadFile, getFile, deleteFile } from '../controllers/file.controller';
+import { upload, uploadFile, getFile, deleteFile, downloadDocument } from '../controllers/file.controller';
 
 const router = Router();
 
@@ -51,6 +51,7 @@ router.use('/ui-config', uiConfigRouter);
 router.get('/search', searchAllEntities);
 router.post('/files/upload', upload.single('file'), uploadFile);
 router.get('/files/:filename', getFile);
+router.get('/files/download/:filename', downloadDocument);
 router.delete('/files/:filename', deleteFile);
 
 export default router;
