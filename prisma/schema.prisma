@@ -65,7 +65,7 @@ model Permission {
   method      String? // GET, POST, PUT, DELETE, PATCH
   roles       Role[]
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now())
 
   @@map("permission")
 }
@@ -90,7 +90,7 @@ model MailTemplate {
   active    Boolean  @default(true)
   mails     Mail[]
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@map("mail_template")
 }
@@ -187,7 +187,7 @@ model Mail {
   sentAt       DateTime?
   failedReason String?
   createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  updatedAt    DateTime      @default(now())
 
   @@map("mail")
 }
@@ -266,7 +266,7 @@ model Agent {
   tasks         AgentTask[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@map("agent")
 }
@@ -296,8 +296,8 @@ model Conversation {
   summary  String? @db.Text
   isActive Boolean @default(true)
 
-  messages       Message[]
-  promptHistory  PromptHistory[] // <-- Link to prompt history
+  messages      Message[]
+  promptHistory PromptHistory[] // <-- Link to prompt history
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -306,32 +306,32 @@ model Conversation {
 }
 
 model PromptHistory {
-  id             String        @id @default(uuid())
+  id             String   @id @default(uuid())
   conversationId String
-  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  prompt         String        @db.Text // The prompt text
-  createdAt      DateTime      @default(now())
+  prompt         String   @db.Text // The prompt text
+  createdAt      DateTime @default(now())
 
-  messages       Message[]     // <-- Messages generated from this prompt
+  messages     Message[] // <-- Messages generated from this prompt
+  Conversation Conversation @relation(fields: [conversationId], references: [id])
 
   @@index([conversationId])
   @@map("prompt_history")
 }
 
 model Message {
-  id             String       @id @default(uuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         String // 'user', 'agent', 'system'
-  content        String       @db.Text
-  metadata       String?      @db.Text
-  tokens         Int?
-  position       Int          @default(0)
-  agentId        String?
-  isError        Boolean      @default(false)
-  promptHistoryId String?     // <-- Reference to PromptHistory
+  id              String         @id @default(uuid())
+  conversationId  String
+  conversation    Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          String // 'user', 'agent', 'system'
+  content         String         @db.Text
+  metadata        String?        @db.Text
+  tokens          Int?
+  position        Int            @default(0)
+  agentId         String?
+  isError         Boolean        @default(false)
+  promptHistoryId String? // <-- Reference to PromptHistory
   promptHistory   PromptHistory? @relation(fields: [promptHistoryId], references: [id])
-  createdAt      DateTime     @default(now())
+  createdAt       DateTime       @default(now())
 
   @@index([conversationId, position])
   @@map("message")
@@ -453,7 +453,7 @@ model SocketConfig {
   isActive  Boolean       @default(true)
   events    SocketEvent[]
   createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  updatedAt DateTime      @default(now())
 
   @@map("socket_config")
 }
@@ -480,14 +480,14 @@ model File {
   uploader     User?    @relation(fields: [uploaderId], references: [id])
   type         String   @default("other") // e.g. agent, document, etc.
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime @default(now())
 }
 
 model UiConfig {
   id        String   @id @default(uuid())
   name      String   @unique
   value     String   @db.Text // JSON string for UI config (sidebar, menu, etc.)
-  role      String?  // Role for which this config applies
+  role      String? // Role for which this config applies
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 }
