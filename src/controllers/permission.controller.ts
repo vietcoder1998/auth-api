@@ -149,19 +149,37 @@ export async function getPermissions(req: Request, res: Response) {
 export async function createPermission(req: Request, res: Response) {
   const { name, description, category, route, method, roles } = req.body;
   try {
-    // First create the permission
-    const permission = await prisma.permission.create({
-      data: {
-        name,
-        description,
-        category: category || 'other',
-        route,
-        method,
-        roles: {
-          connect: roles?.map((rid: string) => ({ id: rid })) || []
+    // Check if permission already exists
+    let permission = await prisma.permission.findUnique({ where: { name } });
+    if (permission) {
+      // Update existing permission
+      permission = await prisma.permission.update({
+        where: { id: permission.id },
+        data: {
+          description,
+          category: category || 'other',
+          route,
+          method,
+          roles: {
+            connect: roles?.map((rid: string) => ({ id: rid })) || []
+          }
         }
-      }
-    });
+      });
+    } else {
+      // Create new permission
+      permission = await prisma.permission.create({
+        data: {
+          name,
+          description,
+          category: category || 'other',
+          route,
+          method,
+          roles: {
+            connect: roles?.map((rid: string) => ({ id: rid })) || []
+          }
+        }
+      });
+    }
 
     // Automatically add this permission to the superadmin role
     const superadminRole = await prisma.role.findUnique({
@@ -172,7 +190,6 @@ export async function createPermission(req: Request, res: Response) {
     if (superadminRole) {
       // Check if permission is already connected to superadmin
       const hasPermission = superadminRole.permissions.some(p => p.id === permission.id);
-      
       if (!hasPermission) {
         await prisma.role.update({
           where: { id: superadminRole.id },
@@ -182,8 +199,7 @@ export async function createPermission(req: Request, res: Response) {
             }
           }
         });
-        
-        logInfo(`New permission '${name}' automatically added to superadmin role`);
+        logInfo(`Permission '${name}' added to superadmin role`);
       }
     } else {
       logError('Superadmin role not found - permission not added to superadmin');
@@ -191,8 +207,8 @@ export async function createPermission(req: Request, res: Response) {
 
     res.json(permission);
   } catch (err) {
-    logError('Failed to create permission:', err);
-    res.status(500).json({ error: 'Failed to create permission' });
+    logError('Failed to create/update permission:', err);
+    res.status(500).json({ error: 'Failed to create/update permission' });
   }
 }
 
