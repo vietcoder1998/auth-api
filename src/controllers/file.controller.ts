@@ -12,16 +12,36 @@ const storage = multer.diskStorage({
 });
 export const upload = multer({ storage });
 
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
 export async function uploadFile(req: Request, res: Response) {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  res.json({
-    success: true,
-    filename: req.file.filename,
-    originalname: req.file.originalname,
-    path: req.file.path,
-    mimetype: req.file.mimetype,
-    size: req.file.size,
-  });
+  const type = req.body.type || 'document';
+  try {
+    // Save file metadata to DB
+    const doc = await prisma.file.create({
+      data: {
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        path: req.file.path,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        type: String(type),
+      }
+    });
+    res.json({
+      success: true,
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      path: req.file.path,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      document: doc
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+  }
 }
 
 export async function getFile(req: Request, res: Response) {

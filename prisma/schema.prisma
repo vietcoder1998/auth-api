@@ -472,22 +472,14 @@ model SocketEvent {
 
 model File {
   id           String   @id @default(uuid())
-  filename     String   @unique
+  filename     String
   originalname String
   mimetype     String
   size         Int
-  uploaderId   String?
-  uploader     User?    @relation(fields: [uploaderId], references: [id])
-  type         String   @default("other") // e.g. agent, document, etc.
+  type         String   @default("document")
+  path         String // <-- Add this line
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
-}
-
-model UiConfig {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  value     String   @db.Text // JSON string for UI config (sidebar, menu, etc.)
-  role      String? // Role for which this config applies
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  User         User?    @relation(fields: [userId], references: [id])
+  userId       String?
 }
