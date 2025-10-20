@@ -28,5 +28,11 @@ export const promptHistoryService = {
 
   async deletePrompt(id: string) {
     return prisma.promptHistory.delete({ where: { id } });
+  },
+
+  async getAllPrompts() {
+    return prisma.promptHistory.findMany({
+      orderBy: { createdAt: 'asc' }
+    });
   }
 };

@@ -4,8 +4,10 @@ import {
   getPromptHistories,
   getPromptHistoryById,
   updatePromptHistory,
-  deletePromptHistory
+  deletePromptHistory,
+  getAllPromptHistories
 } from '../controllers/promptHistory.controller';
+// GET /api/admin/prompts (all prompts, not bound to conversation)
 
 const router = Router();
 
@@ -23,5 +25,6 @@ router.put('/prompts/:id', updatePromptHistory);
 
 // DELETE /api/admin/prompts/:id
 router.delete('/prompts/:id', deletePromptHistory);
+router.get('/prompts', getAllPromptHistories);
 
 export default router;

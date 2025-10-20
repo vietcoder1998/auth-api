@@ -1,6 +1,6 @@
+import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import { promptHistoryService } from '../services/promptHistory.service';
-import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Create prompt
@@ -8,10 +8,13 @@ export async function createPromptHistory(req: Request, res: Response) {
   const userId = req.user?.id;
   const { conversationId, prompt } = req.body;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-  if (!conversationId || !prompt) return res.status(400).json({ error: 'conversationId and prompt required' });
+  if (!conversationId || !prompt)
+    return res.status(400).json({ error: 'conversationId and prompt required' });
 
   // Check conversation ownership
-  const conversation = await prisma.conversation.findFirst({ where: { id: conversationId, userId } });
+  const conversation = await prisma.conversation.findFirst({
+    where: { id: conversationId, userId },
+  });
   if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
   const result = await promptHistoryService.createPrompt(conversationId, prompt);
@@ -25,7 +28,9 @@ export async function getPromptHistories(req: Request, res: Response) {
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
   // Check conversation ownership
-  const conversation = await prisma.conversation.findFirst({ where: { id: conversationId, userId } });
+  const conversation = await prisma.conversation.findFirst({
+    where: { id: conversationId, userId },
+  });
   if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
   const prompts = await promptHistoryService.getPrompts(conversationId);
@@ -75,4 +80,14 @@ export async function deletePromptHistory(req: Request, res: Response) {
 
   await promptHistoryService.deletePrompt(id);
   res.json({ message: 'Prompt deleted' });
+}
+
+// Get all prompts (not bound to conversation)
+export async function getAllPromptHistories(req: Request, res: Response) {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  // Optionally: Only return prompts for conversations owned by user
+  // For now, return all prompts (admin use)
+  const prompts = await promptHistoryService.getAllPrompts();
+  res.json(prompts);
 }
