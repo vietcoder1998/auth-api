@@ -22,6 +22,7 @@ import documentRouter from './document.routes';
 import faqRouter from './faq.routes';
 import promptHistoryRouter from './promptHistory.routes';
 import uiConfigRouter from './uiconfig.routes';
+import jobRouter from './job.routes';
 import { searchAllEntities } from '../controllers/search.controller';
 import {
   upload,
@@ -56,6 +57,7 @@ router.use('/documents', documentRouter);
 router.use('/faqs', faqRouter);
 router.use('/', promptHistoryRouter);
 router.use('/ui-config', uiConfigRouter);
+router.use('/jobs', jobRouter);
 router.get('/search', searchAllEntities);
 router.post('/files/upload', upload.single('file'), uploadFile);
 router.get('/files/:filename', getFile);

@@ -13,16 +13,16 @@ enum MessageType {
 }
 
 model Label {
-  id    String   @id @default(uuid())
-  name  String   @unique
-  color String?
-  createdAt DateTime @default(now())  
-  updatedAt DateTime @updatedAt
-  description String?
+  id           String        @id @default(uuid())
+  name         String        @unique
+  color        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  description  String?
   entityLabels EntityLabel[]
+
   @@map("label")
 }
-
 
 model Message {
   id              String         @id @default(uuid())
@@ -65,6 +65,7 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   File          File[]
+  Job           Job[]
 
   @@map("user")
 }
@@ -325,9 +326,10 @@ model Conversation {
   messages      Message[]
   promptHistory PromptHistory[] // <-- Link to prompt history
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-  Faq       Faq[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @default(now())
+  Faq             Faq[]
+  JobConversation JobConversation[]
 
   @@map("conversation")
 }
@@ -515,10 +517,46 @@ model Faq {
   conversation   Conversation?  @relation(fields: [conversationId], references: [id])
   aiAgentId      String?
   agent          Agent?         @relation(fields: [aiAgentId], references: [id])
-  messages       Message[]      // Link FAQ to messages (question/answer)
+  messages       Message[] // Link FAQ to messages (question/answer)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   description    String?
 
   @@map("faq")
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  type        String    @default("backup") // backup, fine-tuning, extract, etc.
+  status      String    @default("pending") // pending, running, completed, failed
+  payload     String?   @db.Text // JSON string for job data
+  result      String?   @db.Text // JSON string for job result/output
+  error       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  description String?
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+
+  // New: link to at least one conversation
+  conversations JobConversation[]
+
+  @@map("job")
+}
+
+// Junction table for Job <-> Conversation (many-to-many)
+model JobConversation {
+  id             String       @id @default(uuid())
+  jobId          String
+  conversationId String
+  job            Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([jobId, conversationId])
+  @@index([jobId])
+  @@index([conversationId])
+  @@map("job_conversation")
 }
