@@ -14,8 +14,8 @@ export class LabelController {
         ? {
             OR: [
               { name: { contains: search as string } },
-              { description: { contains: search as string } }
-            ]
+              { description: { contains: search as string } },
+            ],
           }
         : {};
 
@@ -28,12 +28,12 @@ export class LabelController {
           include: {
             _count: {
               select: {
-                entityLabels: true
-              }
-            }
-          }
+                entityLabels: true,
+              },
+            },
+          },
         }),
-        prisma.label.count({ where })
+        prisma.label.count({ where }),
       ]);
 
       res.json({
@@ -43,15 +43,15 @@ export class LabelController {
           page: Number(page),
           limit: Number(limit),
           total,
-          pages: Math.ceil(total / Number(limit))
-        }
+          pages: Math.ceil(total / Number(limit)),
+        },
       });
     } catch (error) {
       console.error('Error fetching labels:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch labels',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -66,34 +66,34 @@ export class LabelController {
         include: {
           _count: {
             select: {
-              entityLabels: true
-            }
+              entityLabels: true,
+            },
           },
           entityLabels: {
             select: {
-              entityType: true
-            }
-          }
-        }
+              entityType: true,
+            },
+          },
+        },
       });
 
       if (!label) {
         return res.status(404).json({
           success: false,
-          message: 'Label not found'
+          message: 'Label not found',
         });
       }
 
       res.json({
         success: true,
-        data: label
+        data: label,
       });
     } catch (error) {
       console.error('Error fetching label:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch label',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -106,7 +106,7 @@ export class LabelController {
       if (!name) {
         return res.status(400).json({
           success: false,
-          message: 'Label name is required'
+          message: 'Label name is required',
         });
       }
 
@@ -114,29 +114,29 @@ export class LabelController {
         data: {
           name,
           description,
-          color: color || '#007bff'
-        }
+          color: color || '#007bff',
+        },
       });
 
       res.status(201).json({
         success: true,
         data: label,
-        message: 'Label created successfully'
+        message: 'Label created successfully',
       });
     } catch (error) {
       console.error('Error creating label:', error);
-      
+
       if (error instanceof Error && error.message.includes('Unique constraint')) {
         return res.status(409).json({
           success: false,
-          message: 'A label with this name already exists'
+          message: 'A label with this name already exists',
         });
       }
 
       res.status(500).json({
         success: false,
         message: 'Failed to create label',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -148,13 +148,13 @@ export class LabelController {
       const { name, description, color } = req.body;
 
       const existingLabel = await prisma.label.findUnique({
-        where: { id }
+        where: { id },
       });
 
       if (!existingLabel) {
         return res.status(404).json({
           success: false,
-          message: 'Label not found'
+          message: 'Label not found',
         });
       }
 
@@ -163,29 +163,29 @@ export class LabelController {
         data: {
           ...(name && { name }),
           ...(description !== undefined && { description }),
-          ...(color && { color })
-        }
+          ...(color && { color }),
+        },
       });
 
       res.json({
         success: true,
         data: label,
-        message: 'Label updated successfully'
+        message: 'Label updated successfully',
       });
     } catch (error) {
       console.error('Error updating label:', error);
-      
+
       if (error instanceof Error && error.message.includes('Unique constraint')) {
         return res.status(409).json({
           success: false,
-          message: 'A label with this name already exists'
+          message: 'A label with this name already exists',
         });
       }
 
       res.status(500).json({
         success: false,
         message: 'Failed to update label',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -200,44 +200,44 @@ export class LabelController {
         include: {
           _count: {
             select: {
-              entityLabels: true
-            }
-          }
-        }
+              entityLabels: true,
+            },
+          },
+        },
       });
 
       if (!existingLabel) {
         return res.status(404).json({
           success: false,
-          message: 'Label not found'
+          message: 'Label not found',
         });
       }
 
       // Check if label is in use
       const totalUsage = existingLabel._count.entityLabels;
-      
+
       if (totalUsage > 0) {
         return res.status(400).json({
           success: false,
           message: `Cannot delete label. It is currently used by ${totalUsage} records.`,
-          usage: { entityLabels: totalUsage }
+          usage: { entityLabels: totalUsage },
         });
       }
 
       await prisma.label.delete({
-        where: { id }
+        where: { id },
       });
 
       res.json({
         success: true,
-        message: 'Label deleted successfully'
+        message: 'Label deleted successfully',
       });
     } catch (error) {
       console.error('Error deleting label:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to delete label',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -250,14 +250,14 @@ export class LabelController {
       if (!labelNames || !Array.isArray(labelNames) || labelNames.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'labelNames array is required and must not be empty'
+          message: 'labelNames array is required and must not be empty',
         });
       }
 
       if (!confirm) {
         return res.status(400).json({
           success: false,
-          message: 'This is a destructive operation. Please set confirm: true to proceed.'
+          message: 'This is a destructive operation. Please set confirm: true to proceed.',
         });
       }
 
@@ -265,37 +265,40 @@ export class LabelController {
       const labels = await prisma.label.findMany({
         where: {
           name: {
-            in: labelNames
-          }
-        }
+            in: labelNames,
+          },
+        },
       });
 
       if (labels.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'No labels found with the specified names'
+          message: 'No labels found with the specified names',
         });
       }
 
-      const labelIds = labels.map(label => label.id);
+      const labelIds = labels.map((label) => label.id);
 
       // Get all entity IDs that have these labels
       const entityLabels = await prisma.entityLabel.findMany({
         where: {
-          labelId: { in: labelIds }
+          labelId: { in: labelIds },
         },
         select: {
           entityId: true,
-          entityType: true
-        }
+          entityType: true,
+        },
       });
 
       // Group entity IDs by type
-      const entitiesByType = entityLabels.reduce((acc, el) => {
-        if (!acc[el.entityType]) acc[el.entityType] = [];
-        acc[el.entityType].push(el.entityId);
-        return acc;
-      }, {} as Record<string, string[]>);
+      const entitiesByType = entityLabels.reduce(
+        (acc, el) => {
+          if (!acc[el.entityType]) acc[el.entityType] = [];
+          acc[el.entityType].push(el.entityId);
+          return acc;
+        },
+        {} as Record<string, string[]>,
+      );
 
       // Delete all related data in proper order (respecting foreign key constraints)
       const deletionResults = await prisma.$transaction(async (tx) => {
@@ -303,61 +306,101 @@ export class LabelController {
 
         // Delete in reverse dependency order
         if (entitiesByType.message) {
-          results.messages = (await tx.message.deleteMany({ where: { id: { in: entitiesByType.message } } })).count;
+          results.messages = (
+            await tx.message.deleteMany({ where: { id: { in: entitiesByType.message } } })
+          ).count;
         }
         if (entitiesByType.agentTask) {
-          results.agentTasks = (await tx.agentTask.deleteMany({ where: { id: { in: entitiesByType.agentTask } } })).count;
+          results.agentTasks = (
+            await tx.agentTask.deleteMany({ where: { id: { in: entitiesByType.agentTask } } })
+          ).count;
         }
         if (entitiesByType.agentTool) {
-          results.agentTools = (await tx.agentTool.deleteMany({ where: { id: { in: entitiesByType.agentTool } } })).count;
+          results.agentTools = (
+            await tx.agentTool.deleteMany({ where: { id: { in: entitiesByType.agentTool } } })
+          ).count;
         }
         if (entitiesByType.agentMemory) {
-          results.agentMemories = (await tx.agentMemory.deleteMany({ where: { id: { in: entitiesByType.agentMemory } } })).count;
+          results.agentMemories = (
+            await tx.agentMemory.deleteMany({ where: { id: { in: entitiesByType.agentMemory } } })
+          ).count;
         }
         if (entitiesByType.conversation) {
-          results.conversations = (await tx.conversation.deleteMany({ where: { id: { in: entitiesByType.conversation } } })).count;
+          results.conversations = (
+            await tx.conversation.deleteMany({ where: { id: { in: entitiesByType.conversation } } })
+          ).count;
         }
         if (entitiesByType.agent) {
-          results.agents = (await tx.agent.deleteMany({ where: { id: { in: entitiesByType.agent } } })).count;
+          results.agents = (
+            await tx.agent.deleteMany({ where: { id: { in: entitiesByType.agent } } })
+          ).count;
         }
         if (entitiesByType.logicHistory) {
-          results.logicHistories = (await tx.logicHistory.deleteMany({ where: { id: { in: entitiesByType.logicHistory } } })).count;
+          results.logicHistories = (
+            await tx.logicHistory.deleteMany({ where: { id: { in: entitiesByType.logicHistory } } })
+          ).count;
         }
         if (entitiesByType.loginHistory) {
-          results.loginHistories = (await tx.loginHistory.deleteMany({ where: { id: { in: entitiesByType.loginHistory } } })).count;
+          results.loginHistories = (
+            await tx.loginHistory.deleteMany({ where: { id: { in: entitiesByType.loginHistory } } })
+          ).count;
         }
         if (entitiesByType.apiUsageLog) {
-          results.apiUsageLogs = (await tx.apiUsageLog.deleteMany({ where: { id: { in: entitiesByType.apiUsageLog } } })).count;
+          results.apiUsageLogs = (
+            await tx.apiUsageLog.deleteMany({ where: { id: { in: entitiesByType.apiUsageLog } } })
+          ).count;
         }
         if (entitiesByType.apiKey) {
-          results.apiKeys = (await tx.apiKey.deleteMany({ where: { id: { in: entitiesByType.apiKey } } })).count;
+          results.apiKeys = (
+            await tx.apiKey.deleteMany({ where: { id: { in: entitiesByType.apiKey } } })
+          ).count;
         }
         if (entitiesByType.mail) {
-          results.mails = (await tx.mail.deleteMany({ where: { id: { in: entitiesByType.mail } } })).count;
+          results.mails = (
+            await tx.mail.deleteMany({ where: { id: { in: entitiesByType.mail } } })
+          ).count;
         }
         if (entitiesByType.sso) {
-          results.ssos = (await tx.sSO.deleteMany({ where: { id: { in: entitiesByType.sso } } })).count;
+          results.ssos = (
+            await tx.sSO.deleteMany({ where: { id: { in: entitiesByType.sso } } })
+          ).count;
         }
         if (entitiesByType.token) {
-          results.tokens = (await tx.token.deleteMany({ where: { id: { in: entitiesByType.token } } })).count;
+          results.tokens = (
+            await tx.token.deleteMany({ where: { id: { in: entitiesByType.token } } })
+          ).count;
         }
         if (entitiesByType.user) {
-          results.users = (await tx.user.deleteMany({ where: { id: { in: entitiesByType.user } } })).count;
+          results.users = (
+            await tx.user.deleteMany({ where: { id: { in: entitiesByType.user } } })
+          ).count;
         }
         if (entitiesByType.mailTemplate) {
-          results.mailTemplates = (await tx.mailTemplate.deleteMany({ where: { id: { in: entitiesByType.mailTemplate } } })).count;
+          results.mailTemplates = (
+            await tx.mailTemplate.deleteMany({ where: { id: { in: entitiesByType.mailTemplate } } })
+          ).count;
         }
         if (entitiesByType.notificationTemplate) {
-          results.notificationTemplates = (await tx.notificationTemplate.deleteMany({ where: { id: { in: entitiesByType.notificationTemplate } } })).count;
+          results.notificationTemplates = (
+            await tx.notificationTemplate.deleteMany({
+              where: { id: { in: entitiesByType.notificationTemplate } },
+            })
+          ).count;
         }
         if (entitiesByType.config) {
-          results.configs = (await tx.config.deleteMany({ where: { id: { in: entitiesByType.config } } })).count;
+          results.configs = (
+            await tx.config.deleteMany({ where: { id: { in: entitiesByType.config } } })
+          ).count;
         }
         if (entitiesByType.permission) {
-          results.permissions = (await tx.permission.deleteMany({ where: { id: { in: entitiesByType.permission } } })).count;
+          results.permissions = (
+            await tx.permission.deleteMany({ where: { id: { in: entitiesByType.permission } } })
+          ).count;
         }
         if (entitiesByType.role) {
-          results.roles = (await tx.role.deleteMany({ where: { id: { in: entitiesByType.role } } })).count;
+          results.roles = (
+            await tx.role.deleteMany({ where: { id: { in: entitiesByType.role } } })
+          ).count;
         }
 
         return results;
@@ -369,16 +412,16 @@ export class LabelController {
       res.json({
         success: true,
         message: `Successfully deleted ${totalDeleted} records across all tables`,
-        deletedLabels: labels.map(l => l.name),
+        deletedLabels: labels.map((l) => l.name),
         deletionBreakdown: deletionResults,
-        totalDeleted
+        totalDeleted,
       });
     } catch (error) {
       console.error('Error in bulk delete operation:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to perform bulk delete operation',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -390,26 +433,29 @@ export class LabelController {
         include: {
           _count: {
             select: {
-              entityLabels: true
-            }
+              entityLabels: true,
+            },
           },
           entityLabels: {
             select: {
-              entityType: true
-            }
-          }
+              entityType: true,
+            },
+          },
         },
-        orderBy: { name: 'asc' }
+        orderBy: { name: 'asc' },
       });
 
-      const statistics = labels.map(label => {
+      const statistics = labels.map((label) => {
         const totalUsage = label._count.entityLabels;
-        
+
         // Count usage by entity type
-        const breakdown = label.entityLabels.reduce((acc, el) => {
-          acc[el.entityType] = (acc[el.entityType] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
+        const breakdown = label.entityLabels.reduce(
+          (acc, el) => {
+            acc[el.entityType] = (acc[el.entityType] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
 
         return {
           id: label.id,
@@ -418,30 +464,33 @@ export class LabelController {
           color: label.color,
           totalUsage,
           breakdown,
-          createdAt: label.createdAt
+          createdAt: label.createdAt,
         };
       });
 
       const overallStats = {
         totalLabels: labels.length,
         totalUsage: statistics.reduce((sum: number, stat) => sum + stat.totalUsage, 0),
-        mostUsedLabel: statistics.reduce((max, stat) => stat.totalUsage > max.totalUsage ? stat : max, statistics[0] || null),
-        unusedLabels: statistics.filter(stat => stat.totalUsage === 0)
+        mostUsedLabel: statistics.reduce(
+          (max, stat) => (stat.totalUsage > max.totalUsage ? stat : max),
+          statistics[0] || null,
+        ),
+        unusedLabels: statistics.filter((stat) => stat.totalUsage === 0),
       };
 
       res.json({
         success: true,
         data: {
           labels: statistics,
-          overall: overallStats
-        }
+          overall: overallStats,
+        },
       });
     } catch (error) {
       console.error('Error fetching label statistics:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch label statistics',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

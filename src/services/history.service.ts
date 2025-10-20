@@ -91,11 +91,13 @@ export class HistoryService {
    * Helper to extract IP address from request
    */
   static getClientIP(req: any): string | undefined {
-    return req.ip || 
-           req.connection?.remoteAddress || 
-           req.socket?.remoteAddress ||
-           req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-           req.headers['x-real-ip'];
+    return (
+      req.ip ||
+      req.connection?.remoteAddress ||
+      req.socket?.remoteAddress ||
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.headers['x-real-ip']
+    );
   }
 
   /**
@@ -145,14 +147,16 @@ export class HistoryService {
       oldValues?: any;
       newValues?: any;
       notificationTemplateName?: string;
-    }
+    },
   ) {
     const ip = this.getClientIP(req);
     const userAgent = this.getUserAgent(req);
 
     let notificationTemplateId: string | undefined;
     if (options?.notificationTemplateName) {
-      notificationTemplateId = await this.getNotificationTemplateId(options.notificationTemplateName);
+      notificationTemplateId = await this.getNotificationTemplateId(
+        options.notificationTemplateName,
+      );
     }
 
     return await this.createLogicHistory({
@@ -171,7 +175,9 @@ export class HistoryService {
   /**
    * Get notification template ID by name
    */
-  private static async getNotificationTemplateId(templateName: string): Promise<string | undefined> {
+  private static async getNotificationTemplateId(
+    templateName: string,
+  ): Promise<string | undefined> {
     try {
       const template = await prisma.notificationTemplate.findUnique({
         where: { name: templateName },

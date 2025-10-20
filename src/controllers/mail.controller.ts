@@ -13,7 +13,7 @@ export const getMails = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string || '';
+    const search = (req.query.search as string) || '';
     const status = req.query.status as string;
     const skip = (page - 1) * limit;
 
@@ -116,8 +116,8 @@ export const createMail = async (req: Request, res: Response) => {
 
     // Validate required fields
     if (!to || !subject || !body) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: to, subject, body' 
+      return res.status(400).json({
+        error: 'Missing required fields: to, subject, body',
       });
     }
 

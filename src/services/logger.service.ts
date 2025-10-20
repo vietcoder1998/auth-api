@@ -8,7 +8,7 @@ export enum LogLevel {
   ERROR = 'ERROR',
   WARN = 'WARN',
   INFO = 'INFO',
-  DEBUG = 'DEBUG'
+  DEBUG = 'DEBUG',
 }
 
 export interface LogEntry {
@@ -59,7 +59,7 @@ export class LoggerService {
       const logEntry = {
         ...entry,
         timestamp,
-        metadata: entry.metadata ? JSON.stringify(entry.metadata) : null
+        metadata: entry.metadata ? JSON.stringify(entry.metadata) : null,
       };
 
       // Save to database
@@ -75,14 +75,13 @@ export class LoggerService {
           method: logEntry.method,
           statusCode: logEntry.statusCode,
           responseTime: logEntry.responseTime,
-          timestamp: logEntry.timestamp
-        }
+          timestamp: logEntry.timestamp,
+        },
       });
 
       // Save to file as backup
       const logLine = `${timestamp.toISOString()} [${entry.level.toUpperCase()}] ${entry.message} ${entry.metadata ? JSON.stringify(entry.metadata) : ''}\n`;
       fs.appendFileSync(this.logFilePath, logLine);
-
     } catch (error) {
       // Fallback to console if database fails
       console.error('Failed to log entry:', error);
@@ -98,7 +97,7 @@ export class LoggerService {
       level: LogLevel.ERROR,
       message,
       metadata,
-      ...context
+      ...context,
     });
   }
 
@@ -110,7 +109,7 @@ export class LoggerService {
       level: LogLevel.WARN,
       message,
       metadata,
-      ...context
+      ...context,
     });
   }
 
@@ -122,7 +121,7 @@ export class LoggerService {
       level: LogLevel.INFO,
       message,
       metadata,
-      ...context
+      ...context,
     });
   }
 
@@ -134,7 +133,7 @@ export class LoggerService {
       level: LogLevel.DEBUG,
       message,
       metadata,
-      ...context
+      ...context,
     });
   }
 
@@ -158,7 +157,7 @@ export class LoggerService {
         endDate,
         search,
         page = 1,
-        limit = 50
+        limit = 50,
       } = filter;
 
       const skip = (page - 1) * limit;
@@ -170,7 +169,7 @@ export class LoggerService {
       if (userId) where.userId = userId;
       if (endpoint) where.endpoint = { contains: endpoint };
       if (method) where.method = method;
-      
+
       if (startDate || endDate) {
         where.timestamp = {};
         if (startDate) where.timestamp.gte = startDate;
@@ -181,7 +180,7 @@ export class LoggerService {
         where.OR = [
           { message: { contains: search } },
           { endpoint: { contains: search } },
-          { metadata: { contains: search } }
+          { metadata: { contains: search } },
         ];
       }
 
@@ -196,26 +195,25 @@ export class LoggerService {
             select: {
               id: true,
               email: true,
-              nickname: true
-            }
-          }
+              nickname: true,
+            },
+          },
         },
         orderBy: { timestamp: 'desc' },
         skip,
-        take: limit
+        take: limit,
       });
 
       return {
-        logs: logs.map(log => ({
+        logs: logs.map((log) => ({
           ...log,
-          metadata: log.metadata ? JSON.parse(log.metadata) : null
+          metadata: log.metadata ? JSON.parse(log.metadata) : null,
         })),
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limit),
       };
-
     } catch (error) {
       console.error('Failed to get logs:', error);
       throw new Error('Failed to retrieve logs');
@@ -245,7 +243,7 @@ export class LoggerService {
         infoCount,
         debugCount,
         todayLogs,
-        avgResponseTimeResult
+        avgResponseTimeResult,
       ] = await Promise.all([
         prisma.logEntry.count(),
         prisma.logEntry.count({ where: { level: LogLevel.ERROR } }),
@@ -255,12 +253,12 @@ export class LoggerService {
         prisma.logEntry.count({ where: { timestamp: { gte: today } } }),
         prisma.logEntry.aggregate({
           where: {
-            responseTime: { not: null }
+            responseTime: { not: null },
           },
           _avg: {
-            responseTime: true
-          }
-        })
+            responseTime: true,
+          },
+        }),
       ]);
 
       const avgResponseTime = avgResponseTimeResult._avg.responseTime || 0;
@@ -272,9 +270,8 @@ export class LoggerService {
         infoCount,
         debugCount,
         todayLogs,
-        avgResponseTime: Math.round(avgResponseTime * 100) / 100
+        avgResponseTime: Math.round(avgResponseTime * 100) / 100,
       };
-
     } catch (error) {
       console.error('Failed to get log stats:', error);
       throw new Error('Failed to retrieve log statistics');
@@ -292,13 +289,12 @@ export class LoggerService {
       const result = await prisma.logEntry.deleteMany({
         where: {
           timestamp: {
-            lt: cutoffDate
-          }
-        }
+            lt: cutoffDate,
+          },
+        },
       });
 
       return { deletedCount: result.count };
-
     } catch (error) {
       console.error('Failed to clear old logs:', error);
       throw new Error('Failed to clear old logs');
@@ -311,14 +307,13 @@ export class LoggerService {
   async exportLogs(filter: LogFilter = {}): Promise<string> {
     try {
       const { logs } = await this.getLogs({ ...filter, limit: 10000 });
-      
+
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const exportFilePath = path.join(process.cwd(), 'logs', `export-${timestamp}.json`);
-      
-      fs.writeFileSync(exportFilePath, JSON.stringify(logs, null, 2));
-      
-      return exportFilePath;
 
+      fs.writeFileSync(exportFilePath, JSON.stringify(logs, null, 2));
+
+      return exportFilePath;
     } catch (error) {
       console.error('Failed to export logs:', error);
       throw new Error('Failed to export logs');

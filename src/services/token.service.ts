@@ -29,11 +29,11 @@ export class TokenService {
    */
   generateTokens(payload: TokenPayload): { accessToken: string; refreshToken: string } {
     const accessToken = jwt.sign(payload, this.jwtSecret, {
-      expiresIn: this.accessTokenExpiry
+      expiresIn: this.accessTokenExpiry,
     } as jwt.SignOptions);
 
     const refreshToken = jwt.sign(payload, this.jwtSecret, {
-      expiresIn: this.refreshTokenExpiry
+      expiresIn: this.refreshTokenExpiry,
     } as jwt.SignOptions);
 
     return { accessToken, refreshToken };
@@ -56,7 +56,7 @@ export class TokenService {
   async createToken(data: CreateTokenData) {
     const user = await prisma.user.findUnique({
       where: { id: data.userId },
-      select: { id: true, email: true, roleId: true }
+      select: { id: true, email: true, roleId: true },
     });
 
     if (!user) {
@@ -66,7 +66,7 @@ export class TokenService {
     const payload: TokenPayload = {
       userId: user.id,
       email: user.email,
-      roleId: user.roleId || undefined
+      roleId: user.roleId || undefined,
     };
 
     const { accessToken, refreshToken } = this.generateTokens(payload);
@@ -76,13 +76,13 @@ export class TokenService {
         userId: data.userId,
         accessToken,
         refreshToken,
-        expiresAt: data.expiresAt
+        expiresAt: data.expiresAt,
       },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true, status: true },
+        },
+      },
     });
 
     return token;
@@ -96,9 +96,9 @@ export class TokenService {
       where: { accessToken },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true, roleId: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true, status: true, roleId: true },
+        },
+      },
     });
   }
 
@@ -110,9 +110,9 @@ export class TokenService {
       where: { refreshToken },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true, roleId: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true, status: true, roleId: true },
+        },
+      },
     });
   }
 
@@ -121,7 +121,7 @@ export class TokenService {
    */
   async refreshAccessToken(refreshToken: string) {
     const tokenRecord = await this.getTokenByRefreshToken(refreshToken);
-    
+
     if (!tokenRecord) {
       throw new Error('Invalid refresh token');
     }
@@ -134,7 +134,7 @@ export class TokenService {
     const payload: TokenPayload = {
       userId: tokenRecord.user.id,
       email: tokenRecord.user.email,
-      roleId: tokenRecord.user.roleId || undefined
+      roleId: tokenRecord.user.roleId || undefined,
     };
 
     const { accessToken: newAccessToken } = this.generateTokens(payload);
@@ -145,9 +145,9 @@ export class TokenService {
       data: { accessToken: newAccessToken },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true, status: true },
+        },
+      },
     });
 
     return updatedToken;
@@ -158,7 +158,7 @@ export class TokenService {
    */
   async revokeToken(tokenId: string) {
     return await prisma.token.delete({
-      where: { id: tokenId }
+      where: { id: tokenId },
     });
   }
 
@@ -167,7 +167,7 @@ export class TokenService {
    */
   async revokeAllUserTokens(userId: string) {
     return await prisma.token.deleteMany({
-      where: { userId }
+      where: { userId },
     });
   }
 
@@ -187,11 +187,11 @@ export class TokenService {
           createdAt: true,
           expiresAt: true,
           accessToken: false, // Don't return actual tokens for security
-          refreshToken: false
+          refreshToken: false,
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       }),
-      prisma.token.count({ where: { userId } })
+      prisma.token.count({ where: { userId } }),
     ]);
 
     return {
@@ -199,7 +199,7 @@ export class TokenService {
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -209,7 +209,7 @@ export class TokenService {
   async validateTokenAndGetUser(accessToken: string) {
     // First try to get from database
     const tokenRecord = await this.getTokenByAccessToken(accessToken);
-    
+
     if (!tokenRecord) {
       // If not in database, try to verify JWT directly
       const payload = this.verifyToken(accessToken);
@@ -223,10 +223,10 @@ export class TokenService {
         include: {
           role: {
             include: {
-              permissions: true
-            }
-          }
-        }
+              permissions: true,
+            },
+          },
+        },
       });
 
       return user;
@@ -245,10 +245,10 @@ export class TokenService {
       include: {
         role: {
           include: {
-            permissions: true
-          }
-        }
-      }
+            permissions: true,
+          },
+        },
+      },
     });
 
     return user;
@@ -261,9 +261,9 @@ export class TokenService {
     const result = await prisma.token.deleteMany({
       where: {
         expiresAt: {
-          lt: new Date()
-        }
-      }
+          lt: new Date(),
+        },
+      },
     });
 
     return result.count;
@@ -273,32 +273,28 @@ export class TokenService {
    * Get token statistics
    */
   async getTokenStats() {
-    const [
-      totalTokens,
-      activeTokens,
-      expiredTokens
-    ] = await Promise.all([
+    const [totalTokens, activeTokens, expiredTokens] = await Promise.all([
       prisma.token.count(),
       prisma.token.count({
         where: {
           expiresAt: {
-            gt: new Date()
-          }
-        }
+            gt: new Date(),
+          },
+        },
       }),
       prisma.token.count({
         where: {
           expiresAt: {
-            lt: new Date()
-          }
-        }
-      })
+            lt: new Date(),
+          },
+        },
+      }),
     ]);
 
     return {
       total: totalTokens,
       active: activeTokens,
-      expired: expiredTokens
+      expired: expiredTokens,
     };
   }
 }

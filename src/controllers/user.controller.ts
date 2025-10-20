@@ -13,7 +13,7 @@ async function cacheToken(token: string, userId: string, expiresIn: number) {
   await client.set(`token:${token}`, userId, { EX: expiresIn });
 }
 
-export async function getUsers(req: Request, res: Response) {  
+export async function getUsers(req: Request, res: Response) {
   try {
     // Extract query parameters
     const {
@@ -25,7 +25,7 @@ export async function getUsers(req: Request, res: Response) {
       status,
       roleId,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
 
     // Parse pagination parameters
@@ -41,7 +41,7 @@ export async function getUsers(req: Request, res: Response) {
       const searchTerm = q.trim();
       whereClause.OR = [
         { email: { contains: searchTerm } },
-        { nickname: { contains: searchTerm } }
+        { nickname: { contains: searchTerm } },
       ];
     }
 
@@ -73,23 +73,23 @@ export async function getUsers(req: Request, res: Response) {
     // Get users with pagination
     const users = await prisma.user.findMany({
       where: whereClause,
-      select: { 
-        id: true, 
-        email: true, 
-        nickname: true, 
-        roleId: true, 
+      select: {
+        id: true,
+        email: true,
+        nickname: true,
+        roleId: true,
         status: true,
         createdAt: true,
         role: {
           select: {
             id: true,
-            name: true
-          }
-        }
+            name: true,
+          },
+        },
       },
       orderBy,
       skip,
-      take: currentLimit
+      take: currentLimit,
     });
 
     // Set pagination metadata for response middleware
@@ -101,9 +101,8 @@ export async function getUsers(req: Request, res: Response) {
       total,
       page: currentPage,
       limit: currentLimit,
-      totalPages: Math.ceil(total / currentLimit)
+      totalPages: Math.ceil(total / currentLimit),
     });
-    
   } catch (err) {
     console.error('Error fetching users:', err);
     res.status(500).json({ error: 'Failed to fetch users' });
@@ -114,7 +113,7 @@ export async function createUser(req: Request, res: Response) {
   const { email, password, nickname, roleId, status } = req.body;
   try {
     const user = await prisma.user.create({
-      data: { email, password, nickname, roleId, status }
+      data: { email, password, nickname, roleId, status },
     });
     res.json(user);
   } catch (err) {
@@ -128,7 +127,7 @@ export async function updateUser(req: Request, res: Response) {
   try {
     const user = await prisma.user.update({
       where: { id },
-      data: { email, nickname, roleId, status }
+      data: { email, nickname, roleId, status },
     });
     res.json(user);
   } catch (err) {
@@ -141,11 +140,8 @@ export async function searchUsers(req: Request, res: Response) {
   try {
     const users = await prisma.user.findMany({
       where: {
-        OR: [
-          { email: { contains: String(q) } },
-          { nickname: { contains: String(q) } }
-        ]
-      }
+        OR: [{ email: { contains: String(q) } }, { nickname: { contains: String(q) } }],
+      },
     });
     res.json(users);
   } catch (err) {
@@ -177,9 +173,9 @@ export async function loginAsUser(req: Request, res: Response) {
     }
 
     if (!requesterId) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Unauthorized: No user ID found in request headers',
-        details: 'Authentication required. Please ensure you are logged in as an admin.'
+        details: 'Authentication required. Please ensure you are logged in as an admin.',
       });
     }
 
@@ -194,10 +190,10 @@ export async function loginAsUser(req: Request, res: Response) {
     }
 
     // Check if requester has admin permissions (superadmin or admin role, or manage_users permission)
-    const hasAdminAccess = 
-      requester.role?.name === 'superadmin' || 
+    const hasAdminAccess =
+      requester.role?.name === 'superadmin' ||
       requester.role?.name === 'admin' ||
-      requester.role?.permissions?.some(p => p.name === 'manage_users');
+      requester.role?.permissions?.some((p) => p.name === 'manage_users');
 
     if (!hasAdminAccess) {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
@@ -218,11 +214,14 @@ export async function loginAsUser(req: Request, res: Response) {
     }
 
     // Generate JWT tokens using the same pattern as regular login
-    const accessToken = generateToken({
-      userId: targetUser.id,
-      email: targetUser.email,
-      ...(targetUser.roleId ? { role: targetUser.roleId } : {})
-    }, '1h');
+    const accessToken = generateToken(
+      {
+        userId: targetUser.id,
+        email: targetUser.email,
+        ...(targetUser.roleId ? { role: targetUser.roleId } : {}),
+      },
+      '1h',
+    );
 
     const refreshToken = generateRefreshToken({ userId: targetUser.id }, '7d');
 
@@ -240,7 +239,9 @@ export async function loginAsUser(req: Request, res: Response) {
     await cacheToken(accessToken, targetUser.id, 3600);
 
     // Log the impersonation action (for audit trail)
-    console.log(`Admin impersonation: ${requester.email} (${requester.id}) logged in as ${targetUser.email} (${targetUser.id}) at ${new Date().toISOString()}`);
+    console.log(
+      `Admin impersonation: ${requester.email} (${requester.id}) logged in as ${targetUser.email} (${targetUser.id}) at ${new Date().toISOString()}`,
+    );
 
     // Return success response in same format as regular login
     res.json({
@@ -251,20 +252,19 @@ export async function loginAsUser(req: Request, res: Response) {
         email: targetUser.email,
         nickname: targetUser.nickname,
         role: targetUser.role?.name,
-        status: targetUser.status
+        status: targetUser.status,
       },
       impersonation: {
         adminId: requester.id,
         adminEmail: requester.email,
-        impersonatedAt: new Date().toISOString()
-      }
+        impersonatedAt: new Date().toISOString(),
+      },
     });
-
   } catch (error) {
     console.error('Error in loginAsUser:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to login as user',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
@@ -279,9 +279,9 @@ export async function deleteUser(req: Request, res: Response) {
     }
 
     if (!requesterId) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Unauthorized: No user ID found in request headers',
-        details: 'Authentication required. Please ensure you are logged in as an admin.'
+        details: 'Authentication required. Please ensure you are logged in as an admin.',
       });
     }
 
@@ -296,10 +296,12 @@ export async function deleteUser(req: Request, res: Response) {
     }
 
     // Check if requester has admin permissions
-    const hasAdminAccess = 
-      requester.role?.name === 'superadmin' || 
+    const hasAdminAccess =
+      requester.role?.name === 'superadmin' ||
       requester.role?.name === 'admin' ||
-      requester.role?.permissions?.some(p => p.name === 'delete_user' || p.name === 'manage_users');
+      requester.role?.permissions?.some(
+        (p) => p.name === 'delete_user' || p.name === 'manage_users',
+      );
 
     if (!hasAdminAccess) {
       return res.status(403).json({ error: 'Forbidden: Admin access required' });
@@ -321,16 +323,18 @@ export async function deleteUser(req: Request, res: Response) {
 
     // Delete all user tokens first (due to foreign key constraint)
     await prisma.token.deleteMany({
-      where: { userId: targetUser.id }
+      where: { userId: targetUser.id },
     });
 
     // Delete the user
     await prisma.user.delete({
-      where: { email }
+      where: { email },
     });
 
     // Log the deletion action
-    console.log(`User deletion: ${requester.email} (${requester.id}) deleted user ${email} (${targetUser.id}) at ${new Date().toISOString()}`);
+    console.log(
+      `User deletion: ${requester.email} (${requester.id}) deleted user ${email} (${targetUser.id}) at ${new Date().toISOString()}`,
+    );
 
     res.json({
       message: `User ${email} deleted successfully`,
@@ -344,15 +348,14 @@ export async function deleteUser(req: Request, res: Response) {
           id: requester.id,
           email: requester.email,
           nickname: requester.nickname,
-        }
-      }
+        },
+      },
     });
-
   } catch (error) {
     console.error('Error in deleteUser:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to delete user',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }

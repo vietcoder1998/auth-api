@@ -73,7 +73,8 @@ body {
   margin-bottom: 1.2rem;
   font-size: 13px;
 }
-.table th, .table td {
+.table th,
+.table td {
   border: 1px solid #eee;
   padding: 0.5rem;
   text-align: left;
@@ -98,10 +99,14 @@ body {
   margin-left: 0.7rem;
   font-size: 13px;
 }
-input, button, select, textarea {
+input,
+button,
+select,
+textarea {
   font-size: 13px;
 }
-h2, h3 {
+h2,
+h3 {
   font-size: 1rem;
 }
 @media (max-width: 700px) {
@@ -118,17 +123,23 @@ h2, h3 {
     padding: 0.7rem;
     font-size: 13px;
   }
-  .table th, .table td {
+  .table th,
+  .table td {
     padding: 0.35rem;
     font-size: 12px;
   }
-  .token-item, .token-item button {
+  .token-item,
+  .token-item button {
     font-size: 12px;
   }
-  h2, h3 {
+  h2,
+  h3 {
     font-size: 0.95rem;
   }
-  input, button, select, textarea {
+  input,
+  button,
+  select,
+  textarea {
     font-size: 12px;
   }
   .collapsible h2 {

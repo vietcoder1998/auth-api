@@ -66,8 +66,6 @@ export const mockPromptRoles = [
   {
     name: 'prompt_viewer',
     description: 'Prompt History Viewer',
-    permissions: [
-      { name: 'admin_prompts_get' },
-    ],
+    permissions: [{ name: 'admin_prompts_get' }],
   },
 ];

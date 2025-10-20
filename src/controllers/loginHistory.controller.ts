@@ -12,11 +12,11 @@ const logger = {
 export const getLoginHistory = async (req: Request, res: Response) => {
   console.log('[LOGIN_HISTORY] getLoginHistory endpoint called');
   console.log('[LOGIN_HISTORY] Query params:', req.query);
-  
+
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string || '';
+    const search = (req.query.search as string) || '';
     const userId = req.query.userId as string;
     const ssoId = req.query.ssoId as string;
     const status = req.query.status as string;
@@ -86,7 +86,7 @@ export const getLoginHistory = async (req: Request, res: Response) => {
       totalInDB: totalCount,
       page,
       totalPages,
-      where
+      where,
     });
 
     const responseData = {
@@ -164,8 +164,8 @@ export const createLoginHistory = async (req: Request, res: Response) => {
 
     // Validate required fields
     if (!userId) {
-      return res.status(400).json({ 
-        error: 'Missing required field: userId' 
+      return res.status(400).json({
+        error: 'Missing required field: userId',
       });
     }
 

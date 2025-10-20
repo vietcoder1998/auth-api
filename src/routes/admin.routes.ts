@@ -23,7 +23,13 @@ import faqRouter from './faq.routes';
 import promptHistoryRouter from './promptHistory.routes';
 import uiConfigRouter from './uiconfig.routes';
 import { searchAllEntities } from '../controllers/search.controller';
-import { upload, uploadFile, getFile, deleteFile, downloadDocument } from '../controllers/file.controller';
+import {
+  upload,
+  uploadFile,
+  getFile,
+  deleteFile,
+  downloadDocument,
+} from '../controllers/file.controller';
 
 const router = Router();
 

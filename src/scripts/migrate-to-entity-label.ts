@@ -1,6 +1,6 @@
 /**
  * Migration script to convert from individual junction tables to single EntityLabel table
- * 
+ *
  * This script should be run after:
  * 1. Running: npx prisma migrate dev --name "convert-to-single-entity-label-table"
  * 2. The new schema has been applied to the database
@@ -16,7 +16,7 @@ async function migrateToEntityLabel() {
   try {
     // Get all existing labels to create default mock label assignments
     const mockLabel = await prisma.label.findFirst({
-      where: { name: 'mock' }
+      where: { name: 'mock' },
     });
 
     if (!mockLabel) {
@@ -25,16 +25,16 @@ async function migrateToEntityLabel() {
         data: {
           name: 'mock',
           description: 'Default label for mock/test data',
-          color: '#6c757d'
-        }
+          color: '#6c757d',
+        },
       });
-      
+
       console.log('Mock label created:', newMockLabel.id);
     }
 
     // Since we removed the direct labelId fields, we'll need to create EntityLabel entries
     // for entities that should have the mock label by default
-    
+
     const entities = [
       { table: 'user', type: 'user' },
       { table: 'role', type: 'role' },
@@ -54,21 +54,22 @@ async function migrateToEntityLabel() {
       { table: 'conversation', type: 'conversation' },
       { table: 'message', type: 'message' },
       { table: 'agent_tool', type: 'agentTool' },
-      { table: 'agent_task', type: 'agentTask' }
+      { table: 'agent_task', type: 'agentTask' },
     ];
 
-    const labelId = mockLabel?.id || (await prisma.label.findFirst({ where: { name: 'mock' } }))?.id;
-    
+    const labelId =
+      mockLabel?.id || (await prisma.label.findFirst({ where: { name: 'mock' } }))?.id;
+
     if (!labelId) {
       throw new Error('Mock label not found');
     }
 
     for (const entity of entities) {
       console.log(`Processing ${entity.type}...`);
-      
+
       // Get all entities of this type
       const records = await (prisma as any)[entity.type].findMany({
-        select: { id: true }
+        select: { id: true },
       });
 
       if (records.length > 0) {
@@ -76,12 +77,12 @@ async function migrateToEntityLabel() {
         const entityLabelData = records.map((record: any) => ({
           entityId: record.id,
           entityType: entity.type,
-          labelId: labelId
+          labelId: labelId,
         }));
 
         await prisma.entityLabel.createMany({
           data: entityLabelData,
-          skipDuplicates: true
+          skipDuplicates: true,
         });
 
         console.log(`Created ${entityLabelData.length} EntityLabel entries for ${entity.type}`);
@@ -89,11 +90,10 @@ async function migrateToEntityLabel() {
     }
 
     console.log('Migration completed successfully!');
-    
+
     // Verify the migration
     const totalEntityLabels = await prisma.entityLabel.count();
     console.log(`Total EntityLabel records created: ${totalEntityLabels}`);
-
   } catch (error) {
     console.error('Migration failed:', error);
     throw error;
@@ -105,25 +105,25 @@ async function migrateToEntityLabel() {
 // Usage examples for the new system
 async function usageExamples() {
   console.log('\\n=== Usage Examples ===');
-  
+
   // Example 1: Add labels to a user
   const user = await prisma.user.findFirst();
   if (user) {
     // Add multiple labels to a user
     await prisma.entityLabel.createMany({
       data: [
-        { 
-          entityId: user.id, 
-          entityType: 'user', 
-          labelId: 'some-label-id-1' 
+        {
+          entityId: user.id,
+          entityType: 'user',
+          labelId: 'some-label-id-1',
         },
-        { 
-          entityId: user.id, 
-          entityType: 'user', 
-          labelId: 'some-label-id-2' 
-        }
+        {
+          entityId: user.id,
+          entityType: 'user',
+          labelId: 'some-label-id-2',
+        },
       ],
-      skipDuplicates: true
+      skipDuplicates: true,
     });
     console.log('Labels added to user');
   }
@@ -133,13 +133,16 @@ async function usageExamples() {
     const userLabels = await prisma.entityLabel.findMany({
       where: {
         entityId: user.id,
-        entityType: 'user'
+        entityType: 'user',
       },
       include: {
-        label: true
-      }
+        label: true,
+      },
     });
-    console.log('User labels:', userLabels.map(ul => ul.label.name));
+    console.log(
+      'User labels:',
+      userLabels.map((ul) => ul.label.name),
+    );
   }
 
   // Example 3: Get all users with a specific label
@@ -147,9 +150,9 @@ async function usageExamples() {
     where: {
       entityType: 'user',
       label: {
-        name: 'mock'
-      }
-    }
+        name: 'mock',
+      },
+    },
   });
   console.log(`Found ${usersWithMockLabel.length} users with 'mock' label`);
 
@@ -160,9 +163,9 @@ async function usageExamples() {
         entityId: user.id,
         entityType: 'user',
         label: {
-          name: 'mock'
-        }
-      }
+          name: 'mock',
+        },
+      },
     });
     console.log('Mock label removed from user');
   }
@@ -171,8 +174,8 @@ async function usageExamples() {
   const labelStats = await prisma.entityLabel.groupBy({
     by: ['entityType'],
     _count: {
-      entityType: true
-    }
+      entityType: true,
+    },
   });
   console.log('Label usage by entity type:', labelStats);
 }

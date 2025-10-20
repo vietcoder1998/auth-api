@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 export async function getAgents(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
-    
+
     // Extract query parameters
     const {
       page = '1',
@@ -18,9 +18,9 @@ export async function getAgents(req: Request, res: Response) {
       model,
       isActive,
       sortBy = 'updatedAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -32,7 +32,7 @@ export async function getAgents(req: Request, res: Response) {
 
     // Build where clause for search and filters
     const whereClause: any = { userId };
-    
+
     // Search across multiple fields
     if (q && typeof q === 'string' && q.trim()) {
       const searchTerm = q.trim();
@@ -40,7 +40,7 @@ export async function getAgents(req: Request, res: Response) {
         { name: { contains: searchTerm } },
         { description: { contains: searchTerm } },
         { model: { contains: searchTerm } },
-        { systemPrompt: { contains: searchTerm } }
+        { systemPrompt: { contains: searchTerm } },
       ];
     }
 
@@ -76,12 +76,12 @@ export async function getAgents(req: Request, res: Response) {
       where: whereClause,
       include: {
         _count: {
-          select: { 
+          select: {
             conversations: true,
             memories: true,
-            tools: true
-          }
-        }
+            tools: true,
+          },
+        },
       },
       orderBy,
       skip,
@@ -93,7 +93,7 @@ export async function getAgents(req: Request, res: Response) {
       total,
       page: currentPage,
       limit: currentLimit,
-      totalPages: Math.ceil(total / currentLimit)
+      totalPages: Math.ceil(total / currentLimit),
     });
   } catch (err) {
     console.error('Get agents error:', err);
@@ -106,7 +106,7 @@ export async function createAgent(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
     const { name, description, model = 'gpt-4', personality, systemPrompt, config } = req.body;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -127,13 +127,13 @@ export async function createAgent(req: Request, res: Response) {
       },
       include: {
         _count: {
-          select: { 
+          select: {
             conversations: true,
             memories: true,
-            tools: true
-          }
-        }
-      }
+            tools: true,
+          },
+        },
+      },
     });
 
     res.status(201).json(agent);
@@ -148,7 +148,7 @@ export async function getAgent(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
     const { id } = req.params;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -158,12 +158,12 @@ export async function getAgent(req: Request, res: Response) {
       include: {
         tools: true,
         _count: {
-          select: { 
+          select: {
             conversations: true,
-            memories: true
-          }
-        }
-      }
+            memories: true,
+          },
+        },
+      },
     });
 
     if (!agent) {
@@ -190,14 +190,14 @@ export async function updateAgent(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params;
     const { name, description, model, personality, systemPrompt, config, isActive } = req.body;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if agent belongs to user
     const existingAgent = await prisma.agent.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!existingAgent) {
@@ -218,13 +218,13 @@ export async function updateAgent(req: Request, res: Response) {
       data: updateData,
       include: {
         _count: {
-          select: { 
+          select: {
             conversations: true,
             memories: true,
-            tools: true
-          }
-        }
-      }
+            tools: true,
+          },
+        },
+      },
     });
 
     // Parse JSON fields for response
@@ -246,14 +246,14 @@ export async function deleteAgent(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
     const { id } = req.params;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if agent belongs to user
     const existingAgent = await prisma.agent.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!existingAgent) {
@@ -261,7 +261,7 @@ export async function deleteAgent(req: Request, res: Response) {
     }
 
     await prisma.agent.delete({
-      where: { id }
+      where: { id },
     });
 
     res.json({ message: 'Agent deleted successfully' });
@@ -277,14 +277,14 @@ export async function addAgentMemory(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params;
     const { type, content, metadata, importance = 1 } = req.body;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if agent belongs to user
     const agent = await prisma.agent.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!agent) {
@@ -298,7 +298,7 @@ export async function addAgentMemory(req: Request, res: Response) {
         content,
         metadata: metadata ? JSON.stringify(metadata) : null,
         importance,
-      }
+      },
     });
 
     res.status(201).json(memory);
@@ -314,14 +314,14 @@ export async function getAgentMemories(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params;
     const { type, page = 1, limit = 50 } = req.query;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if agent belongs to user
     const agent = await prisma.agent.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!agent) {
@@ -340,14 +340,11 @@ export async function getAgentMemories(req: Request, res: Response) {
     const [memories, total] = await Promise.all([
       prisma.agentMemory.findMany({
         where,
-        orderBy: [
-          { importance: 'desc' },
-          { createdAt: 'desc' }
-        ],
+        orderBy: [{ importance: 'desc' }, { createdAt: 'desc' }],
         skip,
         take: limitNum,
       }),
-      prisma.agentMemory.count({ where })
+      prisma.agentMemory.count({ where }),
     ]);
 
     res.json({
@@ -355,7 +352,7 @@ export async function getAgentMemories(req: Request, res: Response) {
       total,
       page: pageNum,
       limit: limitNum,
-      totalPages: Math.ceil(total / limitNum)
+      totalPages: Math.ceil(total / limitNum),
     });
   } catch (err) {
     console.error('Get agent memories error:', err);

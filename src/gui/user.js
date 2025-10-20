@@ -35,23 +35,26 @@ function renderUsers(filter = '') {
   const tbody = document.querySelector('#userTable tbody');
   if (loading) return;
   tbody.innerHTML = '';
-  users.filter(u =>
-    u.email.toLowerCase().includes(filter.toLowerCase()) ||
-    (u.nickname && u.nickname.toLowerCase().includes(filter.toLowerCase()))
-  ).forEach(u => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td class="editable" data-field="email" data-email="${u.email}">${u.email}</td>
+  users
+    .filter(
+      (u) =>
+        u.email.toLowerCase().includes(filter.toLowerCase()) ||
+        (u.nickname && u.nickname.toLowerCase().includes(filter.toLowerCase())),
+    )
+    .forEach((u) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="editable" data-field="email" data-email="${u.email}">${u.email}</td>
       <td class="editable" data-field="nickname" data-email="${u.email}">${u.nickname || ''}</td>
       <td><input type="password" class="userPasswordInput" data-email="${u.email}" placeholder="Password" style="width:100px;" />
         <button class="loginUserBtn" data-email="${u.email}">Login</button>
         <button class="editUserBtn" data-email="${u.email}">Edit</button>
         <button class="deleteUserBtn" data-email="${u.email}">Delete</button>
       </td>`;
-    tbody.appendChild(tr);
-  });
+      tbody.appendChild(tr);
+    });
   // Add action listeners
-  tbody.querySelectorAll('.loginUserBtn').forEach(btn => {
-    btn.onclick = async function() {
+  tbody.querySelectorAll('.loginUserBtn').forEach((btn) => {
+    btn.onclick = async function () {
       const email = btn.getAttribute('data-email');
       const pwdInput = tbody.querySelector(`.userPasswordInput[data-email="${email}"]`);
       const password = pwdInput ? pwdInput.value : '';
@@ -60,7 +63,7 @@ function renderUsers(filter = '') {
         const res = await fetch('/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
         if (res.ok) {
@@ -74,14 +77,14 @@ function renderUsers(filter = '') {
       }
     };
   });
-  tbody.querySelectorAll('.editUserBtn').forEach(btn => {
-    btn.onclick = function() {
+  tbody.querySelectorAll('.editUserBtn').forEach((btn) => {
+    btn.onclick = function () {
       showMessage('Edit User: ' + btn.getAttribute('data-email'));
       // TODO: Show edit form/modal
     };
   });
-  tbody.querySelectorAll('.deleteUserBtn').forEach(btn => {
-    btn.onclick = async function() {
+  tbody.querySelectorAll('.deleteUserBtn').forEach((btn) => {
+    btn.onclick = async function () {
       if (confirm('Delete this user?')) {
         await fetch('/admin/users/' + btn.getAttribute('data-email'), { method: 'DELETE' });
         fetchUsers();
@@ -90,28 +93,28 @@ function renderUsers(filter = '') {
   });
 }
 
-document.getElementById('userSearch').addEventListener('input', function() {
+document.getElementById('userSearch').addEventListener('input', function () {
   clearTimeout(debounceTimeout);
   const val = this.value;
   debounceTimeout = setTimeout(() => renderUsers(val), 300);
 });
 
-document.getElementById('createUserBtn').onclick = function() {
+document.getElementById('createUserBtn').onclick = function () {
   document.getElementById('createUserForm').style.display = '';
 };
-document.getElementById('cancelCreateUser').onclick = function() {
+document.getElementById('cancelCreateUser').onclick = function () {
   document.getElementById('createUserForm').style.display = 'none';
   showMessage('');
 };
 
-document.getElementById('newUserForm').onsubmit = async function(e) {
+document.getElementById('newUserForm').onsubmit = async function (e) {
   e.preventDefault();
   const form = e.target;
   const email = form.email.value;
   const nickname = form.nickname.value;
   const password = form.password.value;
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    if (users.some(u => u.email === email)) {
+    if (users.some((u) => u.email === email)) {
       showMessage('Email already exists.', 'error');
       return;
     }
@@ -125,7 +128,7 @@ document.getElementById('newUserForm').onsubmit = async function(e) {
     const res = await fetch('/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nickname, password })
+      body: JSON.stringify({ email, nickname, password }),
     });
     if (res.ok) {
       showMessage('User created!', 'success');
@@ -140,7 +143,7 @@ document.getElementById('newUserForm').onsubmit = async function(e) {
   }
 };
 
-window.refreshTokens = async function() {
+window.refreshTokens = async function () {
   if (window.renderTokens) {
     if (typeof fetchTokens === 'function') {
       await fetchTokens();

@@ -7,7 +7,10 @@ const router = Router();
 router.get('/', databaseConnectionController.getConnections.bind(databaseConnectionController));
 
 // Get connection statistics
-router.get('/stats', databaseConnectionController.getConnectionStats.bind(databaseConnectionController));
+router.get(
+  '/stats',
+  databaseConnectionController.getConnectionStats.bind(databaseConnectionController),
+);
 
 // Get single database connection
 router.get('/:id', databaseConnectionController.getConnection.bind(databaseConnectionController));
@@ -16,18 +19,33 @@ router.get('/:id', databaseConnectionController.getConnection.bind(databaseConne
 router.post('/', databaseConnectionController.createConnection.bind(databaseConnectionController));
 
 // Update database connection
-router.put('/:id', databaseConnectionController.updateConnection.bind(databaseConnectionController));
+router.put(
+  '/:id',
+  databaseConnectionController.updateConnection.bind(databaseConnectionController),
+);
 
 // Delete database connection
-router.delete('/:id', databaseConnectionController.deleteConnection.bind(databaseConnectionController));
+router.delete(
+  '/:id',
+  databaseConnectionController.deleteConnection.bind(databaseConnectionController),
+);
 
 // Test database connection
-router.post('/:id/test', databaseConnectionController.testConnection.bind(databaseConnectionController));
+router.post(
+  '/:id/test',
+  databaseConnectionController.testConnection.bind(databaseConnectionController),
+);
 
 // Check database connection configuration
-router.post('/:id/check', databaseConnectionController.checkConnection.bind(databaseConnectionController));
+router.post(
+  '/:id/check',
+  databaseConnectionController.checkConnection.bind(databaseConnectionController),
+);
 
 // Create database backup
-router.post('/:id/backup', databaseConnectionController.createBackup.bind(databaseConnectionController));
+router.post(
+  '/:id/backup',
+  databaseConnectionController.createBackup.bind(databaseConnectionController),
+);
 
 export default router;

@@ -193,7 +193,7 @@ router.post('/', labelController.createLabel.bind(labelController));
  *                 type: string
  *                 description: Name of the label
  *               description:
- *                 type: string  
+ *                 type: string
  *                 description: Description of the label
  *               color:
  *                 type: string
@@ -238,19 +238,19 @@ router.delete('/:id', labelController.deleteLabel.bind(labelController));
  *     summary: Bulk delete all data associated with specific label names
  *     tags: [Labels]
  *     description: |
- *       **WARNING: This is a destructive operation that will permanently delete ALL data 
+ *       **WARNING: This is a destructive operation that will permanently delete ALL data
  *       associated with the specified label names across ALL tables.**
- *       
+ *
  *       This operation will delete:
  *       - All users, roles, permissions with the specified labels
- *       - All AI agents, conversations, messages with the specified labels  
+ *       - All AI agents, conversations, messages with the specified labels
  *       - All login/logic history, tokens, SSO entries with the specified labels
  *       - All mail templates, notifications, configs with the specified labels
  *       - All API keys and usage logs with the specified labels
- *       
+ *
  *       Use this carefully, typically for cleaning up test/mock data.
  *     requestBody:
- *       required: true  
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
@@ -262,7 +262,7 @@ router.delete('/:id', labelController.deleteLabel.bind(labelController));
  *               labelNames:
  *                 type: array
  *                 items:
- *                   type: string  
+ *                   type: string
  *                 description: Array of label names to delete data for
  *                 example: ["mock", "temporary"]
  *               confirm:

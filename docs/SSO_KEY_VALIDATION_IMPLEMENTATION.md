@@ -3,11 +3,13 @@
 ## ✅ **Complete SSO Key Validation System**
 
 ### 🎯 **Overview**
+
 Enhanced the SSO authentication system to validate both `key` and `ssoKey` fields in the SSO entity, providing flexible authentication options.
 
 ### 📋 **Updated Files**
 
 #### **1. SSO Middleware** (`src/middlewares/sso.middleware.ts`)
+
 - ✅ **Enhanced SSO Key Validation**: Now validates both `key` and `ssoKey` fields
 - ✅ **Improved Logging**: Shows which key type (primary key vs ssoKey) was matched
 - ✅ **Utility Integration**: Uses new validation utilities for consistent logic
@@ -15,17 +17,15 @@ Enhanced the SSO authentication system to validate both `key` and `ssoKey` field
 ```typescript
 // Find SSO entry by either key or ssoKey
 const ssoEntry = await prisma.sSO.findFirst({
-  where: { 
-    OR: [
-      { key: ssoKey },
-      { ssoKey: ssoKey }
-    ]
+  where: {
+    OR: [{ key: ssoKey }, { ssoKey: ssoKey }],
   },
   // ... include user data
 });
 ```
 
 #### **2. SSO Controller** (`src/controllers/sso.controller.ts`)
+
 - ✅ **Search Enhancement**: Added `ssoKey` to search functionality
 - ✅ **Create Validation**: Proper uniqueness validation for `ssoKey`
 - ✅ **Update Validation**: Handles `ssoKey` updates with uniqueness checks
@@ -43,6 +43,7 @@ where.OR = [
 ```
 
 #### **3. SSO Validation Routes** (`src/routes/ssoAuth.routes.ts`)
+
 - ✅ **Direct Key Validation**: New `/validate-key` endpoint for direct validation
 - ✅ **Enhanced Response**: Includes both `key` and `ssoKey` in responses
 - ✅ **Match Type Logging**: Shows which key type was matched
@@ -57,6 +58,7 @@ router.post('/validate-key', async (req: Request, res: Response) => {
 ```
 
 #### **4. SSO Validation Utilities** (`src/utils/ssoValidation.ts`) - **NEW FILE**
+
 - ✅ **Comprehensive Validation**: `SSOValidationUtils.validateSSOKey()`
 - ✅ **Uniqueness Checking**: `checkSSOKeyUniqueness()` and `checkPrimaryKeyUniqueness()`
 - ✅ **Smart Key Generation**: `generateUniqueSSOKey()` with URL-based generation
@@ -65,6 +67,7 @@ router.post('/validate-key', async (req: Request, res: Response) => {
 ### 🔑 **Key Features**
 
 #### **1. Dual Key Support**
+
 ```typescript
 // Both keys can be used for authentication
 x-sso-key: primary_64_character_key_here
@@ -72,6 +75,7 @@ x-sso-key: custom_sso_key_here
 ```
 
 #### **2. Smart Key Generation**
+
 ```typescript
 // URL-based: https://app.example.com → app_example_com_abc123
 // Random fallback: random_16_character_string
@@ -79,12 +83,14 @@ const ssoKey = await SSOValidationUtils.generateUniqueSSOKey(url);
 ```
 
 #### **3. Comprehensive Validation**
+
 ```typescript
 const validation = await SSOValidationUtils.validateSSOKey(ssoKey);
 // Returns: { valid, ssoEntry, matchedKeyType, error }
 ```
 
 #### **4. Enhanced Logging**
+
 ```
 [SSO] SSO entry found via primary key: sso-id-123
 [SSO] SSO entry found via ssoKey: sso-id-456
@@ -93,6 +99,7 @@ const validation = await SSOValidationUtils.validateSSOKey(ssoKey);
 ### 🚀 **API Endpoints**
 
 #### **1. Direct Key Validation**
+
 ```http
 POST /api/sso-auth/validate-key
 Content-Type: application/json
@@ -103,6 +110,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "valid": true,
@@ -123,12 +131,14 @@ Content-Type: application/json
 ```
 
 #### **2. Header-based Validation**
+
 ```http
 GET /api/sso-auth/validate
 x-sso-key: your-key-here
 ```
 
 **Response:**
+
 ```json
 {
   "valid": true,
@@ -152,20 +162,20 @@ x-sso-key: your-key-here
 ### 🛡️ **Validation Logic**
 
 #### **1. Key Matching**
+
 ```typescript
 // Check both key fields
-OR: [
-  { key: providedSSOKey },
-  { ssoKey: providedSSOKey }
-]
+OR: [{ key: providedSSOKey }, { ssoKey: providedSSOKey }];
 ```
 
 #### **2. Status Validation**
+
 - ✅ SSO entry must be active (`isActive: true`)
 - ✅ User account must be active (`status: 'active'`)
 - ✅ Entry must not be expired (`expiresAt` check)
 
 #### **3. Uniqueness Constraints**
+
 - ✅ Primary `key` must be unique
 - ✅ `ssoKey` must be unique (if provided)
 - ✅ Proper validation on create/update operations
@@ -173,6 +183,7 @@ OR: [
 ### 🔧 **Usage Examples**
 
 #### **1. Creating SSO Entry with Custom ssoKey**
+
 ```javascript
 const response = await fetch('/api/sso/create', {
   method: 'POST',
@@ -180,21 +191,23 @@ const response = await fetch('/api/sso/create', {
   body: JSON.stringify({
     url: 'https://app.example.com',
     userId: 'user-uuid',
-    ssoKey: 'custom_key_123' // Optional custom key
-  })
+    ssoKey: 'custom_key_123', // Optional custom key
+  }),
 });
 ```
 
 #### **2. Authenticating with ssoKey**
+
 ```javascript
 const response = await fetch('/api/protected-endpoint', {
   headers: {
-    'x-sso-key': 'custom_key_123' // Works with either key or ssoKey
-  }
+    'x-sso-key': 'custom_key_123', // Works with either key or ssoKey
+  },
 });
 ```
 
 #### **3. Validating Key Directly**
+
 ```javascript
 const validation = await SSOValidationUtils.validateSSOKey('some-key');
 if (validation.valid) {
@@ -203,6 +216,7 @@ if (validation.valid) {
 ```
 
 ### 📊 **Database Schema**
+
 ```sql
 CREATE TABLE sso (
   id VARCHAR(191) PRIMARY KEY,
@@ -219,19 +233,21 @@ CREATE TABLE sso (
 ```
 
 ### 🎯 **Next Steps**
+
 1. **Run Migration**: Apply the database migration for `ssoKey` field
 2. **Test Endpoints**: Validate both key types work correctly
 3. **Update Frontend**: Ensure UI handles both key types properly
 4. **Documentation**: Update API documentation with new validation methods
 
 ### 🔍 **Testing**
+
 ```bash
 # Test primary key validation
 curl -X POST http://localhost:3000/api/sso-auth/validate-key \
   -H "Content-Type: application/json" \
   -d '{"ssoKey":"primary-key-value"}'
 
-# Test ssoKey validation  
+# Test ssoKey validation
 curl -X POST http://localhost:3000/api/sso-auth/validate-key \
   -H "Content-Type: application/json" \
   -d '{"ssoKey":"custom-sso-key-value"}'

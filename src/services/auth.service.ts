@@ -11,7 +11,10 @@ export function generateToken(payload: JwtPayload, expiresIn: jwt.SignOptions['e
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
-export function generateRefreshToken(payload: JwtPayload, expiresIn: jwt.SignOptions['expiresIn'] = '7d') {
+export function generateRefreshToken(
+  payload: JwtPayload,
+  expiresIn: jwt.SignOptions['expiresIn'] = '7d',
+) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 

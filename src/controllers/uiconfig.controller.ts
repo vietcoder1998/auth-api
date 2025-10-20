@@ -21,7 +21,9 @@ export async function getUiConfig(req: Request, res: Response) {
 // Create UI config
 export async function createUiConfig(req: Request, res: Response) {
   const { name, value, role } = req.body;
-  const config = await prisma.uiConfig.create({ data: { name, value: JSON.stringify(value), role } });
+  const config = await prisma.uiConfig.create({
+    data: { name, value: JSON.stringify(value), role },
+  });
   res.status(201).json({ data: config });
 }
 
@@ -29,7 +31,10 @@ export async function createUiConfig(req: Request, res: Response) {
 export async function updateUiConfig(req: Request, res: Response) {
   const { id } = req.params;
   const { name, value, role } = req.body;
-  const config = await prisma.uiConfig.update({ where: { id }, data: { name, value: JSON.stringify(value), role } });
+  const config = await prisma.uiConfig.update({
+    where: { id },
+    data: { name, value: JSON.stringify(value), role },
+  });
   res.json({ data: config });
 }
 

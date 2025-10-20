@@ -13,6 +13,7 @@ POST /api/conversations/:conversationId/command
 ### 1. Cache Commands
 
 Remove all agent memories/cache:
+
 ```json
 {
   "type": "cache",
@@ -23,9 +24,10 @@ Remove all agent memories/cache:
 ```
 
 Remove only short-term memory:
+
 ```json
 {
-  "type": "cache", 
+  "type": "cache",
   "parameters": {
     "action": "remove_short_term"
   }
@@ -35,6 +37,7 @@ Remove only short-term memory:
 ### 2. Memory Commands
 
 Add a memory:
+
 ```json
 {
   "type": "memory",
@@ -52,6 +55,7 @@ Add a memory:
 ```
 
 Search memories:
+
 ```json
 {
   "type": "memory",
@@ -66,6 +70,7 @@ Search memories:
 ### 3. Conversation Commands
 
 Summarize conversation:
+
 ```json
 {
   "type": "conversation",
@@ -76,6 +81,7 @@ Summarize conversation:
 ```
 
 Clear conversation:
+
 ```json
 {
   "type": "conversation",
@@ -88,6 +94,7 @@ Clear conversation:
 ### 4. Agent Commands
 
 Reset agent configuration:
+
 ```json
 {
   "type": "agent",
@@ -98,6 +105,7 @@ Reset agent configuration:
 ```
 
 Update agent config:
+
 ```json
 {
   "type": "agent",
@@ -114,6 +122,7 @@ Update agent config:
 ### 5. Task Commands
 
 Create a task:
+
 ```json
 {
   "type": "task",
@@ -128,6 +137,7 @@ Create a task:
 ```
 
 List tasks:
+
 ```json
 {
   "type": "task",
@@ -141,6 +151,7 @@ List tasks:
 ### 6. Tool Commands
 
 Enable a tool:
+
 ```json
 {
   "type": "tool",
@@ -171,11 +182,14 @@ All commands return a standardized response:
   "success": true,
   "message": "Command executed successfully",
   "type": "cache",
-  "data": { /* optional result data */ }
+  "data": {
+    /* optional result data */
+  }
 }
 ```
 
 Error response:
+
 ```json
 {
   "success": false,
@@ -193,11 +207,11 @@ const executeCommand = async (conversationId: string, type: string, parameters: 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ type, parameters })
+    body: JSON.stringify({ type, parameters }),
   });
-  
+
   const result = await response.json();
   console.log('Command result:', result);
   return result;
@@ -211,7 +225,7 @@ await executeCommand('conv-123', 'memory', {
   action: 'add',
   content: 'User is a developer',
   type: 'long_term',
-  importance: 7
+  importance: 7,
 });
 ```
 
@@ -227,9 +241,9 @@ if (isCommand) {
     userId,
     agentId,
     type,
-    parameters
+    parameters,
   });
-  
+
   // Handle command result
   if (result.success) {
     console.log(`Command executed: ${result.message}`);

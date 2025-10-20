@@ -24,14 +24,14 @@ export async function getConfig(req: Request, res: Response) {
       q = search,
       sortBy = 'key',
       sortOrder = 'asc',
-      asMap = 'false'
+      asMap = 'false',
     } = req.query;
 
     // If asMap is true, return the old format
     if (asMap === 'true') {
       const configs = await prisma.config.findMany();
       const configMap: Record<string, any> = {};
-      configs.forEach(config => {
+      configs.forEach((config) => {
         configMap[config.key] = parseConfigValue(config.value);
       });
       logger.info('Fetched configs as map', configMap);
@@ -49,10 +49,7 @@ export async function getConfig(req: Request, res: Response) {
     // Search across key and value fields
     if (q && typeof q === 'string' && q.trim()) {
       const searchTerm = q.trim();
-      whereClause.OR = [
-        { key: { contains: searchTerm } },
-        { value: { contains: searchTerm } }
-      ];
+      whereClause.OR = [{ key: { contains: searchTerm } }, { value: { contains: searchTerm } }];
     }
 
     // Build orderBy clause
@@ -73,19 +70,19 @@ export async function getConfig(req: Request, res: Response) {
       where: whereClause,
       orderBy,
       skip,
-      take: currentLimit
+      take: currentLimit,
     });
 
     // Parse values
-    const parsedConfigs = configs.map(config => ({
+    const parsedConfigs = configs.map((config) => ({
       ...config,
-      parsedValue: parseConfigValue(config.value)
+      parsedValue: parseConfigValue(config.value),
     }));
 
     logger.info('Fetched configs with pagination', {
       count: configs.length,
       total,
-      page: currentPage
+      page: currentPage,
     });
 
     res.json({
@@ -93,7 +90,7 @@ export async function getConfig(req: Request, res: Response) {
       total,
       page: currentPage,
       limit: currentLimit,
-      totalPages: Math.ceil(total / currentLimit)
+      totalPages: Math.ceil(total / currentLimit),
     });
   } catch (error) {
     logger.error('Error fetching configs:', error);
@@ -103,16 +100,16 @@ export async function getConfig(req: Request, res: Response) {
 
 export async function getConfigByKey(req: Request, res: Response) {
   const { key } = req.params;
-  
+
   try {
     const config = await prisma.config.findUnique({
-      where: { key }
+      where: { key },
     });
-    
+
     if (!config) {
       return res.status(404).json({ error: 'Config not found' });
     }
-    
+
     // Return just the pure value
     res.json(parseConfigValue(config.value));
   } catch (error) {
@@ -121,22 +118,21 @@ export async function getConfigByKey(req: Request, res: Response) {
   }
 }
 
-
 export async function updateConfig(req: Request, res: Response) {
   const { key, value } = req.body;
   if (!key || value === undefined) {
     return res.status(400).json({ error: 'Missing key or value' });
   }
-  
+
   try {
     // Convert value to string if it's an object/array, otherwise keep as string
     const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-    
+
     const updated = await prisma.config.update({
       where: { key },
-      data: { value: stringValue }
+      data: { value: stringValue },
     });
-    
+
     // Return just the pure value
     res.json(parseConfigValue(updated.value));
   } catch (error) {
@@ -150,15 +146,15 @@ export async function createConfig(req: Request, res: Response) {
   if (!key || value === undefined) {
     return res.status(400).json({ error: 'Missing key or value' });
   }
-  
+
   // Convert value to string if it's an object/array, otherwise keep as string
   const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-  
+
   try {
     const created = await prisma.config.create({
-      data: { key, value: stringValue }
+      data: { key, value: stringValue },
     });
-    
+
     // Return just the pure value
     res.json(parseConfigValue(created.value));
   } catch (err: any) {
@@ -172,12 +168,12 @@ export async function createConfig(req: Request, res: Response) {
 
 export async function deleteConfig(req: Request, res: Response) {
   const { key } = req.params;
-  
+
   try {
     await prisma.config.delete({
-      where: { key }
+      where: { key },
     });
-    
+
     res.json({ success: true, message: 'Config deleted successfully' });
   } catch (error) {
     logger.error('Error deleting config:', error);

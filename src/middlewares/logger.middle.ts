@@ -7,11 +7,11 @@ const getCallerInfo = () => {
     const stackTrace = new Error().stack;
     if (stackTrace) {
       const lines = stackTrace.split('\n');
-      
+
       // Skip the first few lines (Error constructor, this function, logger functions)
       for (let i = 1; i < lines.length && i < 15; i++) {
         const stackLine = lines[i];
-        
+
         // Skip internal Node.js, winston, and logger files
         if (
           stackLine &&
@@ -43,26 +43,28 @@ const getCallerInfo = () => {
             // Async format: async function at file:line:col
             /async\s+.*?\s+\(([^)]+):(\d+):\d+\)/,
           ];
-          
+
           for (const pattern of patterns) {
             const match = stackLine.match(pattern);
             if (match && match[1]) {
               const filePath = match[1];
               const lineNumber = match[2];
-              
+
               // Validate that it's a TypeScript or JavaScript file
               if (filePath.includes('.ts') || filePath.includes('.js')) {
                 // Extract just the filename from full path
                 const fileName = path.basename(filePath);
-                
+
                 // Additional validation - make sure it's not a system file
-                if (!fileName.startsWith('node:') && 
-                    !fileName.includes('winston') && 
-                    fileName !== 'logger.middle.ts') {
-                  return { 
-                    file: fileName, 
+                if (
+                  !fileName.startsWith('node:') &&
+                  !fileName.includes('winston') &&
+                  fileName !== 'logger.middle.ts'
+                ) {
+                  return {
+                    file: fileName,
                     line: lineNumber,
-                    fullPath: filePath // Keep full path for debugging if needed
+                    fullPath: filePath, // Keep full path for debugging if needed
                   };
                 }
               }
@@ -75,7 +77,7 @@ const getCallerInfo = () => {
     // Debug: log parsing errors if needed
     console.debug('Stack trace parsing error:', error);
   }
-  
+
   return { file: 'app', line: '0' };
 };
 
@@ -98,7 +100,7 @@ const customFormat = winston.format.printf((info: any) => {
   // Auto-detect caller info if not provided
   let fileName = file;
   let lineNumber = line;
-  
+
   // If no explicit file/line provided, auto-detect from stack trace
   if (!fileName || !lineNumber || fileName === 'app' || lineNumber === '0') {
     const caller = getCallerInfo();
@@ -122,7 +124,7 @@ const logger = winston.createLogger({
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.errors({ stack: true }), // Cho phép Error có stack
-    customFormat
+    customFormat,
   ),
   transports: [
     new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
@@ -136,33 +138,37 @@ if (process.env.NODE_ENV !== 'production') {
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.errors({ stack: true }),
-        customFormat
+        customFormat,
       ),
-    })
+    }),
   );
 }
 
 // === Middleware ===
 export function loggerMiddleware(req: Request, res: Response, next: NextFunction) {
   const startTime = Date.now();
-  
+
   // Import LoggerService dynamically to avoid circular dependency
   import('../services/logger.service').then(({ loggerService, LogLevel }) => {
     // Log request start (optional, only for debug)
     if (process.env.NODE_ENV === 'development') {
-      loggerService.debug('Request started', {
-        endpoint: req.originalUrl,
-        method: req.method,
-        userAgent: req.get('User-Agent'),
-        ip: req.ip,
-        body: req.method !== 'GET' ? req.body : undefined,
-      }, {
-        userId: (req as any).user?.id,
-        ipAddress: req.ip || req.connection.remoteAddress,
-        userAgent: req.get('User-Agent'),
-        endpoint: req.originalUrl,
-        method: req.method
-      });
+      loggerService.debug(
+        'Request started',
+        {
+          endpoint: req.originalUrl,
+          method: req.method,
+          userAgent: req.get('User-Agent'),
+          ip: req.ip,
+          body: req.method !== 'GET' ? req.body : undefined,
+        },
+        {
+          userId: (req as any).user?.id,
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.get('User-Agent'),
+          endpoint: req.originalUrl,
+          method: req.method,
+        },
+      );
     }
   });
 
@@ -180,12 +186,12 @@ export function loggerMiddleware(req: Request, res: Response, next: NextFunction
   res.send = function (body) {
     const duration = Date.now() - startTime;
     const statusCode = res.statusCode;
-    
+
     // Log to database using LoggerService
     import('../services/logger.service').then(({ loggerService, LogLevel }) => {
       let level = LogLevel.INFO;
       let message = 'Request completed';
-      
+
       // Determine log level based on status code
       if (statusCode >= 500) {
         level = LogLevel.ERROR;
@@ -197,14 +203,14 @@ export function loggerMiddleware(req: Request, res: Response, next: NextFunction
         level = LogLevel.INFO;
         message = 'Request redirected';
       }
-      
+
       // Log to database
       loggerService.log({
         level,
         message,
         metadata: {
           contentLength: res.get('Content-Length'),
-          responseBody: statusCode >= 400 ? body : undefined // Only log body for errors
+          responseBody: statusCode >= 400 ? body : undefined, // Only log body for errors
         },
         userId: (req as any).user?.id,
         ipAddress: req.ip || req.connection.remoteAddress,
@@ -212,7 +218,7 @@ export function loggerMiddleware(req: Request, res: Response, next: NextFunction
         endpoint: req.originalUrl,
         method: req.method,
         statusCode,
-        responseTime: duration
+        responseTime: duration,
       });
     });
 
@@ -238,7 +244,7 @@ export const logWithLocation = (
   message: string | Error,
   meta: any = {},
   fileName?: string,
-  lineNumber?: string
+  lineNumber?: string,
 ) => {
   const callerInfo = fileName && lineNumber ? { file: fileName, line: lineNumber } : {};
   if (message instanceof Error) {

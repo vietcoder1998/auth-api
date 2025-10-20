@@ -23,7 +23,7 @@ export async function getApiKeys(req: Request, res: Response) {
       status,
       userId,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
 
     // Parse pagination parameters
@@ -33,16 +33,16 @@ export async function getApiKeys(req: Request, res: Response) {
 
     // Build where clause for search and filters
     const whereClause: any = {};
-    
+
     // Search across multiple fields
     if (q && typeof q === 'string' && q.trim()) {
       const searchTerm = q.trim();
       whereClause.OR = [
         { name: { contains: searchTerm } },
-        { description: { contains: searchTerm } }
+        { description: { contains: searchTerm } },
       ];
     }
-    
+
     // Status filter
     if (status === 'active') {
       whereClause.isActive = true;
@@ -75,11 +75,11 @@ export async function getApiKeys(req: Request, res: Response) {
       where: whereClause,
       include: {
         user: {
-          select: { id: true, email: true, nickname: true }
+          select: { id: true, email: true, nickname: true },
         },
         _count: {
-          select: { apiUsageLogs: true }
-        }
+          select: { apiUsageLogs: true },
+        },
       },
       orderBy,
       skip,
@@ -87,7 +87,7 @@ export async function getApiKeys(req: Request, res: Response) {
     });
 
     // Hide the actual API keys in the response for security
-    const sanitizedApiKeys = apiKeys.map(apiKey => ({
+    const sanitizedApiKeys = apiKeys.map((apiKey) => ({
       ...apiKey,
       key: `${apiKey.key.substring(0, 8)}...${apiKey.key.substring(apiKey.key.length - 4)}`,
     }));
@@ -97,7 +97,7 @@ export async function getApiKeys(req: Request, res: Response) {
       total,
       page: currentPage,
       limit: currentLimit,
-      totalPages: Math.ceil(total / currentLimit)
+      totalPages: Math.ceil(total / currentLimit),
     });
   } catch (err) {
     console.error('Get API keys error:', err);
@@ -108,16 +108,16 @@ export async function getApiKeys(req: Request, res: Response) {
 // Create new API key
 export async function createApiKey(req: Request, res: Response) {
   try {
-    const { 
-      name, 
-      description, 
-      permissions = [], 
-      allowedIPs = [], 
+    const {
+      name,
+      description,
+      permissions = [],
+      allowedIPs = [],
       rateLimit = 1000,
       expiresAt,
-      userId 
+      userId,
     } = req.body;
-    
+
     const currentUser = req.user;
     const apiKey = generateApiKey();
 
@@ -135,15 +135,16 @@ export async function createApiKey(req: Request, res: Response) {
       },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true },
+        },
+      },
     });
 
     res.status(201).json({
       ...newApiKey,
       // Return the full key only on creation
-      message: 'API key created successfully. Please save the key securely as it will not be shown again.'
+      message:
+        'API key created successfully. Please save the key securely as it will not be shown again.',
     });
   } catch (err) {
     console.error('Create API key error:', err);
@@ -155,18 +156,10 @@ export async function createApiKey(req: Request, res: Response) {
 export async function updateApiKey(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { 
-      name, 
-      description, 
-      permissions, 
-      allowedIPs, 
-      rateLimit,
-      isActive,
-      expiresAt 
-    } = req.body;
+    const { name, description, permissions, allowedIPs, rateLimit, isActive, expiresAt } = req.body;
 
     const updateData: any = {};
-    
+
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (permissions !== undefined) updateData.permissions = JSON.stringify(permissions);
@@ -180,9 +173,9 @@ export async function updateApiKey(req: Request, res: Response) {
       data: updateData,
       include: {
         user: {
-          select: { id: true, email: true, nickname: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true },
+        },
+      },
     });
 
     // Hide the API key in response
@@ -206,21 +199,21 @@ export async function regenerateApiKey(req: Request, res: Response) {
 
     const updatedApiKey = await prisma.apiKey.update({
       where: { id },
-      data: { 
+      data: {
         key: newApiKey,
         usageCount: 0, // Reset usage count
-        lastUsedAt: null
+        lastUsedAt: null,
       },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true },
+        },
+      },
     });
 
     res.json({
       ...updatedApiKey,
-      message: 'API key regenerated successfully. Please save the new key securely.'
+      message: 'API key regenerated successfully. Please save the new key securely.',
     });
   } catch (err) {
     console.error('Regenerate API key error:', err);
@@ -234,7 +227,7 @@ export async function deleteApiKey(req: Request, res: Response) {
     const { id } = req.params;
 
     await prisma.apiKey.delete({
-      where: { id }
+      where: { id },
     });
 
     res.json({ message: 'API key deleted successfully' });
@@ -244,42 +237,33 @@ export async function deleteApiKey(req: Request, res: Response) {
   }
 }
 
-// Get overall API key usage statistics  
+// Get overall API key usage statistics
 export async function getApiKeyStats(req: Request, res: Response) {
   try {
     const { days = 30 } = req.query;
     const daysNum = parseInt(days as string);
-    
+
     const since = new Date();
     since.setDate(since.getDate() - daysNum);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [
-      totalKeys,
-      activeKeys, 
-      expiredKeys,
-      totalRequests,
-      requestsToday,
-      avgResponseTime
-    ] = await Promise.all([
-      prisma.apiKey.count(),
-      prisma.apiKey.count({ where: { isActive: true } }),
-      prisma.apiKey.count({ 
-        where: { 
-          OR: [
-            { isActive: false },
-            { expiresAt: { lt: new Date() } }
-          ]
-        } 
-      }),
-      prisma.apiUsageLog.count({ where: { createdAt: { gte: since } } }),
-      prisma.apiUsageLog.count({ where: { createdAt: { gte: today } } }),
-      prisma.apiUsageLog.aggregate({
-        where: { createdAt: { gte: since } },
-        _avg: { responseTime: true }
-      })
-    ]);
+    const [totalKeys, activeKeys, expiredKeys, totalRequests, requestsToday, avgResponseTime] =
+      await Promise.all([
+        prisma.apiKey.count(),
+        prisma.apiKey.count({ where: { isActive: true } }),
+        prisma.apiKey.count({
+          where: {
+            OR: [{ isActive: false }, { expiresAt: { lt: new Date() } }],
+          },
+        }),
+        prisma.apiUsageLog.count({ where: { createdAt: { gte: since } } }),
+        prisma.apiUsageLog.count({ where: { createdAt: { gte: today } } }),
+        prisma.apiUsageLog.aggregate({
+          where: { createdAt: { gte: since } },
+          _avg: { responseTime: true },
+        }),
+      ]);
 
     res.json({
       totalKeys,
@@ -287,7 +271,7 @@ export async function getApiKeyStats(req: Request, res: Response) {
       expiredKeys,
       totalRequests,
       requestsToday,
-      averageResponseTime: Math.round(avgResponseTime._avg.responseTime || 0)
+      averageResponseTime: Math.round(avgResponseTime._avg.responseTime || 0),
     });
   } catch (err) {
     console.error('Get API key stats error:', err);
@@ -301,7 +285,7 @@ export async function getSpecificApiKeyStats(req: Request, res: Response) {
     const { id } = req.params;
     const { days = 30 } = req.query;
     const daysNum = parseInt(days as string);
-    
+
     const since = new Date();
     since.setDate(since.getDate() - daysNum);
 
@@ -314,31 +298,31 @@ export async function getSpecificApiKeyStats(req: Request, res: Response) {
           usageCount: true,
           lastUsedAt: true,
           rateLimit: true,
-          createdAt: true
-        }
+          createdAt: true,
+        },
       }),
       prisma.apiUsageLog.findMany({
         where: {
           apiKeyId: id,
-          createdAt: { gte: since }
+          createdAt: { gte: since },
         },
         orderBy: { createdAt: 'desc' },
-        take: 100
+        take: 100,
       }),
       prisma.apiUsageLog.count({
         where: {
           apiKeyId: id,
-          createdAt: { gte: since }
-        }
+          createdAt: { gte: since },
+        },
       }),
       prisma.apiUsageLog.groupBy({
         by: ['statusCode'],
         where: {
           apiKeyId: id,
-          createdAt: { gte: since }
+          createdAt: { gte: since },
         },
-        _count: { id: true }
-      })
+        _count: { id: true },
+      }),
     ]);
 
     if (!apiKey) {
@@ -357,7 +341,7 @@ export async function getSpecificApiKeyStats(req: Request, res: Response) {
       totalRequests,
       dailyUsage,
       statusCodeDistribution: recentActivity,
-      recentLogs: usageLogs.slice(0, 20) // Latest 20 logs
+      recentLogs: usageLogs.slice(0, 20), // Latest 20 logs
     });
   } catch (err) {
     console.error('Get specific API key stats error:', err);
@@ -381,7 +365,7 @@ export async function getApiKeyLogs(req: Request, res: Response) {
         skip,
         take: limitNum,
       }),
-      prisma.apiUsageLog.count({ where: { apiKeyId: id } })
+      prisma.apiUsageLog.count({ where: { apiKeyId: id } }),
     ]);
 
     res.json({
@@ -389,7 +373,7 @@ export async function getApiKeyLogs(req: Request, res: Response) {
       total,
       page: pageNum,
       limit: limitNum,
-      totalPages: Math.ceil(total / limitNum)
+      totalPages: Math.ceil(total / limitNum),
     });
   } catch (err) {
     console.error('Get API key logs error:', err);

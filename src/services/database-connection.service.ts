@@ -31,7 +31,6 @@ export interface ConnectionTestResult {
 }
 
 export class DatabaseConnectionService {
-  
   // Encrypt password for storage
   private encryptPassword(password: string): string {
     try {
@@ -53,7 +52,7 @@ export class DatabaseConnectionService {
   // CRUD Operations
   async create(data: DatabaseConnectionData): Promise<any> {
     const encryptedPassword = this.encryptPassword(data.password);
-    
+
     return await prisma.databaseConnection.create({
       data: {
         name: data.name,
@@ -84,7 +83,7 @@ export class DatabaseConnectionService {
     // Don't return encrypted passwords in list
     return connections.map((conn: any) => ({
       ...conn,
-      password: '***encrypted***'
+      password: '***encrypted***',
     }));
   }
 
@@ -96,7 +95,7 @@ export class DatabaseConnectionService {
     if (connection) {
       return {
         ...connection,
-        password: '***encrypted***'
+        password: '***encrypted***',
       };
     }
     return null;
@@ -104,7 +103,7 @@ export class DatabaseConnectionService {
 
   async update(id: string, data: Partial<DatabaseConnectionData>): Promise<any> {
     const updateData: any = { ...data };
-    
+
     if (data.password && data.password !== '***encrypted***') {
       updateData.password = this.encryptPassword(data.password);
     } else {
@@ -138,17 +137,17 @@ export class DatabaseConnectionService {
       return {
         success: false,
         message: 'Database connection not found',
-        error: 'Connection not found'
+        error: 'Connection not found',
       };
     }
 
     // For now, just return a mock result
     // TODO: Implement actual connection testing with proper database drivers
     const startTime = Date.now();
-    
+
     // Simulate connection test
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
-    
+    await new Promise((resolve) => setTimeout(resolve, Math.random() * 1000 + 500));
+
     const responseTime = Date.now() - startTime;
     const success = Math.random() > 0.2; // 80% success rate for demo
 
@@ -167,12 +166,12 @@ export class DatabaseConnectionService {
       message: success ? `${connection.type} connection successful` : 'Connection test failed',
       responseTime,
       error: success ? undefined : 'Mock connection test failed',
-      details: { 
+      details: {
         host: connection.host,
         port: connection.port,
         database: connection.database,
-        type: connection.type 
-      }
+        type: connection.type,
+      },
     };
   }
 
@@ -186,7 +185,7 @@ export class DatabaseConnectionService {
       return {
         success: false,
         message: 'Database connection not found',
-        error: 'Connection not found'
+        error: 'Connection not found',
       };
     }
 
@@ -197,15 +196,17 @@ export class DatabaseConnectionService {
       hasDatabase: !!connection.database,
       hasUsername: !!connection.username,
       hasPassword: !!connection.password,
-      isActive: connection.isActive
+      isActive: connection.isActive,
     };
 
     const allValid = Object.values(checks).every(Boolean);
 
     return {
       success: allValid,
-      message: allValid ? 'Connection configuration is valid' : 'Connection configuration has issues',
-      details: checks
+      message: allValid
+        ? 'Connection configuration is valid'
+        : 'Connection configuration has issues',
+      details: checks,
     };
   }
 
@@ -219,7 +220,7 @@ export class DatabaseConnectionService {
       return {
         success: false,
         message: 'Database connection not found',
-        error: 'Connection not found'
+        error: 'Connection not found',
       };
     }
 
@@ -227,12 +228,12 @@ export class DatabaseConnectionService {
       return {
         success: false,
         message: 'Backup is not enabled for this connection',
-        error: 'Backup disabled'
+        error: 'Backup disabled',
       };
     }
 
     // Mock backup process
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Update last backup time
     await prisma.databaseConnection.update({
@@ -242,7 +243,7 @@ export class DatabaseConnectionService {
 
     return {
       success: true,
-      message: `Backup created successfully for ${connection.name}`
+      message: `Backup created successfully for ${connection.name}`,
     };
   }
 
@@ -250,29 +251,32 @@ export class DatabaseConnectionService {
   async getConnectionStats(): Promise<any> {
     const total = await prisma.databaseConnection.count();
     const active = await prisma.databaseConnection.count({
-      where: { isActive: true }
+      where: { isActive: true },
     });
     const byType = await prisma.databaseConnection.groupBy({
       by: ['type'],
-      _count: { type: true }
+      _count: { type: true },
     });
     const recentTests = await prisma.databaseConnection.count({
       where: {
         lastTested: {
-          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-        }
-      }
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+        },
+      },
     });
 
     return {
       total,
       active,
       inactive: total - active,
-      byType: byType.reduce((acc: any, item: any) => {
-        acc[item.type] = item._count.type;
-        return acc;
-      }, {} as Record<string, number>),
-      recentTests
+      byType: byType.reduce(
+        (acc: any, item: any) => {
+          acc[item.type] = item._count.type;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+      recentTests,
     };
   }
 
@@ -285,7 +289,7 @@ export class DatabaseConnectionService {
     if (connection) {
       return {
         ...connection,
-        password: this.decryptPassword(connection.password)
+        password: this.decryptPassword(connection.password),
       };
     }
     return null;

@@ -5,7 +5,8 @@ import { mockAgents } from './agents';
 export const mockFaqs = [
   {
     question: 'How do I reset my password?',
-    answer: 'To reset your password, go to the login page and click on "Forgot Password". Follow the instructions sent to your email.',
+    answer:
+      'To reset your password, go to the login page and click on "Forgot Password". Follow the instructions sent to your email.',
     type: 'manual',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -17,14 +18,16 @@ export const mockFaqs = [
       },
       {
         sender: 'agent',
-        content: 'To reset your password, go to the login page and click on "Forgot Password". Follow the instructions sent to your email.',
+        content:
+          'To reset your password, go to the login page and click on "Forgot Password". Follow the instructions sent to your email.',
         type: 'answer',
       },
     ],
   },
   {
     question: 'What is an AI Agent?',
-    answer: 'An AI Agent is a virtual assistant that can help you with various tasks using artificial intelligence.',
+    answer:
+      'An AI Agent is a virtual assistant that can help you with various tasks using artificial intelligence.',
     type: 'agent',
     aiAgentId: mockAgents[0]?.id,
     createdAt: new Date(),
@@ -37,14 +40,16 @@ export const mockFaqs = [
       },
       {
         sender: 'agent',
-        content: 'An AI Agent is a virtual assistant that can help you with various tasks using artificial intelligence.',
+        content:
+          'An AI Agent is a virtual assistant that can help you with various tasks using artificial intelligence.',
         type: 'answer',
       },
     ],
   },
   {
     question: 'How do I view my conversation history?',
-    answer: 'Navigate to the Conversations page from the sidebar to view your conversation history.',
+    answer:
+      'Navigate to the Conversations page from the sidebar to view your conversation history.',
     type: 'manual',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -56,7 +61,8 @@ export const mockFaqs = [
       },
       {
         sender: 'agent',
-        content: 'Navigate to the Conversations page from the sidebar to view your conversation history.',
+        content:
+          'Navigate to the Conversations page from the sidebar to view your conversation history.',
         type: 'answer',
       },
     ],
@@ -76,7 +82,8 @@ export const mockFaqs = [
       },
       {
         sender: 'agent',
-        content: 'Prompt history allows you to review and reuse previous prompts in your conversations.',
+        content:
+          'Prompt history allows you to review and reuse previous prompts in your conversations.',
         type: 'answer',
       },
     ],
@@ -84,7 +91,8 @@ export const mockFaqs = [
   // New FAQ for completed chatbot
   {
     question: 'How do I know when the chatbot has completed my request?',
-    answer: 'The chatbot will notify you with a completion message and display the results in the chat window.',
+    answer:
+      'The chatbot will notify you with a completion message and display the results in the chat window.',
     type: 'manual',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -96,7 +104,8 @@ export const mockFaqs = [
       },
       {
         sender: 'agent',
-        content: 'The chatbot will notify you with a completion message and display the results in the chat window.',
+        content:
+          'The chatbot will notify you with a completion message and display the results in the chat window.',
         type: 'answer',
       },
     ],
@@ -150,8 +159,6 @@ export const mockFaqRoles = [
   {
     name: 'faq_viewer',
     description: 'FAQ Viewer',
-    permissions: [
-      { name: 'admin_faqs_get' },
-    ],
+    permissions: [{ name: 'admin_faqs_get' }],
   },
 ];

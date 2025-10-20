@@ -10,9 +10,9 @@ export const mockLogicHistoryEntries = [
       registrationMethod: 'email',
       ipAddress: '172.16.0.10',
       userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
-      verificationSent: true
+      verificationSent: true,
     },
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
   },
   {
     userEmail: 'user@example.com',
@@ -21,9 +21,9 @@ export const mockLogicHistoryEntries = [
     metadata: {
       verificationToken: 'abc123def456',
       verificationTime: 300, // seconds to verify
-      ipAddress: '172.16.0.10'
+      ipAddress: '172.16.0.10',
     },
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000) // 5 minutes after registration
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000), // 5 minutes after registration
   },
 
   // Admin account creation
@@ -35,9 +35,9 @@ export const mockLogicHistoryEntries = [
       targetUserEmail: 'admin@example.com',
       assignedRole: 'admin',
       permissions: ['user_management', 'system_config', 'reports'],
-      createdBy: 'superadmin'
+      createdBy: 'superadmin',
     },
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) // 5 days ago
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
   },
 
   // Authentication attempts
@@ -49,9 +49,9 @@ export const mockLogicHistoryEntries = [
       ssoProvider: 'user_portal_sso',
       ipAddress: '172.16.0.10',
       deviceInfo: 'Chrome on Linux',
-      loginDuration: 7200 // 2 hour session
+      loginDuration: 7200, // 2 hour session
     },
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
   },
   {
     userEmail: 'admin@example.com',
@@ -61,9 +61,9 @@ export const mockLogicHistoryEntries = [
       ipAddress: '192.168.1.200',
       attemptMethod: 'direct',
       failureReason: 'invalid_password',
-      attemptCount: 1
+      attemptCount: 1,
     },
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
   },
 
   // Permission changes
@@ -76,9 +76,9 @@ export const mockLogicHistoryEntries = [
       previousPermissions: ['user_management', 'system_config'],
       newPermissions: ['user_management', 'system_config', 'reports', 'sso_management'],
       changedBy: 'superadmin',
-      reason: 'Expanded admin responsibilities'
+      reason: 'Expanded admin responsibilities',
     },
-    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000) // 36 hours ago
+    createdAt: new Date(Date.now() - 36 * 60 * 60 * 1000), // 36 hours ago
   },
 
   // System configuration changes
@@ -90,9 +90,9 @@ export const mockLogicHistoryEntries = [
       configKey: 'jwt_expiration_hours',
       previousValue: '24',
       newValue: '72',
-      affectedSystems: ['authentication', 'session_management']
+      affectedSystems: ['authentication', 'session_management'],
     },
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) // 1 day ago
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
   },
   {
     userEmail: 'admin@example.com',
@@ -102,9 +102,9 @@ export const mockLogicHistoryEntries = [
       ssoKey: 'mobile_app_sso',
       provider: 'internal',
       deviceTypes: ['mobile', 'tablet'],
-      expirationHours: 168 // 1 week
+      expirationHours: 168, // 1 week
     },
-    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000) // 12 hours ago
+    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
   },
 
   // Security events
@@ -116,9 +116,9 @@ export const mockLogicHistoryEntries = [
       ipAddress: '172.16.0.10',
       changeMethod: 'user_initiated',
       passwordStrength: 'strong',
-      previousPasswordAge: 45 // days
+      previousPasswordAge: 45, // days
     },
-    createdAt: new Date(Date.now() - 18 * 60 * 60 * 1000) // 18 hours ago
+    createdAt: new Date(Date.now() - 18 * 60 * 60 * 1000), // 18 hours ago
   },
   {
     userEmail: 'admin@example.com',
@@ -129,9 +129,9 @@ export const mockLogicHistoryEntries = [
       attemptCount: 5,
       timeWindow: '10 minutes',
       actionTaken: 'temporary_lockout',
-      lockoutDuration: 900 // 15 minutes
+      lockoutDuration: 900, // 15 minutes
     },
-    createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000) // 6 hours ago
+    createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
   },
 
   // Data operations
@@ -143,13 +143,13 @@ export const mockLogicHistoryEntries = [
       exportType: 'login_history',
       dateRange: {
         from: '2024-01-01',
-        to: '2024-01-31'
+        to: '2024-01-31',
       },
       recordCount: 1247,
       fileFormat: 'csv',
-      fileSize: '2.3MB'
+      fileSize: '2.3MB',
     },
-    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000) // 4 hours ago
+    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
   },
   {
     userEmail: 'superadmin@example.com',
@@ -159,9 +159,9 @@ export const mockLogicHistoryEntries = [
       expiredSessions: 156,
       expiredTokens: 89,
       cleanupDuration: '45 seconds',
-      reclaimedSpace: '12.7MB'
+      reclaimedSpace: '12.7MB',
     },
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
   },
 
   // Template management
@@ -174,9 +174,9 @@ export const mockLogicHistoryEntries = [
       templateKey: 'welcome_email',
       changeType: 'content_update',
       version: '1.2',
-      approvedBy: 'superadmin@example.com'
+      approvedBy: 'superadmin@example.com',
     },
-    createdAt: new Date(Date.now() - 30 * 60 * 1000) // 30 minutes ago
+    createdAt: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
   },
 
   // Recent user activity
@@ -187,9 +187,9 @@ export const mockLogicHistoryEntries = [
     metadata: {
       updatedFields: ['firstName', 'lastName', 'timezone'],
       ipAddress: '172.16.0.10',
-      sessionId: 'sess_abc123'
+      sessionId: 'sess_abc123',
     },
-    createdAt: new Date(Date.now() - 15 * 60 * 1000) // 15 minutes ago
+    createdAt: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
   },
   {
     userEmail: 'superadmin@example.com',
@@ -200,8 +200,8 @@ export const mockLogicHistoryEntries = [
       activeSessions: 5,
       systemLoad: '12%',
       memoryUsage: '456MB',
-      diskUsage: '23%'
+      diskUsage: '23%',
     },
-    createdAt: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
-  }
+    createdAt: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
+  },
 ];

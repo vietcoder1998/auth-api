@@ -1,4 +1,3 @@
-
 import { PrismaClient } from '@prisma/client';
 // Update the path below to the correct location of your Redis client setup file
 import { client } from '../setup';
@@ -16,33 +15,31 @@ export async function login(req: Request, res: Response) {
   try {
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
-    
+
     if (!user || user.password !== password) {
       // Record failed login attempt
       if (user) {
-        await HistoryService.recordUserAction(
-          user.id,
-          'login_failed',
-          req,
-          {
-            entityType: 'User',
-            entityId: user.id,
-            newValues: { reason: 'invalid_password', attempt_time: new Date() },
-            notificationTemplateName: 'security_alert'
-          }
-        );
+        await HistoryService.recordUserAction(user.id, 'login_failed', req, {
+          entityType: 'User',
+          entityId: user.id,
+          newValues: { reason: 'invalid_password', attempt_time: new Date() },
+          notificationTemplateName: 'security_alert',
+        });
       }
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Generate JWT tokens
-    const accessToken = generateToken({
-      userId: user.id,
-      email: user.email,
-      ...(user.roleId ? { role: user.roleId } : {})
-    }, '1h');
+    const accessToken = generateToken(
+      {
+        userId: user.id,
+        email: user.email,
+        ...(user.roleId ? { role: user.roleId } : {}),
+      },
+      '1h',
+    );
     const refreshToken = generateRefreshToken({ userId: user.id }, '7d');
-    
+
     // Save tokens in DB
     const tokenRecord = await prisma.token.create({
       data: {
@@ -52,35 +49,30 @@ export async function login(req: Request, res: Response) {
         expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour
       },
     });
-    
+
     // Cache access token in Redis
     await cacheToken(accessToken, user.id, 3600);
-    
+
     // Record successful login using HistoryService
     const loginHistory = await HistoryService.recordLogin(user.id, req);
-    
+
     // Record login logic history
-    await HistoryService.recordUserAction(
-      user.id,
-      'login_successful',
-      req,
-      {
-        entityType: 'Token',
-        entityId: tokenRecord.id,
-        newValues: {
-          login_time: new Date(),
-          token_expires_at: tokenRecord.expiresAt,
-          user_agent: HistoryService.getUserAgent(req),
-          ip_address: HistoryService.getClientIP(req)
-        },
-        notificationTemplateName: 'user_login'
-      }
-    );
-    
-    res.json({ 
-      accessToken, 
+    await HistoryService.recordUserAction(user.id, 'login_successful', req, {
+      entityType: 'Token',
+      entityId: tokenRecord.id,
+      newValues: {
+        login_time: new Date(),
+        token_expires_at: tokenRecord.expiresAt,
+        user_agent: HistoryService.getUserAgent(req),
+        ip_address: HistoryService.getClientIP(req),
+      },
+      notificationTemplateName: 'user_login',
+    });
+
+    res.json({
+      accessToken,
       refreshToken,
-      loginHistoryId: loginHistory?.id // Return for potential logout tracking
+      loginHistoryId: loginHistory?.id, // Return for potential logout tracking
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -91,33 +83,28 @@ export async function login(req: Request, res: Response) {
 export async function register(req: Request, res: Response) {
   try {
     const { email, password, nickname } = req.body;
-    
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
-    
+
     const user = await prisma.user.create({
       data: { email, password, nickname },
     });
-    
+
     // Record user registration
-    await HistoryService.recordUserAction(
-      user.id,
-      'user_registered',
-      req,
-      {
-        entityType: 'User',
-        entityId: user.id,
-        newValues: {
-          email: user.email,
-          nickname: user.nickname,
-          registration_time: user.createdAt
-        }
-      }
-    );
-    
+    await HistoryService.recordUserAction(user.id, 'user_registered', req, {
+      entityType: 'User',
+      entityId: user.id,
+      newValues: {
+        email: user.email,
+        nickname: user.nickname,
+        registration_time: user.createdAt,
+      },
+    });
+
     res.json({ user });
   } catch (error) {
     console.error('Registration error:', error);
@@ -129,31 +116,31 @@ export async function logout(req: Request, res: Response) {
   try {
     const { loginHistoryId } = req.body;
     const userId = req.headers['x-user-id'] as string;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User ID not found in request' });
     }
-    
+
     // Get the authorization header to find the token
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
-    
+
     if (token) {
       // Remove token from Redis cache
       await client.del(`token:${token}`);
-      
+
       // Invalidate token in database
       await prisma.token.updateMany({
-        where: { 
+        where: {
           accessToken: token,
-          userId: userId 
+          userId: userId,
         },
-        data: { 
-          expiresAt: new Date() // Set to expired
-        }
+        data: {
+          expiresAt: new Date(), // Set to expired
+        },
       });
     }
-    
+
     // Update login history if provided
     if (loginHistoryId) {
       await HistoryService.logoutUser(loginHistoryId);
@@ -164,22 +151,17 @@ export async function logout(req: Request, res: Response) {
         await HistoryService.logoutUser(activeSessions[0].id);
       }
     }
-    
+
     // Record logout action
-    await HistoryService.recordUserAction(
-      userId,
-      'logout',
-      req,
-      {
-        entityType: 'Token',
-        entityId: token,
-        newValues: {
-          logout_time: new Date(),
-          logout_type: 'manual'
-        }
-      }
-    );
-    
+    await HistoryService.recordUserAction(userId, 'logout', req, {
+      entityType: 'Token',
+      entityId: token,
+      newValues: {
+        logout_time: new Date(),
+        logout_type: 'manual',
+      },
+    });
+
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
@@ -213,7 +195,7 @@ export async function validate(req: Request, res: Response) {
 export async function getMe(req: Request, res: Response) {
   try {
     const userId = req.headers['x-user-id'] as string;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User ID not found in request' });
     }
@@ -236,12 +218,12 @@ export async function getMe(req: Request, res: Response) {
                 id: true,
                 name: true,
                 category: true,
-                description: true
-              }
-            }
-          }
-        }
-      }
+                description: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -255,27 +237,22 @@ export async function getMe(req: Request, res: Response) {
         userId: userId,
         action: 'profile_accessed',
         createdAt: {
-          gte: new Date(Date.now() - 5 * 60 * 1000) // Last 5 minutes
-        }
+          gte: new Date(Date.now() - 5 * 60 * 1000), // Last 5 minutes
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
     // Only log if no recent access recorded
     if (!lastAccess) {
-      await HistoryService.recordUserAction(
-        userId,
-        'profile_accessed',
-        req,
-        {
-          entityType: 'User',
-          entityId: userId,
-          newValues: {
-            access_time: new Date(),
-            permissions_count: user.role?.permissions.length || 0
-          }
-        }
-      );
+      await HistoryService.recordUserAction(userId, 'profile_accessed', req, {
+        entityType: 'User',
+        entityId: userId,
+        newValues: {
+          access_time: new Date(),
+          permissions_count: user.role?.permissions.length || 0,
+        },
+      });
     }
 
     res.json(user);
@@ -290,11 +267,11 @@ export async function handoverUserStatus(req: Request, res: Response) {
   try {
     const { userId, newStatus } = req.body;
     const requesterId = req.headers['x-user-id'] as string;
-    
+
     if (!requesterId) {
       return res.status(401).json({ error: 'User ID not found in request' });
     }
-    
+
     // Get requester info
     const requester = await prisma.user.findUnique({
       where: { id: requesterId },
@@ -304,71 +281,61 @@ export async function handoverUserStatus(req: Request, res: Response) {
     if (!requester || requester.role?.name !== 'superadmin') {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    
+
     // Get current user status before update
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { status: true, email: true, nickname: true }
+      select: { status: true, email: true, nickname: true },
     });
-    
+
     if (!currentUser) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     // Update user status
-    const user = await prisma.user.update({ 
-      where: { id: userId }, 
-      data: { status: newStatus } 
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { status: newStatus },
     });
-    
+
     // Record status change in history
-    await HistoryService.recordUserAction(
-      requesterId,
-      'user_status_changed',
-      req,
-      {
-        entityType: 'User',
-        entityId: userId,
-        oldValues: {
-          status: currentUser.status,
-          target_user: {
-            email: currentUser.email,
-            nickname: currentUser.nickname
-          }
+    await HistoryService.recordUserAction(requesterId, 'user_status_changed', req, {
+      entityType: 'User',
+      entityId: userId,
+      oldValues: {
+        status: currentUser.status,
+        target_user: {
+          email: currentUser.email,
+          nickname: currentUser.nickname,
         },
-        newValues: {
-          status: newStatus,
-          changed_by: {
-            email: requester.email,
-            nickname: requester.nickname,
-            role: requester.role?.name
-          },
-          changed_at: new Date()
+      },
+      newValues: {
+        status: newStatus,
+        changed_by: {
+          email: requester.email,
+          nickname: requester.nickname,
+          role: requester.role?.name,
         },
-        notificationTemplateName: newStatus === 'suspended' ? 'account_suspended' : undefined
-      }
-    );
-    
+        changed_at: new Date(),
+      },
+      notificationTemplateName: newStatus === 'suspended' ? 'account_suspended' : undefined,
+    });
+
     // If user is being suspended, force logout all their sessions
     if (newStatus === 'suspended' || newStatus === 'inactive') {
       await HistoryService.forceLogoutAllSessions(userId);
-      
+
       // Record forced logout
-      await HistoryService.recordUserAction(
-        requesterId,
-        'force_logout_all_sessions',
-        req,
-        {
-          entityType: 'User',
-          entityId: userId,
-          newValues: {
-            reason: `User status changed to ${newStatus}`,
-            forced_by: requester.email
-          }
-        }
-      );
+      await HistoryService.recordUserAction(requesterId, 'force_logout_all_sessions', req, {
+        entityType: 'User',
+        entityId: userId,
+        newValues: {
+          reason: `User status changed to ${newStatus}`,
+          forced_by: requester.email,
+        },
+      });
     }
-    
+
     res.json({ user });
   } catch (error) {
     console.error('Handover user status error:', error);

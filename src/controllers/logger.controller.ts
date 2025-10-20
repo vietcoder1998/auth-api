@@ -13,7 +13,7 @@ export async function getLogs(req: Request, res: Response) {
       endDate,
       search,
       page = 1,
-      limit = 50
+      limit = 50,
     } = req.query;
 
     const filter = {
@@ -25,11 +25,11 @@ export async function getLogs(req: Request, res: Response) {
       endDate: endDate ? new Date(endDate as string) : undefined,
       search: search as string,
       page: parseInt(page as string) || 1,
-      limit: parseInt(limit as string) || 50
+      limit: parseInt(limit as string) || 50,
     };
 
     // Remove undefined values
-    Object.keys(filter).forEach(key => {
+    Object.keys(filter).forEach((key) => {
       if ((filter as any)[key] === undefined || (filter as any)[key] === '') {
         delete (filter as any)[key];
       }
@@ -40,15 +40,14 @@ export async function getLogs(req: Request, res: Response) {
     res.status(200).json({
       success: true,
       message: 'Logs retrieved successfully',
-      data: result
+      data: result,
     });
-
   } catch (error) {
     console.error('Get logs controller error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve logs',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -61,15 +60,14 @@ export async function getLogStats(req: Request, res: Response) {
     res.status(200).json({
       success: true,
       message: 'Log statistics retrieved successfully',
-      data: stats
+      data: stats,
     });
-
   } catch (error) {
     console.error('Get log stats controller error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve log statistics',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -84,15 +82,14 @@ export async function clearOldLogs(req: Request, res: Response) {
     res.status(200).json({
       success: true,
       message: `Successfully deleted ${result.deletedCount} old log entries`,
-      data: result
+      data: result,
     });
-
   } catch (error) {
     console.error('Clear old logs controller error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to clear old logs',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -100,15 +97,7 @@ export async function clearOldLogs(req: Request, res: Response) {
 // Export logs
 export async function exportLogs(req: Request, res: Response) {
   try {
-    const {
-      level,
-      userId,
-      endpoint,
-      method,
-      startDate,
-      endDate,
-      search
-    } = req.query;
+    const { level, userId, endpoint, method, startDate, endDate, search } = req.query;
 
     const filter = {
       level: level as LogLevel,
@@ -117,11 +106,11 @@ export async function exportLogs(req: Request, res: Response) {
       method: method as string,
       startDate: startDate ? new Date(startDate as string) : undefined,
       endDate: endDate ? new Date(endDate as string) : undefined,
-      search: search as string
+      search: search as string,
     };
 
     // Remove undefined values
-    Object.keys(filter).forEach(key => {
+    Object.keys(filter).forEach((key) => {
       if ((filter as any)[key] === undefined || (filter as any)[key] === '') {
         delete (filter as any)[key];
       }
@@ -132,15 +121,14 @@ export async function exportLogs(req: Request, res: Response) {
     res.status(200).json({
       success: true,
       message: 'Logs exported successfully',
-      data: { exportPath }
+      data: { exportPath },
     });
-
   } catch (error) {
     console.error('Export logs controller error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to export logs',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -157,7 +145,7 @@ export async function createLogEntry(req: Request, res: Response) {
       return res.status(400).json({
         success: false,
         message: 'Level and message are required',
-        errors: ['Missing required fields']
+        errors: ['Missing required fields'],
       });
     }
 
@@ -167,20 +155,19 @@ export async function createLogEntry(req: Request, res: Response) {
       metadata,
       userId,
       ipAddress,
-      userAgent
+      userAgent,
     });
 
     res.status(201).json({
       success: true,
-      message: 'Log entry created successfully'
+      message: 'Log entry created successfully',
     });
-
   } catch (error) {
     console.error('Create log entry controller error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create log entry',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }

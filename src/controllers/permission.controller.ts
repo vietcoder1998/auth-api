@@ -17,7 +17,7 @@ export async function getPermissions(req: Request, res: Response) {
       category,
       method,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
 
     // Parse pagination parameters
@@ -40,10 +40,10 @@ export async function getPermissions(req: Request, res: Response) {
         {
           roles: {
             some: {
-              name: { contains: searchTerm }
-            }
-          }
-        }
+              name: { contains: searchTerm },
+            },
+          },
+        },
       ];
     }
 
@@ -75,17 +75,17 @@ export async function getPermissions(req: Request, res: Response) {
     // Get permissions with pagination
     const permissions = await prisma.permission.findMany({
       where: whereClause,
-      include: { 
+      include: {
         roles: {
           select: {
             id: true,
             name: true,
-          }
-        }
+          },
+        },
       },
       orderBy,
       skip,
-      take: currentLimit
+      take: currentLimit,
     });
 
     // Add usage count calculation (simulation)
@@ -93,36 +93,37 @@ export async function getPermissions(req: Request, res: Response) {
     // 1. Creating a PermissionUsage table with permissionId, userId, timestamp
     // 2. Logging usage in middleware when permissions are checked
     // 3. Aggregating counts with: SELECT permissionId, COUNT(*) FROM permission_usage GROUP BY permissionId
-    const permissionsWithUsage = permissions.map(permission => {
+    const permissionsWithUsage = permissions.map((permission) => {
       let baseUsage = 0;
-      
+
       // Higher usage for permissions assigned to more roles
       const roleMultiplier = permission.roles.length * 50;
-      
+
       // Category-based usage patterns
       const categoryMultipliers = {
-        'user': 200,      // User management is frequently used
-        'system': 100,    // System operations are common
-        'api': 150,       // API endpoints get regular hits
-        'role': 75,       // Role management is moderately used
-        'permission': 25, // Permission management is less frequent
-        'report': 300,    // Reports are heavily accessed
-        'other': 50       // Default for other categories
+        user: 200, // User management is frequently used
+        system: 100, // System operations are common
+        api: 150, // API endpoints get regular hits
+        role: 75, // Role management is moderately used
+        permission: 25, // Permission management is less frequent
+        report: 300, // Reports are heavily accessed
+        other: 50, // Default for other categories
       };
-      
-      const categoryUsage = categoryMultipliers[permission.category as keyof typeof categoryMultipliers] || 50;
-      
+
+      const categoryUsage =
+        categoryMultipliers[permission.category as keyof typeof categoryMultipliers] || 50;
+
       // Route-based usage (routes get more hits than abstract permissions)
       const routeBonus = permission.route ? 100 : 0;
-      
+
       // Calculate final usage with some randomness (but consistent per permission)
       const seed = permission.id.charCodeAt(0) + permission.name.length;
-      const randomFactor = 0.5 + ((seed % 100) / 100); // Consistent randomness
+      const randomFactor = 0.5 + (seed % 100) / 100; // Consistent randomness
       baseUsage = roleMultiplier + categoryUsage + routeBonus;
-      
+
       return {
         ...permission,
-        usageCount: Math.floor(baseUsage * randomFactor)
+        usageCount: Math.floor(baseUsage * randomFactor),
       };
     });
 
@@ -137,9 +138,8 @@ export async function getPermissions(req: Request, res: Response) {
       limit: currentLimit,
       totalPages: Math.ceil(total / currentLimit),
       hasNextPage: currentPage < Math.ceil(total / currentLimit),
-      hasPrevPage: currentPage > 1
+      hasPrevPage: currentPage > 1,
     });
-
   } catch (err) {
     logError('Failed to fetch permissions:', err);
     res.status(500).json({ error: 'Failed to fetch permissions' });
@@ -161,9 +161,9 @@ export async function createPermission(req: Request, res: Response) {
           route,
           method,
           roles: {
-            connect: roles?.map((rid: string) => ({ id: rid })) || []
-          }
-        }
+            connect: roles?.map((rid: string) => ({ id: rid })) || [],
+          },
+        },
       });
     } else {
       // Create new permission
@@ -175,29 +175,29 @@ export async function createPermission(req: Request, res: Response) {
           route,
           method,
           roles: {
-            connect: roles?.map((rid: string) => ({ id: rid })) || []
-          }
-        }
+            connect: roles?.map((rid: string) => ({ id: rid })) || [],
+          },
+        },
       });
     }
 
     // Automatically add this permission to the superadmin role
     const superadminRole = await prisma.role.findUnique({
       where: { name: 'superadmin' },
-      include: { permissions: true }
+      include: { permissions: true },
     });
 
     if (superadminRole) {
       // Check if permission is already connected to superadmin
-      const hasPermission = superadminRole.permissions.some(p => p.id === permission.id);
+      const hasPermission = superadminRole.permissions.some((p) => p.id === permission.id);
       if (!hasPermission) {
         await prisma.role.update({
           where: { id: superadminRole.id },
           data: {
             permissions: {
-              connect: { id: permission.id }
-            }
-          }
+              connect: { id: permission.id },
+            },
+          },
         });
         logInfo(`Permission '${name}' added to superadmin role`);
       }
@@ -225,9 +225,9 @@ export async function updatePermission(req: Request, res: Response) {
         route,
         method,
         roles: {
-          set: roles?.map((rid: string) => ({ id: rid })) || []
-        }
-      }
+          set: roles?.map((rid: string) => ({ id: rid })) || [],
+        },
+      },
     });
     res.json(permission);
   } catch (err) {
@@ -239,7 +239,7 @@ export async function deletePermission(req: Request, res: Response) {
   const { id } = req.params;
   try {
     await prisma.permission.delete({
-      where: { id }
+      where: { id },
     });
     res.json({ message: 'Permission deleted successfully' });
   } catch (err) {
@@ -249,7 +249,7 @@ export async function deletePermission(req: Request, res: Response) {
 
 export async function createPermissionWithSuperadmin(req: Request, res: Response) {
   const { name, description, category, route, method } = req.body;
-  
+
   if (!name) {
     return res.status(400).json({ error: 'Permission name is required' });
   }
@@ -257,7 +257,7 @@ export async function createPermissionWithSuperadmin(req: Request, res: Response
   try {
     // Check if permission already exists
     const existingPermission = await prisma.permission.findUnique({
-      where: { name }
+      where: { name },
     });
 
     if (existingPermission) {
@@ -266,7 +266,7 @@ export async function createPermissionWithSuperadmin(req: Request, res: Response
 
     // Find superadmin role first
     const superadminRole = await prisma.role.findUnique({
-      where: { name: 'superadmin' }
+      where: { name: 'superadmin' },
     });
 
     if (!superadminRole) {
@@ -283,17 +283,17 @@ export async function createPermissionWithSuperadmin(req: Request, res: Response
           route,
           method,
           roles: {
-            connect: { id: superadminRole.id }
-          }
+            connect: { id: superadminRole.id },
+          },
         },
         include: {
           roles: {
             select: {
               id: true,
-              name: true
-            }
-          }
-        }
+              name: true,
+            },
+          },
+        },
       });
 
       return newPermission;
@@ -303,20 +303,19 @@ export async function createPermissionWithSuperadmin(req: Request, res: Response
       permissionId: permission.id,
       category: permission.category,
       route: permission.route,
-      method: permission.method
+      method: permission.method,
     });
 
     res.json({
       success: true,
       message: 'Permission created and added to superadmin successfully',
-      data: permission
+      data: permission,
     });
-
   } catch (err) {
     logError('Failed to create permission with superadmin:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to create permission',
-      details: err instanceof Error ? err.message : 'Unknown error'
+      details: err instanceof Error ? err.message : 'Unknown error',
     });
   }
 }
@@ -328,7 +327,7 @@ export async function addPermissionToSuperadmin(req: Request, res: Response) {
     // Find the permission
     const permission = await prisma.permission.findUnique({
       where: { id: permissionId },
-      include: { roles: true }
+      include: { roles: true },
     });
 
     if (!permission) {
@@ -338,7 +337,7 @@ export async function addPermissionToSuperadmin(req: Request, res: Response) {
     // Find superadmin role
     const superadminRole = await prisma.role.findUnique({
       where: { name: 'superadmin' },
-      include: { permissions: true }
+      include: { permissions: true },
     });
 
     if (!superadminRole) {
@@ -346,13 +345,13 @@ export async function addPermissionToSuperadmin(req: Request, res: Response) {
     }
 
     // Check if permission is already connected to superadmin
-    const hasPermission = superadminRole.permissions.some(p => p.id === permissionId);
+    const hasPermission = superadminRole.permissions.some((p) => p.id === permissionId);
 
     if (hasPermission) {
       return res.json({
         success: true,
         message: 'Permission already assigned to superadmin',
-        data: { permission, role: superadminRole }
+        data: { permission, role: superadminRole },
       });
     }
 
@@ -361,27 +360,26 @@ export async function addPermissionToSuperadmin(req: Request, res: Response) {
       where: { id: superadminRole.id },
       data: {
         permissions: {
-          connect: { id: permissionId }
-        }
-      }
+          connect: { id: permissionId },
+        },
+      },
     });
 
     logInfo(`Permission '${permission.name}' added to superadmin role`, {
       permissionId: permission.id,
-      permissionName: permission.name
+      permissionName: permission.name,
     });
 
     res.json({
       success: true,
       message: 'Permission added to superadmin successfully',
-      data: { permission, role: superadminRole }
+      data: { permission, role: superadminRole },
     });
-
   } catch (err) {
     logError('Failed to add permission to superadmin:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to add permission to superadmin',
-      details: err instanceof Error ? err.message : 'Unknown error'
+      details: err instanceof Error ? err.message : 'Unknown error',
     });
   }
 }

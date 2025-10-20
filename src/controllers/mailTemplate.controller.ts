@@ -13,17 +13,14 @@ export const getMailTemplates = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string || '';
+    const search = (req.query.search as string) || '';
     const active = req.query.active as string;
     const skip = (page - 1) * limit;
 
     const where: any = {};
 
     if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { subject: { contains: search } },
-      ];
+      where.OR = [{ name: { contains: search } }, { subject: { contains: search } }];
     }
 
     if (active !== undefined) {
@@ -111,8 +108,8 @@ export const createMailTemplate = async (req: Request, res: Response) => {
 
     // Validate required fields
     if (!name || !subject || !body) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: name, subject, body' 
+      return res.status(400).json({
+        error: 'Missing required fields: name, subject, body',
       });
     }
 
@@ -166,7 +163,7 @@ export const updateMailTemplate = async (req: Request, res: Response) => {
       const duplicateTemplate = await prisma.mailTemplate.findUnique({
         where: { name },
       });
-      
+
       if (duplicateTemplate) {
         return res.status(400).json({ error: 'Template name already exists' });
       }
@@ -217,8 +214,8 @@ export const deleteMailTemplate = async (req: Request, res: Response) => {
 
     // Check if template is being used by mails
     if (existingTemplate._count.mails > 0) {
-      return res.status(400).json({ 
-        error: `Cannot delete template. It is being used by ${existingTemplate._count.mails} mail(s)` 
+      return res.status(400).json({
+        error: `Cannot delete template. It is being used by ${existingTemplate._count.mails} mail(s)`,
       });
     }
 

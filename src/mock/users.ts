@@ -5,20 +5,20 @@ export const mockUsers = [
     password: 'superadmin123',
     nickname: 'Super Admin',
     roleName: 'superadmin',
-    status: 'active'
+    status: 'active',
   },
   {
     email: 'admin@example.com',
     password: 'admin123',
     nickname: 'Admin',
     roleName: 'admin',
-    status: 'active'
+    status: 'active',
   },
   {
     email: 'user@example.com',
     password: 'user123',
     nickname: 'User',
     roleName: 'user',
-    status: 'active'
-  }
+    status: 'active',
+  },
 ];

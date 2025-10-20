@@ -24,31 +24,31 @@ export class PermissionService {
    */
   async createPermission(data: CreatePermissionData) {
     const { name, description, category, route, method } = data;
-    
+
     // Check if permission already exists
     const existingPermission = await prisma.permission.findUnique({
-      where: { name }
+      where: { name },
     });
-    
+
     if (existingPermission) {
       throw new Error('Permission with this name already exists');
     }
-    
+
     const permission = await prisma.permission.create({
       data: {
         name,
         description,
         category: category || 'other',
         route,
-        method
+        method,
       },
       include: {
         _count: {
-          select: { roles: true }
-        }
-      }
+          select: { roles: true },
+        },
+      },
     });
-    
+
     return permission;
   }
 
@@ -63,19 +63,19 @@ export class PermissionService {
           select: {
             id: true,
             name: true,
-            description: true
-          }
+            description: true,
+          },
         },
         _count: {
-          select: { roles: true }
-        }
-      }
+          select: { roles: true },
+        },
+      },
     });
-    
+
     if (!permission) {
       throw new Error('Permission not found');
     }
-    
+
     return permission;
   }
 
@@ -88,11 +88,11 @@ export class PermissionService {
       data,
       include: {
         _count: {
-          select: { roles: true }
-        }
-      }
+          select: { roles: true },
+        },
+      },
     });
-    
+
     return permission;
   }
 
@@ -104,17 +104,17 @@ export class PermissionService {
     const rolesCount = await prisma.role.count({
       where: {
         permissions: {
-          some: { id }
-        }
-      }
+          some: { id },
+        },
+      },
     });
-    
+
     if (rolesCount > 0) {
       throw new Error('Cannot delete permission that is assigned to roles');
     }
-    
+
     return await prisma.permission.delete({
-      where: { id }
+      where: { id },
     });
   }
 
@@ -123,17 +123,17 @@ export class PermissionService {
    */
   async getPermissions(page: number = 1, limit: number = 20, search?: string, category?: string) {
     const skip = (page - 1) * limit;
-    
+
     const where: any = {};
-    
+
     if (search) {
       where.OR = [
         { name: { contains: search } },
         { description: { contains: search } },
-        { route: { contains: search } }
+        { route: { contains: search } },
       ];
     }
-    
+
     if (category && category !== 'all') {
       where.category = category;
     }
@@ -145,23 +145,20 @@ export class PermissionService {
         take: limit,
         include: {
           _count: {
-            select: { roles: true }
-          }
+            select: { roles: true },
+          },
         },
-        orderBy: [
-          { category: 'asc' },
-          { name: 'asc' }
-        ]
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
       }),
-      prisma.permission.count({ where })
+      prisma.permission.count({ where }),
     ]);
-    
+
     return {
       data: permissions,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -170,22 +167,22 @@ export class PermissionService {
    */
   async getPermissionsByCategory() {
     const permissions = await prisma.permission.findMany({
-      orderBy: [
-        { category: 'asc' },
-        { name: 'asc' }
-      ]
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
-    
+
     // Group by category
-    const groupedPermissions = permissions.reduce((acc, permission) => {
-      const category = permission.category || 'other';
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(permission);
-      return acc;
-    }, {} as Record<string, typeof permissions>);
-    
+    const groupedPermissions = permissions.reduce(
+      (acc, permission) => {
+        const category = permission.category || 'other';
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(permission);
+        return acc;
+      },
+      {} as Record<string, typeof permissions>,
+    );
+
     return groupedPermissions;
   }
 
@@ -196,16 +193,16 @@ export class PermissionService {
     const result = await prisma.permission.groupBy({
       by: ['category'],
       _count: {
-        category: true
+        category: true,
       },
       orderBy: {
-        category: 'asc'
-      }
+        category: 'asc',
+      },
     });
-    
-    return result.map(item => ({
+
+    return result.map((item) => ({
       category: item.category,
-      count: item._count.category
+      count: item._count.category,
     }));
   }
 
@@ -216,14 +213,14 @@ export class PermissionService {
     const role = await prisma.role.findUnique({
       where: { id: roleId },
       include: {
-        permissions: true
-      }
+        permissions: true,
+      },
     });
-    
+
     if (!role) {
       throw new Error('Role not found');
     }
-    
+
     return role.permissions;
   }
 
@@ -236,17 +233,17 @@ export class PermissionService {
       include: {
         role: {
           include: {
-            permissions: true
-          }
-        }
-      }
+            permissions: true,
+          },
+        },
+      },
     });
-    
+
     if (!user || !user.role) {
       return false;
     }
-    
-    return user.role.permissions.some(permission => permission.name === permissionName);
+
+    return user.role.permissions.some((permission) => permission.name === permissionName);
   }
 
   /**
@@ -258,19 +255,17 @@ export class PermissionService {
       include: {
         role: {
           include: {
-            permissions: true
-          }
-        }
-      }
+            permissions: true,
+          },
+        },
+      },
     });
-    
+
     if (!user || !user.role) {
       return false;
     }
-    
-    return user.role.permissions.some(permission => 
-      permissionNames.includes(permission.name)
-    );
+
+    return user.role.permissions.some((permission) => permissionNames.includes(permission.name));
   }
 }
 

@@ -20,32 +20,34 @@ export class RoleService {
    */
   async createRole(data: CreateRoleData) {
     const { name, description, permissionIds } = data;
-    
+
     // Check if role already exists
     const existingRole = await prisma.role.findUnique({
-      where: { name }
+      where: { name },
     });
-    
+
     if (existingRole) {
       throw new Error('Role with this name already exists');
     }
-    
+
     const role = await prisma.role.create({
       data: {
         name,
         description,
-        permissions: permissionIds ? {
-          connect: permissionIds.map(id => ({ id }))
-        } : undefined
+        permissions: permissionIds
+          ? {
+              connect: permissionIds.map((id) => ({ id })),
+            }
+          : undefined,
       },
       include: {
         permissions: true,
         _count: {
-          select: { users: true }
-        }
-      }
+          select: { users: true },
+        },
+      },
     });
-    
+
     return role;
   }
 
@@ -58,15 +60,15 @@ export class RoleService {
       include: {
         permissions: true,
         _count: {
-          select: { users: true }
-        }
-      }
+          select: { users: true },
+        },
+      },
     });
-    
+
     if (!role) {
       throw new Error('Role not found');
     }
-    
+
     return role;
   }
 
@@ -75,23 +77,25 @@ export class RoleService {
    */
   async updateRole(id: string, data: UpdateRoleData) {
     const { permissionIds, ...updateData } = data;
-    
+
     const role = await prisma.role.update({
       where: { id },
       data: {
         ...updateData,
-        permissions: permissionIds ? {
-          set: permissionIds.map(id => ({ id }))
-        } : undefined
+        permissions: permissionIds
+          ? {
+              set: permissionIds.map((id) => ({ id })),
+            }
+          : undefined,
       },
       include: {
         permissions: true,
         _count: {
-          select: { users: true }
-        }
-      }
+          select: { users: true },
+        },
+      },
     });
-    
+
     return role;
   }
 
@@ -101,15 +105,15 @@ export class RoleService {
   async deleteRole(id: string) {
     // Check if role has users
     const usersCount = await prisma.user.count({
-      where: { roleId: id }
+      where: { roleId: id },
     });
-    
+
     if (usersCount > 0) {
       throw new Error('Cannot delete role that has assigned users');
     }
-    
+
     return await prisma.role.delete({
-      where: { id }
+      where: { id },
     });
   }
 
@@ -118,13 +122,12 @@ export class RoleService {
    */
   async getRoles(page: number = 1, limit: number = 20, search?: string) {
     const skip = (page - 1) * limit;
-    
-    const where = search ? {
-      OR: [
-        { name: { contains: search } },
-        { description: { contains: search } }
-      ]
-    } : {};
+
+    const where = search
+      ? {
+          OR: [{ name: { contains: search } }, { description: { contains: search } }],
+        }
+      : {};
 
     const [roles, total] = await Promise.all([
       prisma.role.findMany({
@@ -134,20 +137,20 @@ export class RoleService {
         include: {
           permissions: true,
           _count: {
-            select: { users: true }
-          }
+            select: { users: true },
+          },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       }),
-      prisma.role.count({ where })
+      prisma.role.count({ where }),
     ]);
-    
+
     return {
       data: roles,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -159,12 +162,12 @@ export class RoleService {
       where: { id: roleId },
       data: {
         permissions: {
-          connect: { id: permissionId }
-        }
+          connect: { id: permissionId },
+        },
       },
       include: {
-        permissions: true
-      }
+        permissions: true,
+      },
     });
   }
 
@@ -176,12 +179,12 @@ export class RoleService {
       where: { id: roleId },
       data: {
         permissions: {
-          disconnect: { id: permissionId }
-        }
+          disconnect: { id: permissionId },
+        },
       },
       include: {
-        permissions: true
-      }
+        permissions: true,
+      },
     });
   }
 
@@ -190,7 +193,7 @@ export class RoleService {
    */
   async getRoleUsers(roleId: string, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
-    
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where: { roleId },
@@ -201,19 +204,19 @@ export class RoleService {
           email: true,
           nickname: true,
           status: true,
-          createdAt: true
+          createdAt: true,
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count({ where: { roleId } })
+      prisma.user.count({ where: { roleId } }),
     ]);
-    
+
     return {
       data: users,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 }

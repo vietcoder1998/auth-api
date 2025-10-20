@@ -100,7 +100,14 @@ app.get('/api/config/health', async (req, res) => {
 
     // CPU
     const cpus = os.cpus();
-    const cpuLoad = cpus && cpus.length > 0 ? (cpus.reduce((acc, cpu) => acc + cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.irq, 0) / (cpus.length * cpus[0].times.idle + 1)) : 0;
+    const cpuLoad =
+      cpus && cpus.length > 0
+        ? cpus.reduce(
+            (acc, cpu) => acc + cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.irq,
+            0,
+          ) /
+          (cpus.length * cpus[0].times.idle + 1)
+        : 0;
     const cpu = `${cpus.length} cores`;
 
     // Disk (async, only for Linux/Unix)
@@ -141,13 +148,12 @@ app.get('/api/config/health', async (req, res) => {
 
     // Get disk info and respond
     getDisk((disk) => {
-      console.log("Disk info:", disk);
+      console.log('Disk info:', disk);
       healthStatus.disk = disk;
       // Return 200 if all services are healthy, 503 if any are down
       const statusCode = databaseStatus && redisStatus ? 200 : 503;
       res.status(statusCode).json(healthStatus);
     });
-
   } catch (error) {
     logger.error('Health check endpoint error:', { error });
     res.status(500).json({
@@ -184,32 +190,32 @@ app.use(
         '/api/admin/logic-history', // Don't cache logic history (real-time data)
         '/api/admin/logs', // Don't cache logs (real-time data)
       ];
-      
+
       // Skip caching for POST, PUT, DELETE, PATCH requests (only cache GET requests)
       if (req.method !== 'GET') {
         console.log(`[CACHE] Skipping cache for ${req.method} ${req.originalUrl}`);
         return true;
       }
-      
+
       // Skip caching for specific paths
-      const shouldSkip = skipPaths.some(path => req.originalUrl.startsWith(path));
-      
+      const shouldSkip = skipPaths.some((path) => req.originalUrl.startsWith(path));
+
       // Debug logging
       logger.debug(`[CACHE] Cache check for ${req.originalUrl}:`, {
         method: req.method,
         shouldSkip,
-        matchedPath: skipPaths.find(path => req.originalUrl.startsWith(path)) || 'none'
+        matchedPath: skipPaths.find((path) => req.originalUrl.startsWith(path)) || 'none',
       });
-      
+
       logger.info('Cache middleware check:', {
         file: 'index.ts',
         line: '108',
         url: req.originalUrl,
         method: req.method,
         shouldSkip,
-        skipPaths
+        skipPaths,
       });
-      
+
       return shouldSkip;
     },
   }),
@@ -242,9 +248,12 @@ app.listen(PORT, async () => {
   logger.info(`Auth API running on port ${PORT}`);
   logger.info(`Admin GUI available at http://localhost:${PORT}/admin`);
   if (swaggerDocument) {
-    logger.info(`API docs available at http://localhost:${PORT}/docs`, { file: 'index.ts', line: '147' });
+    logger.info(`API docs available at http://localhost:${PORT}/docs`, {
+      file: 'index.ts',
+      line: '147',
+    });
   }
-  
+
   // Check Redis connection
   await checkRedisConnection();
 });

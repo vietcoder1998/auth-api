@@ -98,22 +98,22 @@ sequenceDiagram
     Note right of Client: Body: {deviceIP, userAgent, location}
 
     API->>API: Extract x-sso-key header
-    
+
     alt SSO Key Validation
         API->>DB: SELECT * FROM sso WHERE key = {ssoKey} OR ssoKey = {ssoKey}
         DB-->>API: SSO Entry + User Data
-        
+
         API->>API: Validate SSO Entry
         Note right of API: Check: isActive, user.status, expiresAt
-        
+
         alt Validation Success
             API->>DB: INSERT INTO loginHistory
             DB-->>API: Login History Created
-            
+
             API->>History: Record SSO Login Action
             History->>DB: INSERT INTO logicHistory
             DB-->>History: Logic History Created
-            
+
             API-->>Client: Success Response
             Note left of API: {loginHistory, user, sso}
         else Validation Failed
@@ -135,11 +135,11 @@ flowchart TD
     A[Client Request with x-sso-key] --> B{Extract SSO Key}
     B --> C[Query Database]
     C --> D{Find SSO Entry}
-    
+
     D -->|key = ssoKey| E[Match via Primary Key]
     D -->|ssoKey = ssoKey| F[Match via Secondary Key]
     D -->|No Match| G[Authentication Failed]
-    
+
     E --> H[Validate SSO Entry]
     F --> H
     H --> I{Is Active?}
@@ -149,7 +149,7 @@ flowchart TD
     K -->|Yes| M{Not Expired?}
     M -->|No| N[Entry Expired]
     M -->|Yes| O[Authentication Success]
-    
+
     G --> P[Return 401 Error]
     J --> P
     L --> P
@@ -177,7 +177,7 @@ graph LR
         D[GET /me] --> D1[Get SSO User Info]
         E[POST /logout] --> E1[SSO Logout]
     end
-    
+
     subgraph "SSO Management (/api/sso)"
         F[GET /] --> F1[List SSO Entries]
         G[POST /] --> G1[Create SSO Entry]
@@ -202,19 +202,19 @@ graph TB
         UI[Admin UI]
         APP[Client Applications]
     end
-    
+
     subgraph "API Layer"
         MW[SSO Middleware]
         CTRL[SSO Controller]
         ROUTES[SSO Routes]
         UTILS[Validation Utils]
     end
-    
+
     subgraph "Service Layer"
         HS[History Service]
         VS[Validation Service]
     end
-    
+
     subgraph "Database Layer"
         SSO_DB[(SSO Table)]
         USER_DB[(User Table)]
@@ -259,21 +259,21 @@ classDiagram
         +isExpired() boolean
         +getUserPermissions() Permission[]
     }
-    
+
     class PrimaryKey {
         +string value (64 chars)
         +generated crypto.randomBytes(32).toString('hex')
         +unique true
         +required true
     }
-    
+
     class SecondaryKey {
         +string value (16+ chars)
         +generated from URL domain or random
         +unique true
         +required false
     }
-    
+
     class User {
         +string id
         +string email
@@ -285,7 +285,7 @@ classDiagram
     SSOEntry ||--|| PrimaryKey : has
     SSOEntry ||--o| SecondaryKey : has
     SSOEntry ||--|| User : belongs_to
-    
+
     note for SSOEntry "Both key and ssoKey can be used for authentication"
     note for SecondaryKey "Optional custom key for easier identification"
 ```
@@ -297,25 +297,25 @@ classDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> Unauthenticated
-    
+
     Unauthenticated --> Validating : Provide SSO Key
     Validating --> Authenticated : Valid Key + Active User
     Validating --> Unauthenticated : Invalid Key
     Validating --> Inactive : Valid Key + Inactive User/SSO
     Validating --> Expired : Valid Key + Expired SSO
-    
+
     Authenticated --> LoggedIn : Create Login History
     LoggedIn --> Active : Normal Operations
-    
+
     Active --> Active : API Requests with Key
     Active --> Expired : SSO Expires
     Active --> Inactive : User/SSO Deactivated
     Active --> LoggedOut : Explicit Logout
-    
+
     Expired --> [*]
     Inactive --> [*]
     LoggedOut --> [*]
-    
+
     note right of Validating : Check key/ssoKey in database
     note right of Active : All API operations available
     note right of Expired : Time-based expiration
@@ -334,7 +334,7 @@ stateDiagram-v2
   },
   "body": {
     "deviceIP": "string (optional)",
-    "userAgent": "string (optional)", 
+    "userAgent": "string (optional)",
     "location": "string (optional)"
   }
 }
@@ -408,20 +408,20 @@ stateDiagram-v2
 ```mermaid
 architecture-beta
     group api(logos:fastapi)[Auth API]
-    
+
     service db(logos:mysql)[MySQL Database] in api
     service redis(logos:redis)[Redis Cache] in api
     service prisma(logos:prisma)[Prisma ORM] in api
-    
+
     group auth(logos:auth0)[Authentication Layer]
     service sso(logos:oauth)[SSO Service] in auth
     service jwt(logos:jwt)[JWT Service] in auth
     service rbac(logos:shield)[RBAC Service] in auth
-    
+
     group ui(logos:react)[Frontend]
     service admin(logos:react)[Admin Panel] in ui
     service client(logos:javascript)[Client Apps] in ui
-    
+
     group external[External Systems]
     service app1(logos:chrome)[App 1] in external
     service app2(logos:firefox)[App 2] in external
@@ -432,11 +432,11 @@ architecture-beta
     app1:R --> L:sso
     app2:R --> L:sso
     app3:R --> L:sso
-    
+
     sso:R --> L:prisma
     jwt:R --> L:prisma
     rbac:R --> L:prisma
-    
+
     prisma:R --> L:db
     sso:R --> L:redis
 ```

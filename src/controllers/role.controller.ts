@@ -13,7 +13,7 @@ export async function getRoles(req: Request, res: Response) {
       search = '',
       q = search,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
 
     // Parse pagination parameters
@@ -29,7 +29,7 @@ export async function getRoles(req: Request, res: Response) {
       const searchTerm = q.trim();
       whereClause.OR = [
         { name: { contains: searchTerm } },
-        { description: { contains: searchTerm } }
+        { description: { contains: searchTerm } },
       ];
     }
 
@@ -49,31 +49,31 @@ export async function getRoles(req: Request, res: Response) {
     // Get roles with pagination
     const roles = await prisma.role.findMany({
       where: whereClause,
-      include: { 
+      include: {
         permissions: {
           select: {
             id: true,
             name: true,
-            category: true
-          }
+            category: true,
+          },
         },
         users: {
           select: {
             id: true,
             email: true,
-            nickname: true
-          }
+            nickname: true,
+          },
         },
         _count: {
           select: {
             permissions: true,
-            users: true
-          }
-        }
+            users: true,
+          },
+        },
       },
       orderBy,
       skip,
-      take: currentLimit
+      take: currentLimit,
     });
 
     // Set pagination metadata for response middleware
@@ -85,9 +85,8 @@ export async function getRoles(req: Request, res: Response) {
       total,
       page: currentPage,
       limit: currentLimit,
-      totalPages: Math.ceil(total / currentLimit)
+      totalPages: Math.ceil(total / currentLimit),
     });
-
   } catch (err) {
     console.error('Get roles error:', err);
     res.status(500).json({ error: 'Failed to fetch roles' });
@@ -102,10 +101,10 @@ export async function createRole(req: Request, res: Response) {
         name,
         description,
         permissions: {
-          connect: permissions?.map((pid: string) => ({ id: pid })) || []
-        }
+          connect: permissions?.map((pid: string) => ({ id: pid })) || [],
+        },
       },
-      include: { permissions: true }
+      include: { permissions: true },
     });
     res.json(role);
   } catch (err) {
@@ -123,10 +122,10 @@ export async function updateRole(req: Request, res: Response) {
         name,
         description,
         permissions: {
-          set: permissions?.map((pid: string) => ({ id: pid })) || []
-        }
+          set: permissions?.map((pid: string) => ({ id: pid })) || [],
+        },
       },
-      include: { permissions: true }
+      include: { permissions: true },
     });
     res.json(role);
   } catch (err) {
@@ -138,7 +137,7 @@ export async function deleteRole(req: Request, res: Response) {
   const { id } = req.params;
   try {
     await prisma.role.delete({
-      where: { id }
+      where: { id },
     });
     res.json({ message: 'Role deleted successfully' });
   } catch (err) {
@@ -156,7 +155,7 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
       search = '',
       q = search,
       sortBy = 'name',
-      sortOrder = 'asc'
+      sortOrder = 'asc',
     } = req.query;
 
     // Parse pagination parameters
@@ -167,7 +166,7 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
     // First, get the role to ensure it exists
     const role = await prisma.role.findUnique({
       where: { id },
-      include: { permissions: { select: { id: true } } }
+      include: { permissions: { select: { id: true } } },
     });
 
     if (!role) {
@@ -175,13 +174,13 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
     }
 
     // Get IDs of permissions already in the role
-    const rolePermissionIds = role.permissions.map(p => p.id);
+    const rolePermissionIds = role.permissions.map((p) => p.id);
 
     // Build where clause for search and exclusion
     const whereClause: any = {
       id: {
-        notIn: rolePermissionIds
-      }
+        notIn: rolePermissionIds,
+      },
     };
 
     // Search across multiple fields
@@ -190,7 +189,7 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
       whereClause.OR = [
         { name: { contains: searchTerm } },
         { description: { contains: searchTerm } },
-        { category: { contains: searchTerm } }
+        { category: { contains: searchTerm } },
       ];
     }
 
@@ -227,8 +226,8 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
         id: role.id,
         name: role.name,
         description: role.description,
-        currentPermissionsCount: rolePermissionIds.length
-      }
+        currentPermissionsCount: rolePermissionIds.length,
+      },
     });
   } catch (err) {
     console.error('Get permissions not in role error:', err);
@@ -248,7 +247,7 @@ export async function addPermissionsToRole(req: Request, res: Response) {
     // Check if role exists
     const role = await prisma.role.findUnique({
       where: { id },
-      include: { permissions: true }
+      include: { permissions: true },
     });
 
     if (!role) {
@@ -256,10 +255,10 @@ export async function addPermissionsToRole(req: Request, res: Response) {
     }
 
     // Get current permission IDs
-    const currentPermissionIds = role.permissions.map(p => p.id);
-    
+    const currentPermissionIds = role.permissions.map((p) => p.id);
+
     // Filter out permissions that are already in the role
-    const newPermissionIds = permissionIds.filter(pid => !currentPermissionIds.includes(pid));
+    const newPermissionIds = permissionIds.filter((pid) => !currentPermissionIds.includes(pid));
 
     if (newPermissionIds.length === 0) {
       return res.status(400).json({ error: 'All provided permissions are already in the role' });
@@ -270,21 +269,21 @@ export async function addPermissionsToRole(req: Request, res: Response) {
       where: { id },
       data: {
         permissions: {
-          connect: newPermissionIds.map(pid => ({ id: pid }))
-        }
+          connect: newPermissionIds.map((pid) => ({ id: pid })),
+        },
       },
-      include: { 
+      include: {
         permissions: {
-          orderBy: { name: 'asc' }
-        }
-      }
+          orderBy: { name: 'asc' },
+        },
+      },
     });
 
     res.json({
       message: `Successfully added ${newPermissionIds.length} permission(s) to role`,
       role: updatedRole,
       addedPermissionsCount: newPermissionIds.length,
-      totalPermissionsCount: updatedRole.permissions.length
+      totalPermissionsCount: updatedRole.permissions.length,
     });
   } catch (err) {
     console.error('Add permissions to role error:', err);

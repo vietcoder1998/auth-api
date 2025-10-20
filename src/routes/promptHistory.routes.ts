@@ -5,7 +5,7 @@ import {
   getPromptHistoryById,
   updatePromptHistory,
   deletePromptHistory,
-  getAllPromptHistories
+  getAllPromptHistories,
 } from '../controllers/promptHistory.controller';
 
 const router = Router();

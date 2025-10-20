@@ -180,18 +180,20 @@ router.get('/me', ssoKeyValidation, requireSSO, async (req: Request, res: Respon
       email: user.email,
       nickname: user.nickname,
       status: user.status,
-      role: user.role ? {
-        id: user.role.id,
-        name: user.role.name,
-        permissions: user.role.permissions.map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          category: p.category,
-          route: p.route,
-          method: p.method,
-        })),
-      } : null,
+      role: user.role
+        ? {
+            id: user.role.id,
+            name: user.role.name,
+            permissions: user.role.permissions.map((p) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              category: p.category,
+              route: p.route,
+              method: p.method,
+            })),
+          }
+        : null,
       sso: {
         id: sso.id,
         url: sso.url,
@@ -228,7 +230,9 @@ router.post('/validate-key', async (req: Request, res: Response) => {
     // Validate email format - allow all .com domains
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.com$/;
     if (!emailRegex.test(gmail)) {
-      return res.status(400).json({ error: 'Please provide a valid email address (must end with .com)' });
+      return res
+        .status(400)
+        .json({ error: 'Please provide a valid email address (must end with .com)' });
     }
 
     const validation = await SSOValidationUtils.validateSSOKey(keyToValidate);
@@ -236,10 +240,10 @@ router.post('/validate-key', async (req: Request, res: Response) => {
     if (validation.valid && validation.ssoEntry) {
       // Additional Gmail verification - check if user email matches provided Gmail
       if (validation.ssoEntry.user.email !== gmail) {
-        return res.status(401).json({ 
-          valid: false, 
+        return res.status(401).json({
+          valid: false,
           success: false,
-          error: 'Gmail address does not match the SSO key owner' 
+          error: 'Gmail address does not match the SSO key owner',
         });
       }
 

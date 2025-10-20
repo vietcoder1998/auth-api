@@ -41,14 +41,14 @@ export class CommandService {
           return {
             success: false,
             message: `Unknown command type: ${context.type}`,
-            type: 'error'
+            type: 'error',
           };
       }
     } catch (error) {
       return {
         success: false,
         message: `Command execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        type: 'error'
+        type: 'error',
       };
     }
   }
@@ -58,50 +58,51 @@ export class CommandService {
    */
   private async handleCacheCommand(context: CommandContext): Promise<CommandResult> {
     const { parameters } = context;
-    
+
     switch (parameters?.action) {
       case 'remove_all':
         // Clear all agent memories
         await prisma.agentMemory.deleteMany({
-          where: { agentId: context.agentId }
+          where: { agentId: context.agentId },
         });
         return {
           success: true,
           message: 'All agent cache/memories cleared successfully',
-          type: 'cache'
+          type: 'cache',
         };
-        
+
       case 'remove_short_term':
         await prisma.agentMemory.deleteMany({
-          where: { 
+          where: {
             agentId: context.agentId,
-            type: 'short_term'
-          }
+            type: 'short_term',
+          },
         });
         return {
           success: true,
           message: 'Short-term cache cleared successfully',
-          type: 'cache'
+          type: 'cache',
         };
-        
+
       case 'remove_long_term':
         await prisma.agentMemory.deleteMany({
-          where: { 
+          where: {
             agentId: context.agentId,
-            type: 'long_term'
-          }
+            type: 'long_term',
+          },
         });
         return {
           success: true,
           message: 'Long-term cache cleared successfully',
-          type: 'cache'
+          type: 'cache',
         };
-        
+
       default:
         return {
           success: false,
-          message: 'Invalid cache action. Available: remove_all, remove_short_term, remove_long_term',
-          type: 'error'
+          message:
+            'Invalid cache action. Available: remove_all, remove_short_term, remove_long_term',
+          type: 'error',
         };
     }
   }
@@ -111,7 +112,7 @@ export class CommandService {
    */
   private async handleMemoryCommand(context: CommandContext): Promise<CommandResult> {
     const { parameters } = context;
-    
+
     switch (parameters?.action) {
       case 'add':
         const memory = await prisma.agentMemory.create({
@@ -120,39 +121,39 @@ export class CommandService {
             type: parameters.type || 'long_term',
             content: parameters.content,
             importance: parameters.importance || 5,
-            metadata: parameters.metadata ? JSON.stringify(parameters.metadata) : null
-          }
+            metadata: parameters.metadata ? JSON.stringify(parameters.metadata) : null,
+          },
         });
         return {
           success: true,
           message: 'Memory added successfully',
           data: memory,
-          type: 'memory'
+          type: 'memory',
         };
-        
+
       case 'search':
         const memories = await prisma.agentMemory.findMany({
           where: {
             agentId: context.agentId,
             content: {
-              contains: parameters.query
-            }
+              contains: parameters.query,
+            },
           },
           orderBy: { importance: 'desc' },
-          take: parameters.limit || 10
+          take: parameters.limit || 10,
         });
         return {
           success: true,
           message: `Found ${memories.length} memories`,
           data: memories,
-          type: 'memory'
+          type: 'memory',
         };
-        
+
       default:
         return {
           success: false,
           message: 'Invalid memory action. Available: add, search',
-          type: 'error'
+          type: 'error',
         };
     }
   }
@@ -162,48 +163,48 @@ export class CommandService {
    */
   private async handleConversationCommand(context: CommandContext): Promise<CommandResult> {
     const { parameters } = context;
-    
+
     switch (parameters?.action) {
       case 'summarize':
         const summary = await llmService.summarizeConversation(context.conversationId);
         await prisma.conversation.update({
           where: { id: context.conversationId },
-          data: { summary }
+          data: { summary },
         });
         return {
           success: true,
           message: 'Conversation summarized successfully',
           data: { summary },
-          type: 'conversation'
+          type: 'conversation',
         };
-        
+
       case 'clear':
         await prisma.message.deleteMany({
-          where: { conversationId: context.conversationId }
+          where: { conversationId: context.conversationId },
         });
         return {
           success: true,
           message: 'Conversation cleared successfully',
-          type: 'conversation'
+          type: 'conversation',
         };
-        
+
       case 'export':
         const messages = await prisma.message.findMany({
           where: { conversationId: context.conversationId },
-          orderBy: { position: 'asc' }
+          orderBy: { position: 'asc' },
         });
         return {
           success: true,
           message: 'Conversation exported successfully',
           data: messages,
-          type: 'conversation'
+          type: 'conversation',
         };
-        
+
       default:
         return {
           success: false,
           message: 'Invalid conversation action. Available: summarize, clear, export',
-          type: 'error'
+          type: 'error',
         };
     }
   }
@@ -213,7 +214,7 @@ export class CommandService {
    */
   private async handleAgentCommand(context: CommandContext): Promise<CommandResult> {
     const { parameters } = context;
-    
+
     switch (parameters?.action) {
       case 'reset':
         // Reset agent configuration to defaults
@@ -222,35 +223,35 @@ export class CommandService {
           data: {
             config: JSON.stringify({
               temperature: 0.7,
-              maxTokens: 1000
+              maxTokens: 1000,
             }),
-            personality: null
-          }
+            personality: null,
+          },
         });
         return {
           success: true,
           message: 'Agent configuration reset to defaults',
-          type: 'agent'
+          type: 'agent',
         };
-        
+
       case 'update_config':
         await prisma.agent.update({
           where: { id: context.agentId },
           data: {
-            config: JSON.stringify(parameters.config)
-          }
+            config: JSON.stringify(parameters.config),
+          },
         });
         return {
           success: true,
           message: 'Agent configuration updated successfully',
-          type: 'agent'
+          type: 'agent',
         };
-        
+
       default:
         return {
           success: false,
           message: 'Invalid agent action. Available: reset, update_config',
-          type: 'error'
+          type: 'error',
         };
     }
   }
@@ -260,7 +261,7 @@ export class CommandService {
    */
   private async handleTaskCommand(context: CommandContext): Promise<CommandResult> {
     const { parameters } = context;
-    
+
     switch (parameters?.action) {
       case 'create':
         const task = await prisma.agentTask.create({
@@ -268,48 +269,48 @@ export class CommandService {
             agentId: context.agentId,
             name: parameters.name,
             input: parameters.input ? JSON.stringify(parameters.input) : null,
-            status: 'pending'
-          }
+            status: 'pending',
+          },
         });
         return {
           success: true,
           message: 'Task created successfully',
           data: task,
-          type: 'task'
+          type: 'task',
         };
-        
+
       case 'list':
         const tasks = await prisma.agentTask.findMany({
           where: { agentId: context.agentId },
           orderBy: { createdAt: 'desc' },
-          take: parameters.limit || 20
+          take: parameters.limit || 20,
         });
         return {
           success: true,
           message: `Found ${tasks.length} tasks`,
           data: tasks,
-          type: 'task'
+          type: 'task',
         };
-        
+
       case 'cancel':
         await prisma.agentTask.updateMany({
-          where: { 
+          where: {
             agentId: context.agentId,
-            status: { in: ['pending', 'running'] }
+            status: { in: ['pending', 'running'] },
           },
-          data: { status: 'cancelled' }
+          data: { status: 'cancelled' },
         });
         return {
           success: true,
           message: 'All pending/running tasks cancelled',
-          type: 'task'
+          type: 'task',
         };
-        
+
       default:
         return {
           success: false,
           message: 'Invalid task action. Available: create, list, cancel',
-          type: 'error'
+          type: 'error',
         };
     }
   }
@@ -319,52 +320,52 @@ export class CommandService {
    */
   private async handleToolCommand(context: CommandContext): Promise<CommandResult> {
     const { parameters } = context;
-    
+
     switch (parameters?.action) {
       case 'enable':
         await prisma.agentTool.updateMany({
-          where: { 
+          where: {
             agentId: context.agentId,
-            name: parameters.name
+            name: parameters.name,
           },
-          data: { enabled: true }
+          data: { enabled: true },
         });
         return {
           success: true,
           message: `Tool "${parameters.name}" enabled successfully`,
-          type: 'tool'
+          type: 'tool',
         };
-        
+
       case 'disable':
         await prisma.agentTool.updateMany({
-          where: { 
+          where: {
             agentId: context.agentId,
-            name: parameters.name
+            name: parameters.name,
           },
-          data: { enabled: false }
+          data: { enabled: false },
         });
         return {
           success: true,
           message: `Tool "${parameters.name}" disabled successfully`,
-          type: 'tool'
+          type: 'tool',
         };
-        
+
       case 'list':
         const tools = await prisma.agentTool.findMany({
-          where: { agentId: context.agentId }
+          where: { agentId: context.agentId },
         });
         return {
           success: true,
           message: `Found ${tools.length} tools`,
           data: tools,
-          type: 'tool'
+          type: 'tool',
         };
-        
+
       default:
         return {
           success: false,
           message: 'Invalid tool action. Available: enable, disable, list',
-          type: 'error'
+          type: 'error',
         };
     }
   }
@@ -372,16 +373,21 @@ export class CommandService {
   /**
    * Parse command from message content
    */
-  parseCommand(content: string): { isCommand: boolean; command?: string; type?: string; parameters?: any } {
+  parseCommand(content: string): {
+    isCommand: boolean;
+    command?: string;
+    type?: string;
+    parameters?: any;
+  } {
     const commandRegex = /^\/(\w+)(?:\s+(.+))?$/;
     const match = content.match(commandRegex);
-    
+
     if (!match) {
       return { isCommand: false };
     }
-    
+
     const [, command, params] = match;
-    
+
     // Parse parameters
     let parameters: any = {};
     if (params) {
@@ -399,12 +405,12 @@ export class CommandService {
         }
       }
     }
-    
+
     return {
       isCommand: true,
       command,
       type: parameters.type || command,
-      parameters
+      parameters,
     };
   }
 }

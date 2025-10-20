@@ -1,5 +1,3 @@
-
-
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -30,7 +28,7 @@ export async function uploadFile(req: Request, res: Response) {
         mimetype: req.file.mimetype,
         size: req.file.size,
         type: String(type),
-      }
+      },
     });
     res.json({
       success: true,
@@ -39,10 +37,12 @@ export async function uploadFile(req: Request, res: Response) {
       path: req.file.path,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      document: doc
+      document: doc,
     });
   } catch (error) {
-    res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+    res
+      .status(500)
+      .json({ success: false, error: error instanceof Error ? error.message : String(error) });
   }
 }
 

@@ -19,9 +19,9 @@ export class ConfigService {
     const config = await prisma.config.upsert({
       where: { key },
       update: { value },
-      create: { key, value }
+      create: { key, value },
     });
-    
+
     return config;
   }
 
@@ -30,9 +30,9 @@ export class ConfigService {
    */
   async getConfig(key: string) {
     const config = await prisma.config.findUnique({
-      where: { key }
+      where: { key },
     });
-    
+
     return config?.value || null;
   }
 
@@ -41,13 +41,13 @@ export class ConfigService {
    */
   async getConfigObject(key: string) {
     const config = await prisma.config.findUnique({
-      where: { key }
+      where: { key },
     });
-    
+
     if (!config) {
       return null;
     }
-    
+
     return config;
   }
 
@@ -57,16 +57,16 @@ export class ConfigService {
   async getConfigs(keys: string[]) {
     const configs = await prisma.config.findMany({
       where: {
-        key: { in: keys }
-      }
+        key: { in: keys },
+      },
     });
-    
+
     // Convert to key-value object
     const configMap: Record<string, string> = {};
-    configs.forEach(config => {
+    configs.forEach((config) => {
       configMap[config.key] = config.value;
     });
-    
+
     return configMap;
   }
 
@@ -75,9 +75,9 @@ export class ConfigService {
    */
   async getAllConfigs() {
     const configs = await prisma.config.findMany({
-      orderBy: { key: 'asc' }
+      orderBy: { key: 'asc' },
     });
-    
+
     return configs;
   }
 
@@ -87,9 +87,9 @@ export class ConfigService {
   async updateConfig(key: string, value: string) {
     const config = await prisma.config.update({
       where: { key },
-      data: { value }
+      data: { value },
     });
-    
+
     return config;
   }
 
@@ -98,7 +98,7 @@ export class ConfigService {
    */
   async deleteConfig(key: string) {
     return await prisma.config.delete({
-      where: { key }
+      where: { key },
     });
   }
 
@@ -110,10 +110,10 @@ export class ConfigService {
       prisma.config.upsert({
         where: { key },
         update: { value },
-        create: { key, value }
-      })
+        create: { key, value },
+      }),
     );
-    
+
     const results = await Promise.all(operations);
     return results;
   }
@@ -124,7 +124,7 @@ export class ConfigService {
   async getConfigBoolean(key: string, defaultValue: boolean = false): Promise<boolean> {
     const value = await this.getConfig(key);
     if (value === null) return defaultValue;
-    
+
     return value.toLowerCase() === 'true' || value === '1';
   }
 
@@ -134,7 +134,7 @@ export class ConfigService {
   async getConfigNumber(key: string, defaultValue: number = 0): Promise<number> {
     const value = await this.getConfig(key);
     if (value === null) return defaultValue;
-    
+
     const parsed = parseInt(value, 10);
     return isNaN(parsed) ? defaultValue : parsed;
   }
@@ -145,7 +145,7 @@ export class ConfigService {
   async getConfigJSON(key: string, defaultValue: any = null): Promise<any> {
     const value = await this.getConfig(key);
     if (value === null) return defaultValue;
-    
+
     try {
       return JSON.parse(value);
     } catch {
@@ -166,9 +166,9 @@ export class ConfigService {
   async configExists(key: string): Promise<boolean> {
     const config = await prisma.config.findUnique({
       where: { key },
-      select: { key: true }
+      select: { key: true },
     });
-    
+
     return config !== null;
   }
 
@@ -179,12 +179,12 @@ export class ConfigService {
     const configs = await prisma.config.findMany({
       where: {
         key: {
-          startsWith: prefix
-        }
+          startsWith: prefix,
+        },
       },
-      orderBy: { key: 'asc' }
+      orderBy: { key: 'asc' },
     });
-    
+
     return configs;
   }
 
@@ -196,10 +196,10 @@ export class ConfigService {
       prisma.config.upsert({
         where: { key },
         update: { value },
-        create: { key, value }
-      })
+        create: { key, value },
+      }),
     );
-    
+
     const results = await Promise.all(operations);
     return results;
   }
@@ -209,11 +209,11 @@ export class ConfigService {
    */
   async getSystemSettings() {
     const settings = await this.getConfigsByPrefix('system.');
-    
+
     const settingsMap: Record<string, any> = {};
-    settings.forEach(config => {
+    settings.forEach((config) => {
       const key = config.key.replace('system.', '');
-      
+
       // Try to parse as JSON, fallback to string
       try {
         settingsMap[key] = JSON.parse(config.value);
@@ -221,7 +221,7 @@ export class ConfigService {
         settingsMap[key] = config.value;
       }
     });
-    
+
     return settingsMap;
   }
 
@@ -231,9 +231,9 @@ export class ConfigService {
   async updateSystemSettings(settings: Record<string, any>) {
     const updates = Object.entries(settings).map(([key, value]) => ({
       key: `system.${key}`,
-      value: typeof value === 'string' ? value : JSON.stringify(value)
+      value: typeof value === 'string' ? value : JSON.stringify(value),
     }));
-    
+
     return await this.bulkUpdateConfigs(updates);
   }
 
@@ -242,11 +242,11 @@ export class ConfigService {
    */
   async getAppSettings() {
     const settings = await this.getConfigsByPrefix('app.');
-    
+
     const settingsMap: Record<string, any> = {};
-    settings.forEach(config => {
+    settings.forEach((config) => {
       const key = config.key.replace('app.', '');
-      
+
       // Try to parse as JSON, fallback to string
       try {
         settingsMap[key] = JSON.parse(config.value);
@@ -254,7 +254,7 @@ export class ConfigService {
         settingsMap[key] = config.value;
       }
     });
-    
+
     return settingsMap;
   }
 
@@ -264,9 +264,9 @@ export class ConfigService {
   async updateAppSettings(settings: Record<string, any>) {
     const updates = Object.entries(settings).map(([key, value]) => ({
       key: `app.${key}`,
-      value: typeof value === 'string' ? value : JSON.stringify(value)
+      value: typeof value === 'string' ? value : JSON.stringify(value),
     }));
-    
+
     return await this.bulkUpdateConfigs(updates);
   }
 
@@ -282,12 +282,12 @@ export class ConfigService {
    */
   async exportConfigs() {
     const configs = await this.getAllConfigs();
-    
+
     const exportData: Record<string, string> = {};
-    configs.forEach(config => {
+    configs.forEach((config) => {
       exportData[config.key] = config.value;
     });
-    
+
     return exportData;
   }
 
@@ -296,15 +296,15 @@ export class ConfigService {
    */
   async importConfigs(configs: Record<string, string>, overwrite: boolean = false) {
     const operations = [];
-    
+
     for (const [key, value] of Object.entries(configs)) {
       if (overwrite) {
         operations.push(
           prisma.config.upsert({
             where: { key },
             update: { value },
-            create: { key, value }
-          })
+            create: { key, value },
+          }),
         );
       } else {
         // Only create if doesn't exist
@@ -312,12 +312,12 @@ export class ConfigService {
           prisma.config.upsert({
             where: { key },
             update: {}, // No update
-            create: { key, value }
-          })
+            create: { key, value },
+          }),
         );
       }
     }
-    
+
     const results = await Promise.all(operations);
     return results;
   }

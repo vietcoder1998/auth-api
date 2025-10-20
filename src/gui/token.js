@@ -15,7 +15,7 @@ async function fetchTokens() {
 function renderTokens() {
   const list = document.getElementById('tokenList');
   list.innerHTML = '';
-  tokens.forEach(t => {
+  tokens.forEach((t) => {
     const div = document.createElement('div');
     div.className = 'token-item';
     div.innerHTML = `<span class="editable" data-field="token" data-token="${t.accessToken}">${t.accessToken}</span> (<span class="editable" data-field="user" data-token="${t.accessToken}">${t.user?.email || ''}</span>)
@@ -23,8 +23,8 @@ function renderTokens() {
     list.appendChild(div);
   });
   // Add revoke action
-  list.querySelectorAll('.revokeTokenBtn').forEach(btn => {
-    btn.onclick = async function() {
+  list.querySelectorAll('.revokeTokenBtn').forEach((btn) => {
+    btn.onclick = async function () {
       if (confirm('Revoke this token?')) {
         await fetch('/admin/tokens/' + btn.getAttribute('data-id'), { method: 'DELETE' });
         fetchTokens();
@@ -38,14 +38,14 @@ function renderTokens() {
     createBtn.textContent = 'Create Token';
     createBtn.style.marginTop = '1em';
     list.parentElement.appendChild(createBtn);
-    createBtn.onclick = async function() {
+    createBtn.onclick = async function () {
       const userId = prompt('Enter userId for new token:');
       if (!userId) return;
       try {
         const res = await fetch('/admin/tokens', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId })
+          body: JSON.stringify({ userId }),
         });
         if (res.ok) {
           alert('Token created!');

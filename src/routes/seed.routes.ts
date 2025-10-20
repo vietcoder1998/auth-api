@@ -9,7 +9,7 @@ import {
   seedApiKeys,
   clearAll,
   getStats,
-  getSeedData
+  getSeedData,
 } from '../controllers/seed.controller';
 
 const router = Router();

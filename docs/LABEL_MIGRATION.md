@@ -1,16 +1,19 @@
 # Label System Migration: N-N Relationship with Single Table
 
 ## Overview
+
 The label system has been converted from using 20+ individual junction tables to a single generic `EntityLabel` table. This provides a more scalable and maintainable many-to-many relationship system.
 
 ## Schema Changes
 
 ### Before (Old System)
+
 - 20+ separate junction tables: `UserLabel`, `RoleLabel`, `PermissionLabel`, etc.
 - Each entity had a direct `labelId` field with default "mock-label-id"
 - Complex schema with many tables
 
 ### After (New System)
+
 - Single `EntityLabel` table handles all entity-label relationships
 - Generic approach using `entityId`, `entityType`, and `labelId`
 - Removed all direct `labelId` fields from entity tables
@@ -24,7 +27,7 @@ model EntityLabel {
   entityType String // Type of entity (user, role, permission, token, etc.)
   labelId    String
   label      Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
 
   @@unique([entityId, entityType, labelId])
@@ -54,6 +57,7 @@ model EntityLabel {
 ## API Changes
 
 ### Controller Updates
+
 The label controller has been updated to work with the new EntityLabel structure:
 
 - `getLabels()`: Now counts `entityLabels` instead of individual junction table counts
@@ -63,6 +67,7 @@ The label controller has been updated to work with the new EntityLabel structure
 - `getLabelStatistics()`: Groups statistics by entity type
 
 ### Service Layer
+
 New `EntityLabelService` provides utility methods:
 
 ```typescript
@@ -85,52 +90,58 @@ const entitiesWithLabel = await EntityLabelService.getEntitiesWithLabel(labelId,
 ## Usage Examples
 
 ### Adding Labels to Entities
+
 ```typescript
 // Add multiple labels to a user
 await prisma.entityLabel.createMany({
   data: [
     { entityId: userId, entityType: 'user', labelId: 'label1' },
-    { entityId: userId, entityType: 'user', labelId: 'label2' }
+    { entityId: userId, entityType: 'user', labelId: 'label2' },
   ],
-  skipDuplicates: true
+  skipDuplicates: true,
 });
 ```
 
 ### Querying Entities by Labels
+
 ```typescript
 // Get all users with 'production' label
 const productionUsers = await prisma.entityLabel.findMany({
   where: {
     entityType: 'user',
-    label: { name: 'production' }
+    label: { name: 'production' },
   },
-  include: { label: true }
+  include: { label: true },
 });
 ```
 
 ### Getting Labels for an Entity
+
 ```typescript
 // Get all labels for a specific user
 const userLabels = await prisma.entityLabel.findMany({
   where: {
     entityId: userId,
-    entityType: 'user'
+    entityType: 'user',
   },
-  include: { label: true }
+  include: { label: true },
 });
 ```
 
 ### Statistics and Analytics
+
 ```typescript
 // Get label usage by entity type
 const stats = await prisma.entityLabel.groupBy({
   by: ['entityType'],
-  _count: { entityType: true }
+  _count: { entityType: true },
 });
 ```
 
 ## Entity Types
+
 The following entity types are supported:
+
 - `user`
 - `role`
 - `permission`
@@ -154,26 +165,33 @@ The following entity types are supported:
 ## Performance Considerations
 
 ### Indexes
+
 The EntityLabel table includes optimized indexes:
+
 - Composite unique index on `[entityId, entityType, labelId]`
 - Individual indexes on `[entityId, entityType]`, `labelId`, and `entityType`
 
 ### Query Optimization
+
 - Use specific entity types in queries when possible
 - Leverage the composite indexes for better performance
 - Consider using `include` vs `select` based on data needs
 
 ## Testing
+
 After migration, verify:
+
 1. All entities can have labels assigned
 2. Label statistics are accurate
 3. Bulk delete operations work correctly
 4. Performance is acceptable for your data size
 
 ## Rollback Plan
+
 If needed, the old junction tables can be recreated from the EntityLabel data, but this would require a reverse migration script.
 
 ## Next Steps
+
 1. Run `npx prisma generate` to update the Prisma client
 2. Create and run the database migration
 3. Execute the migration script to populate EntityLabel table

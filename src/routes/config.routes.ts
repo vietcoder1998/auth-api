@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { getConfig, getConfigByKey, updateConfig, createConfig, deleteConfig } from '../controllers/config.controller';
+import {
+  getConfig,
+  getConfigByKey,
+  updateConfig,
+  createConfig,
+  deleteConfig,
+} from '../controllers/config.controller';
 import { healthCheck } from '../controllers/health.controller';
 
 const router = Router();

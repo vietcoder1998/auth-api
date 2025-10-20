@@ -1,11 +1,13 @@
 # Login As (Admin Impersonation) Feature - Implementation Guide
 
 ## Overview
+
 The "Login As" feature allows authorized administrators to impersonate other users in the system. This is useful for customer support, troubleshooting, and administrative tasks where admins need to see the application from a specific user's perspective.
 
 ## 🔧 Backend Implementation
 
 ### 1. Authentication Middleware (`auth.middleware.ts`)
+
 Created JWT token validation middleware that works alongside the existing Redis-based authentication:
 
 ```typescript
@@ -16,9 +18,11 @@ export async function jwtTokenValidation(req: Request, res: Response, next: Next
 ```
 
 ### 2. User Controller (`user.controller.ts`)
+
 Added `loginAsUser` function with proper authentication and authorization:
 
 **Key Features:**
+
 - ✅ Admin permission validation (`user:impersonate` or `manage_users`)
 - ✅ JWT token generation using same pattern as regular login
 - ✅ Redis caching for tokens
@@ -37,6 +41,7 @@ export async function loginAsUser(req: Request, res: Response) {
 ```
 
 ### 3. User Routes (`user.routes.ts`)
+
 Protected admin routes with JWT authentication:
 
 ```typescript
@@ -45,6 +50,7 @@ router.post('/login-as', jwtTokenValidation, loginAsUser);
 ```
 
 ### 4. Database Schema (`schema.prisma`)
+
 Enhanced Permission model with categories for better organization:
 
 ```prisma
@@ -62,9 +68,11 @@ model Permission {
 ## 🎨 Frontend Implementation
 
 ### 1. Admin User List (`UserList.tsx`)
+
 Enhanced user management interface with "Login As" functionality:
 
 **Features:**
+
 - ✅ Real user data from backend API
 - ✅ User status validation (only active users can be impersonated)
 - ✅ Loading states and error handling
@@ -72,9 +80,11 @@ Enhanced user management interface with "Login As" functionality:
 - ✅ Responsive table design
 
 ### 2. Login As Test Component (`LoginAsTest.tsx`)
+
 Comprehensive testing interface for the complete flow:
 
 **Test Steps:**
+
 1. **Admin Login** - Authenticate as administrator
 2. **Login As User** - Impersonate target user
 3. **Protected Route Test** - Verify token works
@@ -83,23 +93,27 @@ Comprehensive testing interface for the complete flow:
 ## 🔐 Security Features
 
 ### 1. Permission-Based Access Control
+
 - Only users with `user:impersonate` or `manage_users` permissions can use this feature
 - Admin role validation with database lookup
 - Prevents privilege escalation
 
 ### 2. Audit Trail
+
 - All impersonation events are logged with:
   - Admin who performed the action
   - Target user being impersonated
   - Timestamp of the action
 
 ### 3. Token Security
+
 - JWT tokens follow the same security pattern as regular login
 - 1-hour expiration for access tokens
 - 7-day expiration for refresh tokens
 - Redis caching for performance and revocation
 
 ### 4. Input Validation
+
 - Email validation for target users
 - Active status check (inactive users cannot be impersonated)
 - Proper error messages without information leakage
@@ -107,6 +121,7 @@ Comprehensive testing interface for the complete flow:
 ## 🚀 API Endpoints
 
 ### Authentication
+
 ```http
 POST /api/auth/login
 Content-Type: application/json
@@ -124,6 +139,7 @@ Response:
 ```
 
 ### Login As User
+
 ```http
 POST /api/admin/users/login-as
 Authorization: Bearer <admin_jwt_token>
@@ -153,6 +169,7 @@ Response:
 ```
 
 ### Get Users (Admin)
+
 ```http
 GET /api/admin/users
 Authorization: Bearer <admin_jwt_token>
@@ -172,6 +189,7 @@ Response:
 ## 🧪 Testing
 
 ### Backend Testing
+
 Run the test script to verify the complete flow:
 
 ```bash
@@ -180,6 +198,7 @@ node test-login-as.js
 ```
 
 ### Frontend Testing
+
 1. Navigate to `/admin/users` in the application
 2. Use the "Login As" button on any active user
 3. Verify redirection and token storage
@@ -188,6 +207,7 @@ node test-login-as.js
 ## 📝 Usage Instructions
 
 ### For Administrators:
+
 1. **Login** as an administrator with proper permissions
 2. **Navigate** to the admin user list (`/admin/users`)
 3. **Find** the user you want to impersonate
@@ -196,6 +216,7 @@ node test-login-as.js
 6. **Use** the application as that user
 
 ### For Developers:
+
 1. **Ensure** user has proper permissions in the database
 2. **Test** the flow using the test component
 3. **Monitor** logs for audit trails
@@ -213,6 +234,7 @@ The implementation maintains full compatibility with the existing authentication
 ## 🛡️ Error Handling
 
 ### Common Error Scenarios:
+
 - **401 Unauthorized**: No admin token provided
 - **403 Forbidden**: Admin lacks impersonation permissions
 - **404 Not Found**: Target user doesn't exist
@@ -220,6 +242,7 @@ The implementation maintains full compatibility with the existing authentication
 - **500 Internal Server Error**: Database or token generation issues
 
 ### Frontend Error Display:
+
 - User-friendly error messages
 - Loading states during API calls
 - Retry mechanisms for failed requests
@@ -241,6 +264,7 @@ The implementation maintains full compatibility with the existing authentication
 ## 🔧 Configuration
 
 ### Environment Variables
+
 ```env
 JWT_SECRET=your-secure-jwt-secret-key
 REDIS_URL=redis://localhost:6379
@@ -248,16 +272,18 @@ DATABASE_URL=mysql://user:password@localhost:3306/database
 ```
 
 ### Database Permissions
+
 Ensure admin users have the required permission:
+
 ```sql
 -- Create permission if it doesn't exist
-INSERT INTO Permission (name, category, description) 
+INSERT INTO Permission (name, category, description)
 VALUES ('user:impersonate', 'user', 'Allows admin to login as other users');
 
 -- Assign to admin role
-INSERT INTO _PermissionToRole (A, B) 
-SELECT p.id, r.id 
-FROM Permission p, Role r 
+INSERT INTO _PermissionToRole (A, B)
+SELECT p.id, r.id
+FROM Permission p, Role r
 WHERE p.name = 'user:impersonate' AND r.name = 'admin';
 ```
 

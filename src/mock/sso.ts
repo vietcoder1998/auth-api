@@ -44,5 +44,5 @@ export const mockSSOEntries = [
     deviceIP: '203.0.113.45',
     isActive: true,
     expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
-  }
+  },
 ];

@@ -33,7 +33,7 @@ export async function ssoKeyValidation(req: Request, res: Response, next: NextFu
   try {
     // Extract and validate SSO key from headers
     const validation = await extractAndValidateSSOKey(req.headers);
-    
+
     if (!validation.ssoKey) {
       console.log('[SSO] No SSO key provided in headers');
       return next(); // Continue without SSO authentication
@@ -74,7 +74,7 @@ export async function ssoKeyValidation(req: Request, res: Response, next: NextFu
     };
 
     console.log('[SSO] SSO validation successful for user:', ssoEntry.user.email);
-    
+
     logger.info('SSO authentication successful', {
       ssoId: ssoEntry.id,
       userId: ssoEntry.userId,

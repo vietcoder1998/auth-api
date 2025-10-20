@@ -15,7 +15,7 @@ async function testLoginAsFlow() {
     console.log('1. Logging in as admin...');
     const adminLoginResponse = await axios.post(`${BASE_URL}/auth/login`, {
       email: 'admin@example.com',
-      password: 'admin123'
+      password: 'admin123',
     });
 
     const adminToken = adminLoginResponse.data.accessToken;
@@ -29,10 +29,10 @@ async function testLoginAsFlow() {
       { email: 'user@example.com' },
       {
         headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+      },
     );
 
     const userToken = loginAsResponse.data.accessToken;
@@ -45,8 +45,8 @@ async function testLoginAsFlow() {
     console.log('3. Testing user token on protected route...');
     const protectedResponse = await axios.get(`${BASE_URL}/admin/users`, {
       headers: {
-        'Authorization': `Bearer ${userToken}`
-      }
+        Authorization: `Bearer ${userToken}`,
+      },
     });
 
     console.log('✅ Protected route access successful with impersonated token');
@@ -55,17 +55,16 @@ async function testLoginAsFlow() {
     // Step 4: Validate token using auth/validate endpoint
     console.log('4. Validating impersonated token...');
     const validateResponse = await axios.post(`${BASE_URL}/auth/validate`, {
-      token: userToken
+      token: userToken,
     });
 
     console.log('✅ Token validation successful');
     console.log('Validation result:', validateResponse.data, '\n');
 
     console.log('🎉 All tests passed! Login As functionality is working correctly.\n');
-
   } catch (error) {
     console.error('❌ Test failed:', error.response?.data || error.message);
-    
+
     if (error.response) {
       console.error('Status:', error.response.status);
       console.error('Response:', error.response.data);

@@ -36,7 +36,7 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
   };
 
   const oldJson = res.json;
-  
+
   res.json = function (body: any) {
     // If already in boundary format, don't double-wrap
     if (body && typeof body === 'object' && 'data' in body && 'message' in body) {
@@ -44,7 +44,14 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
     }
 
     // If response already contains pagination structure (data, total, page, limit), wrap it properly
-    if (body && typeof body === 'object' && 'data' in body && 'total' in body && 'page' in body && 'limit' in body) {
+    if (
+      body &&
+      typeof body === 'object' &&
+      'data' in body &&
+      'total' in body &&
+      'page' in body &&
+      'limit' in body
+    ) {
       return oldJson.call(this, {
         data: body.data,
         message: 'Success',
@@ -52,7 +59,7 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
         page: body.page,
         limit: body.limit,
         totalPages: body.totalPages || Math.ceil(body.total / body.limit),
-        success: true
+        success: true,
       });
     }
 
@@ -61,21 +68,21 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
       const code = body.code || res.statusCode || 500;
       const errorCode = body.errorCode || body.code || 'UNKNOWN_ERROR';
       const message = body.message || body.error || String(body);
-      
-      return oldJson.call(this, { 
-        data: null, 
-        message, 
-        code, 
+
+      return oldJson.call(this, {
+        data: null,
+        message,
+        code,
         errorCode,
-        success: false 
+        success: false,
       });
     }
 
     if (typeof body === 'string') {
-      return oldJson.call(this, { 
-        data: null, 
+      return oldJson.call(this, {
+        data: null,
         message: String(body),
-        success: true 
+        success: true,
       });
     }
 
@@ -88,9 +95,13 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
         total: total || pagination?.total || (Array.isArray(data) ? data.length : 0),
         page: pagination?.page || req.meta?.page || 1,
         limit: pagination?.limit || pagination?.pageSize || req.meta?.pageSize || 10,
-        totalPages: pagination?.totalPages || Math.ceil((pagination?.total || total || 0) / (pagination?.limit || req.meta?.pageSize || 10)),
+        totalPages:
+          pagination?.totalPages ||
+          Math.ceil(
+            (pagination?.total || total || 0) / (pagination?.limit || req.meta?.pageSize || 10),
+          ),
         success: true,
-        ...rest
+        ...rest,
       });
     }
 
@@ -99,7 +110,7 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
       const total = req.meta?.total || body.length;
       const currentPage = req.meta?.page || 1;
       const currentPageSize = req.meta?.pageSize || 10;
-      
+
       return oldJson.call(this, {
         data: body,
         message: 'Success',
@@ -108,17 +119,17 @@ export function boundaryResponse(req: Request, res: Response, next: NextFunction
           page: currentPage,
           limit: currentPageSize,
           total,
-          totalPages: Math.ceil(total / currentPageSize)
+          totalPages: Math.ceil(total / currentPageSize),
         },
-        success: true
+        success: true,
       });
     }
 
     // Default: wrap single object in { data, message }
-    return oldJson.call(this, { 
-      data: body, 
+    return oldJson.call(this, {
+      data: body,
       message: 'Success',
-      success: true 
+      success: true,
     });
   };
 
@@ -155,7 +166,7 @@ export function createPaginatedResponse(data: any[], total: number, page: number
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit)
-    }
+      totalPages: Math.ceil(total / limit),
+    },
   };
 }

@@ -13,7 +13,7 @@ export const getLogicHistory = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string || '';
+    const search = (req.query.search as string) || '';
     const userId = req.query.userId as string;
     const action = req.query.action as string;
     const entityType = req.query.entityType as string;
@@ -144,22 +144,22 @@ export const getLogicHistoryById = async (req: Request, res: Response) => {
 
 export const createLogicHistory = async (req: Request, res: Response) => {
   try {
-    const { 
-      userId, 
-      action, 
-      entityType, 
-      entityId, 
-      oldValues, 
-      newValues, 
-      ipAddress, 
-      userAgent, 
-      notificationTemplateId 
+    const {
+      userId,
+      action,
+      entityType,
+      entityId,
+      oldValues,
+      newValues,
+      ipAddress,
+      userAgent,
+      notificationTemplateId,
     } = req.body;
 
     // Validate required fields
     if (!userId || !action) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: userId, action' 
+      return res.status(400).json({
+        error: 'Missing required fields: userId, action',
       });
     }
 
@@ -252,7 +252,8 @@ export const updateLogicHistory = async (req: Request, res: Response) => {
 
     const updateData: any = {};
     if (notificationSent !== undefined) updateData.notificationSent = notificationSent;
-    if (notificationTemplateId !== undefined) updateData.notificationTemplateId = notificationTemplateId;
+    if (notificationTemplateId !== undefined)
+      updateData.notificationTemplateId = notificationTemplateId;
 
     const logicHistory = await prisma.logicHistory.update({
       where: { id },
@@ -360,11 +361,11 @@ export const getLogicHistoryStats = async (req: Request, res: Response) => {
     const [totalEntries, notificationsSent, pendingNotifications] = await Promise.all([
       prisma.logicHistory.count(),
       prisma.logicHistory.count({ where: { notificationSent: true } }),
-      prisma.logicHistory.count({ 
-        where: { 
+      prisma.logicHistory.count({
+        where: {
           notificationSent: false,
-          notificationTemplateId: { not: null }
-        } 
+          notificationTemplateId: { not: null },
+        },
       }),
     ]);
 
@@ -385,7 +386,7 @@ export const getLogicHistoryStats = async (req: Request, res: Response) => {
       totalEntries,
       notificationsSent,
       pendingNotifications,
-      actionBreakdown: actionStats.map(stat => ({
+      actionBreakdown: actionStats.map((stat) => ({
         action: stat.action,
         count: stat._count.action,
       })),

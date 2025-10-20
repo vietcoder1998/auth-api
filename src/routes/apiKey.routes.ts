@@ -7,7 +7,7 @@ import {
   deleteApiKey,
   getApiKeyStats,
   getSpecificApiKeyStats,
-  getApiKeyLogs
+  getApiKeyLogs,
 } from '../controllers/apiKey.controller';
 
 const router = Router();
@@ -30,7 +30,7 @@ router.post('/:id/regenerate', regenerateApiKey);
 // Delete API key
 router.delete('/:id', deleteApiKey);
 
-// Get specific API key usage statistics  
+// Get specific API key usage statistics
 router.get('/:id/stats', getSpecificApiKeyStats);
 
 // Get specific API key usage logs

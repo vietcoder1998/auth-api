@@ -18,12 +18,15 @@ export async function createNotificationTemplate(data: {
   return prisma.notificationTemplate.create({ data });
 }
 
-export async function updateNotificationTemplate(id: string, data: Partial<{
-  name: string;
-  title: string;
-  body: string;
-  active: boolean;
-}>) {
+export async function updateNotificationTemplate(
+  id: string,
+  data: Partial<{
+    name: string;
+    title: string;
+    body: string;
+    active: boolean;
+  }>,
+) {
   return prisma.notificationTemplate.update({ where: { id }, data });
 }
 

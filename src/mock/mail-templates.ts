@@ -25,7 +25,7 @@ export const mockMailTemplates = [
     </div>
 </body>
 </html>`,
-    active: true
+    active: true,
   },
   {
     name: 'password_reset',
@@ -52,7 +52,7 @@ export const mockMailTemplates = [
     </div>
 </body>
 </html>`,
-    active: true
+    active: true,
   },
   {
     name: 'account_verification',
@@ -79,6 +79,6 @@ export const mockMailTemplates = [
     </div>
 </body>
 </html>`,
-    active: true
-  }
+    active: true,
+  },
 ];

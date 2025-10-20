@@ -4,14 +4,14 @@ const prisma = new PrismaClient();
 export const promptHistoryService = {
   async createPrompt(conversationId: string, prompt: string) {
     return prisma.promptHistory.create({
-      data: { conversationId, prompt }
+      data: { conversationId, prompt },
     });
   },
 
   async getPrompts(conversationId: string) {
     return prisma.promptHistory.findMany({
       where: { conversationId },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
   },
 
@@ -22,7 +22,7 @@ export const promptHistoryService = {
   async updatePrompt(id: string, prompt: string) {
     return prisma.promptHistory.update({
       where: { id },
-      data: { prompt }
+      data: { prompt },
     });
   },
 
@@ -32,7 +32,7 @@ export const promptHistoryService = {
 
   async getAllPrompts() {
     return prisma.promptHistory.findMany({
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
-  }
+  },
 };

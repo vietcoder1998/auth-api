@@ -3,11 +3,13 @@
 ## ✅ **Completed Changes:**
 
 ### 1. **Database Schema Updates**
+
 - Added `ssoKey` field to SSO model in `schema.prisma`
 - Created SQL migration script `add_sso_key.sql`
 - Updated seed data to include ssoKey values
 
 ### 2. **Frontend Enhancements (AdminSSOPage.tsx)**
+
 - ✅ Added SSO Key column in table with copy functionality
 - ✅ Added "Simulate SSO Login" button for testing
 - ✅ Copy to clipboard functionality using `navigator.clipboard`
@@ -15,6 +17,7 @@
 - ✅ Disabled simulator for inactive/expired entries
 
 ### 3. **API Enhancements**
+
 - ✅ Updated `admin.api.ts` with `simulateSSOLogin` method
 - ✅ Enhanced SSO controller to handle ssoKey field
 - ✅ Updated SSO middleware (prepared for ssoKey validation)
@@ -22,11 +25,14 @@
 ### 4. **Key Features Implemented**
 
 #### **SSO Key Display with Copy:**
+
 ```typescript
 // Shows truncated key with copy button
 const displayKey = record.ssoKey || record.key;
-const truncatedKey = displayKey.length > 16 ? 
-  `${displayKey.substring(0, 8)}...${displayKey.substring(-8)}` : displayKey;
+const truncatedKey =
+  displayKey.length > 16
+    ? `${displayKey.substring(0, 8)}...${displayKey.substring(-8)}`
+    : displayKey;
 
 // Copy functionality
 const copyToClipboard = async (text: string, label: string) => {
@@ -36,6 +42,7 @@ const copyToClipboard = async (text: string, label: string) => {
 ```
 
 #### **SSO Login Simulator:**
+
 ```typescript
 const simulateSSOLogin = async (ssoEntry: SSOEntry) => {
   const ssoKey = ssoEntry.ssoKey || ssoEntry.key;
@@ -53,6 +60,7 @@ const simulateSSOLogin = async (ssoEntry: SSOEntry) => {
 ### **To Complete Implementation:**
 
 1. **Run Database Migration:**
+
    ```bash
    cd auth-api
    npx prisma migrate dev --name add-sso-key
@@ -60,21 +68,20 @@ const simulateSSOLogin = async (ssoEntry: SSOEntry) => {
    ```
 
 2. **Or Apply Manual Migration:**
+
    ```sql
    ALTER TABLE `sso` ADD COLUMN `ssoKey` VARCHAR(191) NULL;
    CREATE UNIQUE INDEX `sso_ssoKey_key` ON `sso`(`ssoKey`);
    ```
 
 3. **Update SSO Middleware** (after migration):
+
    ```typescript
    // Enable dual key lookup
    const ssoEntry = await prisma.sSO.findFirst({
-     where: { 
-       OR: [
-         { key: ssoKey },
-         { ssoKey: ssoKey }
-       ]
-     }
+     where: {
+       OR: [{ key: ssoKey }, { ssoKey: ssoKey }],
+     },
    });
    ```
 
@@ -85,16 +92,16 @@ const simulateSSOLogin = async (ssoEntry: SSOEntry) => {
 
 ## 🎯 **Current Table Features:**
 
-| Column | Feature | Status |
-|--------|---------|--------|
-| URL | Display with code styling | ✅ |
-| **SSO Key** | **Truncated display + Copy button** | ✅ |
-| User | Email + nickname | ✅ |
-| Device IP | Code styling | ✅ |
-| Status | Active/Inactive + Expired tags | ✅ |
-| Logins | Count badge | ✅ |
-| Created | Formatted date | ✅ |
-| **Actions** | **Simulator + View + Regenerate + Delete** | ✅ |
+| Column      | Feature                                    | Status |
+| ----------- | ------------------------------------------ | ------ |
+| URL         | Display with code styling                  | ✅     |
+| **SSO Key** | **Truncated display + Copy button**        | ✅     |
+| User        | Email + nickname                           | ✅     |
+| Device IP   | Code styling                               | ✅     |
+| Status      | Active/Inactive + Expired tags             | ✅     |
+| Logins      | Count badge                                | ✅     |
+| Created     | Formatted date                             | ✅     |
+| **Actions** | **Simulator + View + Regenerate + Delete** | ✅     |
 
 ## 🧪 **SSO Simulator Features:**
 
@@ -108,8 +115,9 @@ const simulateSSOLogin = async (ssoEntry: SSOEntry) => {
 ## 📋 **Test Data Available:**
 
 After migration and seeding, you'll have:
+
 - `app_dashboard_sso` - Superadmin, Active, 30 days
-- `admin_panel_sso` - Admin, Active, 7 days  
+- `admin_panel_sso` - Admin, Active, 7 days
 - `user_portal_sso` - User, Active, No expiration
 - `legacy_system_sso` - Admin, **Inactive** (for testing)
 - `mobile_app_sso` - User, Active, 15 days

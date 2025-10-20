@@ -9,7 +9,9 @@ The SSO system allows external applications to authenticate users by providing a
 ## Authentication Flow
 
 ### 1. SSO Key Generation
+
 SSO entries are created through the admin interface or API with:
+
 - `url`: The application URL
 - `userId`: The user ID this SSO entry belongs to
 - `key`: Auto-generated 64-character hex string
@@ -17,12 +19,15 @@ SSO entries are created through the admin interface or API with:
 - `expiresAt`: Optional expiration date
 
 ### 2. SSO Authentication
+
 Include the SSO key in request headers:
+
 ```
 x-sso-key: your-64-character-sso-key-here
 ```
 
 ### 3. Middleware Chain
+
 1. **SSO Validation** (`ssoKeyValidation`): Validates the SSO key and loads user info
 2. **JWT Validation** (`jwtTokenValidation`): Skipped if SSO is valid
 3. **RBAC** (`rbac`): Enforces role-based access control for both SSO and JWT users
@@ -32,15 +37,18 @@ x-sso-key: your-64-character-sso-key-here
 ### SSO Authentication Endpoints (`/api/sso/`)
 
 #### POST `/api/sso/login`
+
 Login using SSO key and create login history.
 
 **Headers:**
+
 ```
 x-sso-key: your-sso-key
 Content-Type: application/json
 ```
 
 **Body:**
+
 ```json
 {
   "deviceIP": "192.168.1.100",
@@ -50,6 +58,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -63,14 +72,17 @@ Content-Type: application/json
 ```
 
 #### POST `/api/sso/logout`
+
 Logout SSO session and update login history.
 
 **Headers:**
+
 ```
 x-sso-key: your-sso-key
 ```
 
 **Body:**
+
 ```json
 {
   "loginHistoryId": "optional-login-history-id"
@@ -78,14 +90,17 @@ x-sso-key: your-sso-key
 ```
 
 #### GET `/api/sso/me`
+
 Get current user information via SSO.
 
 **Headers:**
+
 ```
 x-sso-key: your-sso-key
 ```
 
 **Response:**
+
 ```json
 {
   "id": "user-id",
@@ -104,14 +119,17 @@ x-sso-key: your-sso-key
 ```
 
 #### GET `/api/sso/validate`
+
 Validate SSO key without side effects.
 
 **Headers:**
+
 ```
 x-sso-key: your-sso-key
 ```
 
 **Response:**
+
 ```json
 {
   "valid": true,
@@ -123,23 +141,29 @@ x-sso-key: your-sso-key
 ### SSO Management Endpoints (`/api/admin/sso/`)
 
 #### GET `/api/admin/sso`
+
 List all SSO entries with pagination and filtering.
 
 #### POST `/api/admin/sso`
+
 Create new SSO entry.
 
 #### PUT `/api/admin/sso/:id`
+
 Update SSO entry.
 
 #### DELETE `/api/admin/sso/:id`
+
 Delete SSO entry.
 
 #### PATCH `/api/admin/sso/:id/regenerate-key`
+
 Regenerate SSO key.
 
 ## Usage Examples
 
 ### 1. Creating SSO Entry
+
 ```bash
 curl -X POST http://localhost:3000/api/admin/sso \
   -H "Authorization: Bearer your-jwt-token" \
@@ -152,12 +176,14 @@ curl -X POST http://localhost:3000/api/admin/sso \
 ```
 
 ### 2. Using SSO Authentication
+
 ```bash
 curl -X GET http://localhost:3000/api/admin/users \
   -H "x-sso-key: your-64-character-sso-key-here"
 ```
 
 ### 3. SSO Login
+
 ```bash
 curl -X POST http://localhost:3000/api/sso/login \
   -H "x-sso-key: your-sso-key" \
@@ -180,6 +206,7 @@ curl -X POST http://localhost:3000/api/sso/login \
 ## Database Schema
 
 ### SSO Table
+
 ```sql
 model SSO {
   id          String   @id @default(uuid())

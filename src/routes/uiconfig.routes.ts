@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { listUiConfigs, getUiConfig, createUiConfig, updateUiConfig, deleteUiConfig } from '../controllers/uiconfig.controller';
+import {
+  listUiConfigs,
+  getUiConfig,
+  createUiConfig,
+  updateUiConfig,
+  deleteUiConfig,
+} from '../controllers/uiconfig.controller';
 
 const router = Router();
 

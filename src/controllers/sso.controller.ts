@@ -6,12 +6,11 @@ import { SSOValidationUtils } from '../utils/ssoValidation';
 
 const prisma = new PrismaClient();
 
-
 export const getSSOEntries = async (req: Request, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, parseInt(req.query.limit as string) || 10);
-    const search = req.query.search as string || '';
+    const search = (req.query.search as string) || '';
     const userId = req.query.userId as string;
     const isActive = req.query.isActive as string;
     const skip = (page - 1) * limit;
@@ -42,7 +41,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       where: JSON.stringify(where, null, 2),
       page,
       limit,
-      skip
+      skip,
     });
 
     // First check if we have any SSO entries at all
@@ -79,7 +78,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
       foundEntries: ssoEntries.length,
       totalWithFilter: total,
       totalInDB: totalEntries,
-      sampleEntry: ssoEntries[0] || 'No entries found'
+      sampleEntry: ssoEntries[0] || 'No entries found',
     });
 
     logInfo(`Fetched SSO entries`, {
@@ -104,7 +103,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching SSO entries:', error);
     logError('Error fetching SSO entries', { error, service: 'auth-api' });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch SSO entries',
       data: [],
       pagination: {
@@ -114,7 +113,7 @@ export const getSSOEntries = async (req: Request, res: Response) => {
         totalPages: 1,
         hasNext: false,
         hasPrev: false,
-      }
+      },
     });
   }
 };
@@ -182,8 +181,8 @@ export const createSSO = async (req: Request, res: Response) => {
 
     // Validate required fields
     if (!url || !userId) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: url, userId' 
+      return res.status(400).json({
+        error: 'Missing required fields: url, userId',
       });
     }
 
@@ -198,7 +197,7 @@ export const createSSO = async (req: Request, res: Response) => {
 
     // Generate unique SSO key
     const key = crypto.randomBytes(32).toString('hex');
-    
+
     // Handle ssoKey generation and validation
     let finalSSOKey = null;
     if (ssoKey) {
@@ -208,7 +207,8 @@ export const createSSO = async (req: Request, res: Response) => {
         return res.status(400).json({ error: uniqueCheck.error || 'SSO key already exists' });
       }
       finalSSOKey = ssoKey;
-    } else if (ssoKey !== null) { // Only generate if not explicitly set to null
+    } else if (ssoKey !== null) {
+      // Only generate if not explicitly set to null
       try {
         finalSSOKey = await SSOValidationUtils.generateUniqueSSOKey(url);
       } catch (error) {
@@ -266,7 +266,8 @@ export const updateSSO = async (req: Request, res: Response) => {
 
     // If ssoKey is being updated, check for uniqueness
     if (ssoKey !== undefined && ssoKey !== existingSSO.ssoKey) {
-      if (ssoKey) { // Only check uniqueness if ssoKey is not null/empty
+      if (ssoKey) {
+        // Only check uniqueness if ssoKey is not null/empty
         const uniqueCheck = await SSOValidationUtils.checkSSOKeyUniqueness(ssoKey, id);
         if (!uniqueCheck.unique) {
           return res.status(400).json({ error: uniqueCheck.error || 'SSO key already exists' });
@@ -397,12 +398,12 @@ export const regenerateKey = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Debug: Error regenerating SSO key:', error);
     logger.error('Error regenerating SSO key', { error, service: 'auth-api' });
-    
+
     // Handle specific Prisma errors
     if (error?.code === 'P2025') {
       return res.status(404).json({ error: 'SSO entry not found' });
     }
-    
+
     res.status(500).json({ error: 'Failed to regenerate SSO key' });
   }
 };
@@ -412,12 +413,12 @@ export const getSSOStats = async (req: Request, res: Response) => {
     const [totalSSO, activeSSO, expiredSSO, totalLogins, ssoLogins] = await Promise.all([
       prisma.sSO.count(),
       prisma.sSO.count({ where: { isActive: true } }),
-      prisma.sSO.count({ 
-        where: { 
-          expiresAt: { 
-            lt: new Date() 
-          } 
-        } 
+      prisma.sSO.count({
+        where: {
+          expiresAt: {
+            lt: new Date(),
+          },
+        },
       }),
       prisma.loginHistory.count(),
       prisma.loginHistory.count({ where: { NOT: { ssoId: null } } }),

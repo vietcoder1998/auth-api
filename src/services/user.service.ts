@@ -24,35 +24,35 @@ export class UserService {
    */
   async createUser(data: CreateUserData) {
     const { email, password, nickname, roleId } = data;
-    
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
-    
+
     if (existingUser) {
       throw new Error('User with this email already exists');
     }
-    
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
-    
+
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         nickname,
-        roleId
+        roleId,
       },
       include: {
         role: {
           include: {
-            permissions: true
-          }
-        }
-      }
+            permissions: true,
+          },
+        },
+      },
     });
-    
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
@@ -67,16 +67,16 @@ export class UserService {
       include: {
         role: {
           include: {
-            permissions: true
-          }
-        }
-      }
+            permissions: true,
+          },
+        },
+      },
     });
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
@@ -90,10 +90,10 @@ export class UserService {
       include: {
         role: {
           include: {
-            permissions: true
-          }
-        }
-      }
+            permissions: true,
+          },
+        },
+      },
     });
   }
 
@@ -102,24 +102,24 @@ export class UserService {
    */
   async updateUser(id: string, data: UpdateUserData) {
     const updateData: any = { ...data };
-    
+
     // Hash password if provided
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 12);
     }
-    
+
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
       include: {
         role: {
           include: {
-            permissions: true
-          }
-        }
-      }
+            permissions: true,
+          },
+        },
+      },
     });
-    
+
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
@@ -129,7 +129,7 @@ export class UserService {
    */
   async deleteUser(id: string) {
     return await prisma.user.delete({
-      where: { id }
+      where: { id },
     });
   }
 
@@ -138,13 +138,12 @@ export class UserService {
    */
   async getUsers(page: number = 1, limit: number = 20, search?: string) {
     const skip = (page - 1) * limit;
-    
-    const where = search ? {
-      OR: [
-        { email: { contains: search } },
-        { nickname: { contains: search } }
-      ]
-    } : {};
+
+    const where = search
+      ? {
+          OR: [{ email: { contains: search } }, { nickname: { contains: search } }],
+        }
+      : {};
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -154,24 +153,24 @@ export class UserService {
         include: {
           role: {
             include: {
-              permissions: true
-            }
-          }
+              permissions: true,
+            },
+          },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count({ where })
+      prisma.user.count({ where }),
     ]);
 
     // Remove passwords from response
     const usersWithoutPasswords = users.map(({ password, ...user }) => user);
-    
+
     return {
       data: usersWithoutPasswords,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -180,13 +179,13 @@ export class UserService {
    */
   async verifyPassword(id: string, password: string) {
     const user = await prisma.user.findUnique({
-      where: { id }
+      where: { id },
     });
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     return await bcrypt.compare(password, user.password);
   }
 
@@ -195,23 +194,23 @@ export class UserService {
    */
   async changePassword(id: string, oldPassword: string, newPassword: string) {
     const user = await prisma.user.findUnique({
-      where: { id }
+      where: { id },
     });
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     const isValidPassword = await bcrypt.compare(oldPassword, user.password);
     if (!isValidPassword) {
       throw new Error('Invalid old password');
     }
-    
+
     const hashedPassword = await bcrypt.hash(newPassword, 12);
-    
+
     return await prisma.user.update({
       where: { id },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword },
     });
   }
 
@@ -226,11 +225,11 @@ export class UserService {
           select: {
             conversations: true,
             memories: true,
-            tools: true
-          }
-        }
+            tools: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -239,7 +238,7 @@ export class UserService {
    */
   async getUserConversations(userId: string, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
-    
+
     const [conversations, total] = await Promise.all([
       prisma.conversation.findMany({
         where: { userId },
@@ -247,23 +246,23 @@ export class UserService {
         take: limit,
         include: {
           agent: {
-            select: { id: true, name: true, model: true }
+            select: { id: true, name: true, model: true },
           },
           _count: {
-            select: { messages: true }
-          }
+            select: { messages: true },
+          },
         },
-        orderBy: { updatedAt: 'desc' }
+        orderBy: { updatedAt: 'desc' },
       }),
-      prisma.conversation.count({ where: { userId } })
+      prisma.conversation.count({ where: { userId } }),
     ]);
-    
+
     return {
       data: conversations,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 }

@@ -4,7 +4,7 @@ import {
   getLogStats,
   clearOldLogs,
   exportLogs,
-  createLogEntry
+  createLogEntry,
 } from '../controllers/logger.controller';
 
 const router = Router();

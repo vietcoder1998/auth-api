@@ -13,14 +13,17 @@ export async function createPromptHistory(req: Request, res: Response) {
     const userId = req.user?.id;
     const { conversationId, prompt } = req.body;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    if (!conversationId || !prompt) return res.status(400).json({ error: 'conversationId and prompt required' });
+    if (!conversationId || !prompt)
+      return res.status(400).json({ error: 'conversationId and prompt required' });
 
     // Check conversation ownership
-    const conversation = await prisma.conversation.findFirst({ where: { id: conversationId, userId } });
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+    });
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
     const promptHistory = await prisma.promptHistory.create({
-      data: { conversationId, prompt }
+      data: { conversationId, prompt },
     });
 
     res.status(201).json(promptHistory);
@@ -38,12 +41,14 @@ export async function getPromptHistories(req: Request, res: Response) {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     // Check conversation ownership
-    const conversation = await prisma.conversation.findFirst({ where: { id: conversationId, userId } });
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+    });
     if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
 
     const prompts = await prisma.promptHistory.findMany({
       where: { conversationId },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
 
     res.json(prompts);
@@ -68,7 +73,7 @@ export async function updatePromptHistory(req: Request, res: Response) {
 
     const updated = await prisma.promptHistory.update({
       where: { id },
-      data: { prompt }
+      data: { prompt },
     });
 
     res.json(updated);
@@ -102,7 +107,7 @@ export async function deletePromptHistory(req: Request, res: Response) {
 export async function getConversations(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
-    
+
     // Extract query parameters
     const {
       agentId,
@@ -112,9 +117,9 @@ export async function getConversations(req: Request, res: Response) {
       search = '',
       q = search,
       sortBy = 'updatedAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = req.query;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -126,7 +131,7 @@ export async function getConversations(req: Request, res: Response) {
 
     // Build where clause for search and filters
     const whereClause: any = { userId };
-    
+
     // Agent filter
     if (agentId && typeof agentId === 'string') {
       whereClause.agentId = agentId;
@@ -140,10 +145,10 @@ export async function getConversations(req: Request, res: Response) {
         {
           messages: {
             some: {
-              content: { contains: searchTerm }
-            }
-          }
-        }
+              content: { contains: searchTerm },
+            },
+          },
+        },
       ];
     }
 
@@ -167,19 +172,19 @@ export async function getConversations(req: Request, res: Response) {
       where: whereClause,
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true }
+          select: { id: true, email: true, nickname: true, status: true },
         },
         agent: {
-          select: { id: true, name: true, model: true, isActive: true }
+          select: { id: true, name: true, model: true, isActive: true },
         },
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
-          select: { id: true, content: true, sender: true, createdAt: true, tokens: true }
+          select: { id: true, content: true, sender: true, createdAt: true, tokens: true },
         },
         _count: {
-          select: { messages: true }
-        }
+          select: { messages: true },
+        },
       },
       orderBy,
       skip,
@@ -187,10 +192,10 @@ export async function getConversations(req: Request, res: Response) {
     });
 
     // Transform the data to include lastMessage
-    const transformedConversations = conversations.map(conv => ({
+    const transformedConversations = conversations.map((conv) => ({
       ...conv,
       lastMessage: conv.messages[0] || null,
-      messages: undefined // Remove the messages array since we only want the last one
+      messages: undefined, // Remove the messages array since we only want the last one
     }));
 
     res.json({
@@ -198,7 +203,7 @@ export async function getConversations(req: Request, res: Response) {
       total,
       page: currentPage,
       limit: currentLimit,
-      totalPages: Math.ceil(total / currentLimit)
+      totalPages: Math.ceil(total / currentLimit),
     });
   } catch (err) {
     console.error('Get conversations error:', err);
@@ -211,7 +216,7 @@ export async function createConversation(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
     const { agentId, title } = req.body;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -222,7 +227,7 @@ export async function createConversation(req: Request, res: Response) {
 
     // Check if agent belongs to user
     const agent = await prisma.agent.findFirst({
-      where: { id: agentId, userId }
+      where: { id: agentId, userId },
     });
 
     if (!agent) {
@@ -237,15 +242,15 @@ export async function createConversation(req: Request, res: Response) {
       },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true }
+          select: { id: true, email: true, nickname: true, status: true },
         },
         agent: {
-          select: { id: true, name: true, model: true, isActive: true }
+          select: { id: true, name: true, model: true, isActive: true },
         },
         _count: {
-          select: { messages: true }
-        }
-      }
+          select: { messages: true },
+        },
+      },
     });
 
     res.status(201).json(conversation);
@@ -261,7 +266,7 @@ export async function getConversation(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params;
     const { page = 1, limit = 50 } = req.query;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -275,12 +280,12 @@ export async function getConversation(req: Request, res: Response) {
       where: { id, userId },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true }
+          select: { id: true, email: true, nickname: true, status: true },
         },
         agent: {
-          select: { id: true, name: true, model: true, systemPrompt: true, isActive: true }
-        }
-      }
+          select: { id: true, name: true, model: true, systemPrompt: true, isActive: true },
+        },
+      },
     });
 
     if (!conversation) {
@@ -295,7 +300,7 @@ export async function getConversation(req: Request, res: Response) {
         skip,
         take: limitNum,
       }),
-      prisma.message.count({ where: { conversationId: id } })
+      prisma.message.count({ where: { conversationId: id } }),
     ]);
 
     res.json({
@@ -305,8 +310,8 @@ export async function getConversation(req: Request, res: Response) {
         total: totalMessages,
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(totalMessages / limitNum)
-      }
+        totalPages: Math.ceil(totalMessages / limitNum),
+      },
     });
   } catch (err) {
     console.error('Get conversation error:', err);
@@ -320,14 +325,14 @@ export async function getMessages(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params; // conversation id
     const { page = 1, limit = 100, sortOrder = 'asc' } = req.query;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if conversation belongs to user
     const conversation = await prisma.conversation.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!conversation) {
@@ -346,7 +351,7 @@ export async function getMessages(req: Request, res: Response) {
         skip,
         take: limitNum,
       }),
-      prisma.message.count({ where: { conversationId: id } })
+      prisma.message.count({ where: { conversationId: id } }),
     ]);
 
     res.json({
@@ -355,7 +360,7 @@ export async function getMessages(req: Request, res: Response) {
       page: pageNum,
       limit: limitNum,
       totalPages: Math.ceil(totalMessages / limitNum),
-      conversationId: id
+      conversationId: id,
     });
   } catch (err) {
     console.error('Get messages error:', err);
@@ -369,7 +374,7 @@ export async function addMessage(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params; // conversation id
     const { content, sender = 'user', metadata } = req.body;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -383,9 +388,9 @@ export async function addMessage(req: Request, res: Response) {
       where: { id, userId },
       include: {
         agent: {
-          select: { id: true, name: true, model: true, systemPrompt: true, config: true }
-        }
-      }
+          select: { id: true, name: true, model: true, systemPrompt: true, config: true },
+        },
+      },
     });
 
     if (!conversation) {
@@ -395,7 +400,7 @@ export async function addMessage(req: Request, res: Response) {
     // Get the next position for this conversation
     const lastMessage = await prisma.message.findFirst({
       where: { conversationId: id },
-      orderBy: { position: 'desc' }
+      orderBy: { position: 'desc' },
     });
     const nextPosition = (lastMessage?.position || 0) + 1;
 
@@ -407,19 +412,23 @@ export async function addMessage(req: Request, res: Response) {
         content,
         metadata: metadata ? JSON.stringify(metadata) : null,
         position: nextPosition,
-      }
+      },
     });
 
     // Update conversation timestamp
     await prisma.conversation.update({
       where: { id },
-      data: { updatedAt: new Date() }
+      data: { updatedAt: new Date() },
     });
 
     // If it's a user message, generate AI response
     if (sender === 'user') {
       try {
-        const aiResponse = await llmService.generateConversationResponse(id, content, conversation.agent.id);
+        const aiResponse = await llmService.generateConversationResponse(
+          id,
+          content,
+          conversation.agent.id,
+        );
         const aiMessage = await prisma.message.create({
           data: {
             conversationId: id,
@@ -428,7 +437,7 @@ export async function addMessage(req: Request, res: Response) {
             metadata: JSON.stringify(aiResponse.metadata),
             tokens: aiResponse.tokens,
             position: nextPosition + 1,
-          }
+          },
         });
 
         res.status(201).json({
@@ -438,8 +447,8 @@ export async function addMessage(req: Request, res: Response) {
           aiMetadata: {
             model: aiResponse.model,
             tokens: aiResponse.tokens,
-            processingTime: aiResponse.processingTime
-          }
+            processingTime: aiResponse.processingTime,
+          },
         });
       } catch (aiError) {
         console.error('AI response generation failed:', aiError);
@@ -448,14 +457,14 @@ export async function addMessage(req: Request, res: Response) {
           userMessage: message,
           aiMessage: null,
           messages: [message],
-          aiError: 'AI response generation failed'
+          aiError: 'AI response generation failed',
         });
       }
     } else {
       res.status(201).json({
         userMessage: message,
         aiMessage: null,
-        messages: [message]
+        messages: [message],
       });
     }
   } catch (err) {
@@ -470,14 +479,14 @@ export async function updateConversation(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params;
     const { title, summary, isActive } = req.body;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if conversation belongs to user
     const existingConversation = await prisma.conversation.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!existingConversation) {
@@ -494,15 +503,15 @@ export async function updateConversation(req: Request, res: Response) {
       data: updateData,
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true }
+          select: { id: true, email: true, nickname: true, status: true },
         },
         agent: {
-          select: { id: true, name: true, model: true, isActive: true }
+          select: { id: true, name: true, model: true, isActive: true },
         },
         _count: {
-          select: { messages: true }
-        }
-      }
+          select: { messages: true },
+        },
+      },
     });
 
     res.json(updatedConversation);
@@ -517,14 +526,14 @@ export async function deleteConversation(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
     const { id } = req.params;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Check if conversation belongs to user
     const existingConversation = await prisma.conversation.findFirst({
-      where: { id, userId }
+      where: { id, userId },
     });
 
     if (!existingConversation) {
@@ -532,7 +541,7 @@ export async function deleteConversation(req: Request, res: Response) {
     }
 
     await prisma.conversation.delete({
-      where: { id }
+      where: { id },
     });
 
     res.json({ message: 'Conversation deleted successfully' });
@@ -550,7 +559,7 @@ export async function executeCommand(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id: conversationId } = req.params;
     const { type, parameters } = req.body;
-    
+
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -562,7 +571,7 @@ export async function executeCommand(req: Request, res: Response) {
     // Check if conversation belongs to user
     const conversation = await prisma.conversation.findFirst({
       where: { id: conversationId, userId },
-      include: { agent: true }
+      include: { agent: true },
     });
 
     if (!conversation) {
@@ -575,7 +584,7 @@ export async function executeCommand(req: Request, res: Response) {
       userId,
       agentId: conversation.agentId,
       type,
-      parameters
+      parameters,
     });
 
     // Log the command execution
@@ -587,9 +596,9 @@ export async function executeCommand(req: Request, res: Response) {
         metadata: JSON.stringify({
           command: type,
           parameters,
-          result: result.success
-        })
-      }
+          result: result.success,
+        }),
+      },
     });
 
     res.json(result);

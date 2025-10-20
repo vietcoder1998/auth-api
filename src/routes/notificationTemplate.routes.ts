@@ -37,7 +37,10 @@ router.post('/', async (req, res) => {
 // Update a notification template
 router.put('/:id', async (req, res) => {
   try {
-    const template = await notificationTemplateController.updateNotificationTemplate(req.params.id, req.body);
+    const template = await notificationTemplateController.updateNotificationTemplate(
+      req.params.id,
+      req.body,
+    );
     res.json(template);
   } catch (err) {
     res.status(400).json({ error: 'Failed to update notification template' });

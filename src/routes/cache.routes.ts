@@ -6,7 +6,7 @@ import {
   deleteCacheKey,
   clearAllCache,
   clearCacheByPattern,
-  setCacheValue
+  setCacheValue,
 } from '../controllers/cache.controller';
 
 const router = Router();

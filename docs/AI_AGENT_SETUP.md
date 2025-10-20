@@ -7,6 +7,7 @@ The AI Agent system provides a comprehensive multi-tenant platform for managing 
 ## 🏗️ Architecture
 
 ### Database Schema
+
 ```
 User (1) ──< Agent (n)
 Agent (1) ──< AgentMemory (n)
@@ -17,6 +18,7 @@ Agent (1) ──< AgentTask (n)
 ```
 
 ### Key Features
+
 - **Multi-tenant**: Each user has their own agents
 - **Configurable**: Custom models, personalities, system prompts
 - **Memory system**: Short-term, long-term, and knowledge base memories
@@ -31,14 +33,17 @@ Agent (1) ──< AgentTask (n)
 ### Agent Management
 
 #### `GET /api/admin/agents`
+
 Get all agents for the authenticated user.
 
 **Query Parameters:**
+
 - `page` (number): Page number (default: 1)
 - `limit` (number): Items per page (default: 10)
 - `search` (string): Search in agent name/description
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -65,9 +70,11 @@ Get all agents for the authenticated user.
 ```
 
 #### `POST /api/admin/agents`
+
 Create a new AI agent.
 
 **Body:**
+
 ```json
 {
   "name": "My Assistant",
@@ -86,20 +93,25 @@ Create a new AI agent.
 ```
 
 #### `GET /api/admin/agents/:id`
+
 Get a specific agent with full configuration.
 
 #### `PUT /api/admin/agents/:id`
+
 Update an agent's configuration.
 
 #### `DELETE /api/admin/agents/:id`
+
 Delete an agent and all associated data.
 
 ### Agent Memory Management
 
 #### `POST /api/admin/agents/:id/memories`
+
 Add memory to an agent.
 
 **Body:**
+
 ```json
 {
   "type": "long_term", // or "short_term", "knowledge_base"
@@ -114,25 +126,31 @@ Add memory to an agent.
 ```
 
 #### `GET /api/admin/agents/:id/memories`
+
 Get agent memories with filtering.
 
 **Query Parameters:**
+
 - `type`: Filter by memory type
 - `page`, `limit`: Pagination
 
 ### Conversation Management
 
 #### `GET /api/admin/conversations`
+
 Get user's conversations.
 
 **Query Parameters:**
+
 - `agentId`: Filter by specific agent
 - `page`, `limit`: Pagination
 
 #### `POST /api/admin/conversations`
+
 Create a new conversation.
 
 **Body:**
+
 ```json
 {
   "agentId": "uuid",
@@ -141,12 +159,15 @@ Create a new conversation.
 ```
 
 #### `GET /api/admin/conversations/:id`
+
 Get conversation with messages.
 
 #### `POST /api/admin/conversations/:id/messages`
+
 Add message to conversation (triggers AI response for user messages).
 
 **Body:**
+
 ```json
 {
   "content": "Hello, how are you?",
@@ -155,6 +176,7 @@ Add message to conversation (triggers AI response for user messages).
 ```
 
 **Response for user messages:**
+
 ```json
 {
   "userMessage": {
@@ -183,17 +205,21 @@ Add message to conversation (triggers AI response for user messages).
 ## 🧠 LLM Integration
 
 ### Configuration
+
 Set environment variables:
+
 ```bash
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_BASE_URL=https://api.openai.com/v1  # Optional
 ```
 
 ### Supported Models
+
 - OpenAI: `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`
 - Compatible APIs: Any OpenAI-compatible endpoint
 
 ### Features
+
 - **Context-aware responses**: Uses conversation history and agent memories
 - **Configurable parameters**: Temperature, max tokens, model selection
 - **Personality integration**: System prompts enhanced with agent personality
@@ -207,12 +233,14 @@ OPENAI_BASE_URL=https://api.openai.com/v1  # Optional
 Agents can be configured with various tools and capabilities:
 
 ### Tool Types
+
 - `api`: External API integrations
 - `function`: Built-in functions (calculator, etc.)
 - `system`: System-level operations
 - `plugin`: Custom plugins
 
 ### Example Tool Configuration
+
 ```json
 {
   "name": "web_search",
@@ -233,12 +261,14 @@ Agents can be configured with various tools and capabilities:
 Agents can execute autonomous tasks:
 
 ### Task States
+
 - `pending`: Waiting to be processed
 - `running`: Currently executing
 - `completed`: Finished successfully
 - `failed`: Encountered an error
 
 ### Use Cases
+
 - Scheduled actions
 - Background processing
 - Multi-step workflows
@@ -249,11 +279,14 @@ Agents can execute autonomous tasks:
 ## 🔒 Security & Permissions
 
 ### Authentication
+
 - JWT token required for all endpoints
 - User isolation (can only access own agents)
 
 ### Permissions
+
 Add these permissions to roles for AI agent access:
+
 ```
 - manage_ai_agents: Full agent management
 - view_ai_agents: View agents and conversations
@@ -261,6 +294,7 @@ Add these permissions to roles for AI agent access:
 ```
 
 ### Rate Limiting
+
 - API key integration for external access
 - Per-user conversation limits
 - Token usage monitoring
@@ -270,6 +304,7 @@ Add these permissions to roles for AI agent access:
 ## 🚀 Getting Started
 
 1. **Create an Agent**:
+
    ```bash
    POST /api/admin/agents
    {
@@ -280,6 +315,7 @@ Add these permissions to roles for AI agent access:
    ```
 
 2. **Start a Conversation**:
+
    ```bash
    POST /api/admin/conversations
    {
@@ -289,6 +325,7 @@ Add these permissions to roles for AI agent access:
    ```
 
 3. **Send a Message**:
+
    ```bash
    POST /api/admin/conversations/{conversation_id}/messages
    {
@@ -312,24 +349,28 @@ Add these permissions to roles for AI agent access:
 ## 💡 Best Practices
 
 ### Agent Configuration
+
 - Use descriptive names and descriptions
 - Set appropriate system prompts for intended use cases
 - Configure personality traits for consistent behavior
 - Start with moderate temperature (0.7) and adjust based on needs
 
 ### Memory Management
+
 - Use importance scores (1-10) to prioritize memories
 - Regular cleanup of short-term memories
 - Tag memories with metadata for better organization
 - Store user preferences in long-term memory
 
 ### Conversation Design
+
 - Keep conversations focused on specific topics
 - Use conversation titles for easy identification
 - Monitor token usage to control costs
 - Implement conversation summarization for long chats
 
 ### Performance Optimization
+
 - Cache frequent responses
 - Use appropriate pagination limits
 - Monitor database query performance
@@ -340,6 +381,7 @@ Add these permissions to roles for AI agent access:
 ## 🔮 Future Enhancements
 
 ### Planned Features
+
 - **Vector embeddings** for semantic memory search
 - **Multi-modal support** (images, documents, audio)
 - **Agent-to-agent communication**
@@ -350,6 +392,7 @@ Add these permissions to roles for AI agent access:
 - **API rate limiting** and quotas
 
 ### Integration Opportunities
+
 - **Calendar scheduling** for agent tasks
 - **Email integration** for notifications
 - **Webhook support** for real-time events

@@ -37,10 +37,10 @@ export class SSOService {
    */
   async createSSO(data: CreateSSOData) {
     const { url, userId, deviceIP, expiresAt } = data;
-    
+
     const key = this.generateSSOKey();
     const ssoKey = this.generateSSOKeyIdentifier();
-    
+
     const sso = await prisma.sSO.create({
       data: {
         url,
@@ -49,15 +49,15 @@ export class SSOService {
         userId,
         deviceIP,
         expiresAt: expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours default
-        isActive: true
+        isActive: true,
       },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true },
+        },
+      },
     });
-    
+
     return sso;
   }
 
@@ -69,9 +69,9 @@ export class SSOService {
       where: { key },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true, status: true },
+        },
+      },
     });
   }
 
@@ -83,9 +83,9 @@ export class SSOService {
       where: { ssoKey },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true, status: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true, status: true },
+        },
+      },
     });
   }
 
@@ -97,13 +97,13 @@ export class SSOService {
       where: { id },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true }
+          select: { id: true, email: true, nickname: true },
         },
         loginHistory: {
           orderBy: { loginAt: 'desc' },
-          take: 10
-        }
-      }
+          take: 10,
+        },
+      },
     });
   }
 
@@ -116,9 +116,9 @@ export class SSOService {
       data,
       include: {
         user: {
-          select: { id: true, email: true, nickname: true }
-        }
-      }
+          select: { id: true, email: true, nickname: true },
+        },
+      },
     });
   }
 
@@ -127,7 +127,7 @@ export class SSOService {
    */
   async deleteSSO(id: string) {
     return await prisma.sSO.delete({
-      where: { id }
+      where: { id },
     });
   }
 
@@ -136,7 +136,7 @@ export class SSOService {
    */
   async getUserSSOs(userId: string, page: number = 1, limit: number = 20, isActive?: boolean) {
     const skip = (page - 1) * limit;
-    
+
     const where: any = { userId };
     if (isActive !== undefined) {
       where.isActive = isActive;
@@ -159,12 +159,12 @@ export class SSOService {
           // Don't include the actual key for security
           key: false,
           user: {
-            select: { id: true, email: true, nickname: true }
-          }
+            select: { id: true, email: true, nickname: true },
+          },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       }),
-      prisma.sSO.count({ where })
+      prisma.sSO.count({ where }),
     ]);
 
     return {
@@ -172,7 +172,7 @@ export class SSOService {
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -185,21 +185,21 @@ export class SSOService {
     reason?: string;
   }> {
     const sso = await this.getSSOByKey(key);
-    
+
     if (!sso) {
       return { isValid: false, reason: 'Invalid SSO key' };
     }
-    
+
     if (!sso.isActive) {
       return { isValid: false, reason: 'SSO session is inactive' };
     }
-    
+
     if (sso.expiresAt && new Date() > sso.expiresAt) {
       // Automatically deactivate expired session
       await this.updateSSO(sso.id, { isActive: false });
       return { isValid: false, reason: 'SSO session has expired' };
     }
-    
+
     return { isValid: true, sso };
   }
 
@@ -216,7 +216,7 @@ export class SSOService {
   async deactivateAllUserSSOs(userId: string) {
     return await prisma.sSO.updateMany({
       where: { userId, isActive: true },
-      data: { isActive: false }
+      data: { isActive: false },
     });
   }
 
@@ -225,13 +225,13 @@ export class SSOService {
    */
   async recordLogin(ssoId: string, deviceIP?: string, userAgent?: string, location?: string) {
     const sso = await prisma.sSO.findUnique({
-      where: { id: ssoId }
+      where: { id: ssoId },
     });
-    
+
     if (!sso) {
       throw new Error('SSO session not found');
     }
-    
+
     return await prisma.loginHistory.create({
       data: {
         ssoId,
@@ -239,8 +239,8 @@ export class SSOService {
         deviceIP,
         userAgent,
         location,
-        status: 'active'
-      }
+        status: 'active',
+      },
     });
   }
 
@@ -252,21 +252,21 @@ export class SSOService {
     const activeLogin = await prisma.loginHistory.findFirst({
       where: {
         ssoId,
-        status: 'active'
+        status: 'active',
       },
-      orderBy: { loginAt: 'desc' }
+      orderBy: { loginAt: 'desc' },
     });
-    
+
     if (activeLogin) {
       await prisma.loginHistory.update({
         where: { id: activeLogin.id },
         data: {
           logoutAt: new Date(),
-          status: 'logged_out'
-        }
+          status: 'logged_out',
+        },
       });
     }
-    
+
     // Deactivate the SSO session
     await this.deactivateSSO(ssoId);
   }
@@ -276,7 +276,7 @@ export class SSOService {
    */
   async getSSOLoginHistory(ssoId: string, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
-    
+
     const [history, total] = await Promise.all([
       prisma.loginHistory.findMany({
         where: { ssoId },
@@ -284,20 +284,20 @@ export class SSOService {
         take: limit,
         include: {
           user: {
-            select: { id: true, email: true, nickname: true }
-          }
+            select: { id: true, email: true, nickname: true },
+          },
         },
-        orderBy: { loginAt: 'desc' }
+        orderBy: { loginAt: 'desc' },
       }),
-      prisma.loginHistory.count({ where: { ssoId } })
+      prisma.loginHistory.count({ where: { ssoId } }),
     ]);
-    
+
     return {
       data: history,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -308,15 +308,15 @@ export class SSOService {
     const result = await prisma.sSO.updateMany({
       where: {
         expiresAt: {
-          lt: new Date()
+          lt: new Date(),
         },
-        isActive: true
+        isActive: true,
       },
       data: {
-        isActive: false
-      }
+        isActive: false,
+      },
     });
-    
+
     return result.count;
   }
 
@@ -324,20 +324,15 @@ export class SSOService {
    * Get SSO statistics
    */
   async getSSOStats() {
-    const [
-      totalSSOs,
-      activeSSOs,
-      expiredSSOs,
-      recentLogins
-    ] = await Promise.all([
+    const [totalSSOs, activeSSOs, expiredSSOs, recentLogins] = await Promise.all([
       prisma.sSO.count(),
       prisma.sSO.count({
         where: {
           isActive: true,
           expiresAt: {
-            gt: new Date()
-          }
-        }
+            gt: new Date(),
+          },
+        },
       }),
       prisma.sSO.count({
         where: {
@@ -345,26 +340,26 @@ export class SSOService {
             { isActive: false },
             {
               expiresAt: {
-                lt: new Date()
-              }
-            }
-          ]
-        }
+                lt: new Date(),
+              },
+            },
+          ],
+        },
       }),
       prisma.loginHistory.count({
         where: {
           loginAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-          }
-        }
-      })
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+          },
+        },
+      }),
     ]);
-    
+
     return {
       total: totalSSOs,
       active: activeSSOs,
       expired: expiredSSOs,
-      recentLogins
+      recentLogins,
     };
   }
 
@@ -373,10 +368,10 @@ export class SSOService {
    */
   async refreshSSO(id: string, extensionHours: number = 24) {
     const newExpiryDate = new Date(Date.now() + extensionHours * 60 * 60 * 1000);
-    
+
     return await this.updateSSO(id, {
       expiresAt: newExpiryDate,
-      isActive: true
+      isActive: true,
     });
   }
 }

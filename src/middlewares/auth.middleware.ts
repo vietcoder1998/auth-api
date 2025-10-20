@@ -25,7 +25,7 @@ export async function jwtTokenValidation(req: Request, res: Response, next: Next
       console.log('[JWT] Skipping JWT validation - SSO already authenticated');
       return next();
     }
-    
+
     const token = req.headers['authorization']?.replace('Bearer ', '');
 
     if (!token) {
@@ -35,7 +35,7 @@ export async function jwtTokenValidation(req: Request, res: Response, next: Next
     // Verify JWT token
     const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    
+
     if (!decoded.userId) {
       return res.status(401).json({ error: 'Invalid token format' });
     }
@@ -43,7 +43,7 @@ export async function jwtTokenValidation(req: Request, res: Response, next: Next
     // Check if token exists in database and is not expired
     const tokenRecord = await prisma.token.findUnique({
       where: { accessToken: token },
-      include: { user: true }
+      include: { user: true },
     });
 
     if (!tokenRecord) {
@@ -60,15 +60,15 @@ export async function jwtTokenValidation(req: Request, res: Response, next: Next
 
     // Set user ID in headers for downstream use
     req.headers['x-user-id'] = decoded.userId;
-    
+
     // Load full user data with roles and permissions
     const fullUser = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      include: { 
-        role: { 
-          include: { permissions: true } 
-        } 
-      }
+      include: {
+        role: {
+          include: { permissions: true },
+        },
+      },
     });
 
     // Set user info with roles and permissions for RBAC
@@ -79,7 +79,7 @@ export async function jwtTokenValidation(req: Request, res: Response, next: Next
       roles: fullUser?.role?.name ? [fullUser.role.name] : [],
       permissions: fullUser?.role?.permissions || [],
       impersonatedBy: decoded.impersonatedBy,
-      impersonatedAt: decoded.impersonatedAt
+      impersonatedAt: decoded.impersonatedAt,
     };
 
     next();

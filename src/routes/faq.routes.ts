@@ -1,11 +1,5 @@
 import { Router } from 'express';
-import {
-  listFaqs,
-  getFaq,
-  createFaq,
-  updateFaq,
-  deleteFaq
-} from '../controllers/faq.controller';
+import { listFaqs, getFaq, createFaq, updateFaq, deleteFaq } from '../controllers/faq.controller';
 
 const router = Router();
 

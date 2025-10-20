@@ -5,7 +5,7 @@ import { seedService } from '../services/seed.service';
 export async function seedAll(req: Request, res: Response) {
   try {
     const result = await seedService.seedAll();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -16,7 +16,7 @@ export async function seedAll(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to seed database',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -25,7 +25,7 @@ export async function seedAll(req: Request, res: Response) {
 export async function seedPermissions(req: Request, res: Response) {
   try {
     const result = await seedService.seedPermissions();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -36,7 +36,7 @@ export async function seedPermissions(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to seed permissions',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -45,7 +45,7 @@ export async function seedPermissions(req: Request, res: Response) {
 export async function seedRoles(req: Request, res: Response) {
   try {
     const result = await seedService.seedRoles();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -56,7 +56,7 @@ export async function seedRoles(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to seed roles',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -65,7 +65,7 @@ export async function seedRoles(req: Request, res: Response) {
 export async function seedUsers(req: Request, res: Response) {
   try {
     const result = await seedService.seedUsers();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -76,7 +76,7 @@ export async function seedUsers(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to seed users',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -85,7 +85,7 @@ export async function seedUsers(req: Request, res: Response) {
 export async function seedConfigs(req: Request, res: Response) {
   try {
     const result = await seedService.seedConfigs();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -96,7 +96,7 @@ export async function seedConfigs(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to seed configurations',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -105,7 +105,7 @@ export async function seedConfigs(req: Request, res: Response) {
 export async function seedAgents(req: Request, res: Response) {
   try {
     const result = await seedService.seedAgents();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -116,7 +116,7 @@ export async function seedAgents(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to seed AI agents',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -125,7 +125,7 @@ export async function seedAgents(req: Request, res: Response) {
 export async function seedApiKeys(req: Request, res: Response) {
   try {
     const result = await seedService.seedApiKeys();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -136,7 +136,7 @@ export async function seedApiKeys(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to seed API keys',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -145,17 +145,17 @@ export async function seedApiKeys(req: Request, res: Response) {
 export async function clearAll(req: Request, res: Response) {
   try {
     const { confirm } = req.body;
-    
+
     if (confirm !== 'DELETE_ALL_DATA') {
       return res.status(400).json({
         success: false,
         message: 'Confirmation required. Send { "confirm": "DELETE_ALL_DATA" } to proceed.',
-        errors: ['Missing or invalid confirmation']
+        errors: ['Missing or invalid confirmation'],
       });
     }
 
     const result = await seedService.clearAll();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -166,7 +166,7 @@ export async function clearAll(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to clear database',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -175,7 +175,7 @@ export async function clearAll(req: Request, res: Response) {
 export async function getStats(req: Request, res: Response) {
   try {
     const result = await seedService.getStats();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -186,7 +186,7 @@ export async function getStats(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve database statistics',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }
@@ -195,7 +195,7 @@ export async function getStats(req: Request, res: Response) {
 export async function getSeedData(req: Request, res: Response) {
   try {
     const result = await seedService.getSeedData();
-    
+
     if (result.success) {
       res.status(200).json(result);
     } else {
@@ -206,7 +206,7 @@ export async function getSeedData(req: Request, res: Response) {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve seed data',
-      errors: [error instanceof Error ? error.message : 'Unknown error']
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
     });
   }
 }

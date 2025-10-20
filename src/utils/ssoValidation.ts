@@ -6,7 +6,6 @@ const prisma = new PrismaClient();
  * SSO Key Validation Utilities
  */
 export class SSOValidationUtils {
-  
   /**
    * Validates if a given SSO key (either key or ssoKey) exists and is valid
    * @param ssoKey - The SSO key to validate
@@ -25,11 +24,8 @@ export class SSOValidationUtils {
 
       // Find SSO entry by either key or ssoKey
       const ssoEntry = await prisma.sSO.findFirst({
-        where: { 
-          OR: [
-            { key: ssoKey },
-            { ssoKey: ssoKey }
-          ]
+        where: {
+          OR: [{ key: ssoKey }, { ssoKey: ssoKey }],
         },
         include: {
           user: {
@@ -66,10 +62,10 @@ export class SSOValidationUtils {
       // Determine which key type was matched
       const matchedKeyType = ssoEntry.key === ssoKey ? 'key' : 'ssoKey';
 
-      return { 
-        valid: true, 
-        ssoEntry, 
-        matchedKeyType 
+      return {
+        valid: true,
+        ssoEntry,
+        matchedKeyType,
       };
     } catch (error) {
       console.error('[SSO_UTILS] Error validating SSO key:', error);
@@ -83,7 +79,10 @@ export class SSOValidationUtils {
    * @param excludeId - Optional ID to exclude from the uniqueness check (for updates)
    * @returns Promise<{ unique: boolean, error?: string }>
    */
-  static async checkSSOKeyUniqueness(ssoKey: string, excludeId?: string): Promise<{
+  static async checkSSOKeyUniqueness(
+    ssoKey: string,
+    excludeId?: string,
+  ): Promise<{
     unique: boolean;
     error?: string;
   }> {
@@ -114,7 +113,10 @@ export class SSOValidationUtils {
    * @param excludeId - Optional ID to exclude from the uniqueness check (for updates)
    * @returns Promise<{ unique: boolean, error?: string }>
    */
-  static async checkPrimaryKeyUniqueness(key: string, excludeId?: string): Promise<{
+  static async checkPrimaryKeyUniqueness(
+    key: string,
+    excludeId?: string,
+  ): Promise<{
     unique: boolean;
     error?: string;
   }> {
@@ -194,13 +196,13 @@ export async function extractAndValidateSSOKey(headers: any): Promise<{
   error?: string;
 }> {
   const ssoKey = headers['x-sso-key'] as string;
-  
+
   if (!ssoKey) {
     return { valid: false, error: 'No SSO key provided in x-sso-key header' };
   }
 
   const validation = await SSOValidationUtils.validateSSOKey(ssoKey);
-  
+
   return {
     valid: validation.valid,
     ssoKey: ssoKey,

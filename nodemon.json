@@ -1,20 +1,7 @@
 {
-  "watch": [
-    "src",
-    ".env",
-    ".env.local",
-    ".env.development",
-    ".env.production",
-    ".env.test"
-  ],
+  "watch": ["src", ".env", ".env.local", ".env.development", ".env.production", ".env.test"],
   "ext": "ts,js,json,env",
-  "ignore": [
-    "node_modules",
-    "dist",
-    "coverage",
-    "*.test.ts",
-    "*.spec.ts"
-  ],
+  "ignore": ["node_modules", "dist", "coverage", "*.test.ts", "*.spec.ts"],
   "exec": "ts-node src/index.ts",
   "env": {
     "NODE_ENV": "development"

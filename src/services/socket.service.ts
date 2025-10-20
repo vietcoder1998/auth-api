@@ -66,10 +66,13 @@ export async function pingSocket(id: string): Promise<string> {
   const socketConfig = await prisma.socketConfig.findUnique({ where: { id } });
   if (!socketConfig) throw new Error('Socket not found');
   return new Promise((resolve, reject) => {
-    const client = net.createConnection({ host: socketConfig.host, port: socketConfig.port }, () => {
-      client.end();
-      resolve('Socket is reachable');
-    });
+    const client = net.createConnection(
+      { host: socketConfig.host, port: socketConfig.port },
+      () => {
+        client.end();
+        resolve('Socket is reachable');
+      },
+    );
     client.on('error', (err) => {
       reject(new Error('Socket is not reachable: ' + err.message));
     });

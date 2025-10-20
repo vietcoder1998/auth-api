@@ -178,7 +178,7 @@ export class LLMService {
               content: error instanceof Error ? error.message : String(error),
               agentId,
               isError: true,
-          },
+            },
           });
         }
       }

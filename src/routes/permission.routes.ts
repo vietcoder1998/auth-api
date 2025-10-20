@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { 
-  getPermissions, 
-  createPermission, 
-  updatePermission, 
+import {
+  getPermissions,
+  createPermission,
+  updatePermission,
   deletePermission,
   createPermissionWithSuperadmin,
-  addPermissionToSuperadmin
+  addPermissionToSuperadmin,
 } from '../controllers/permission.controller';
 
 const router = Router();
