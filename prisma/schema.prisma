@@ -267,6 +267,7 @@ model Agent {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
+  Faq       Faq[]
 
   @@map("agent")
 }
@@ -301,6 +302,7 @@ model Conversation {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
+  Faq       Faq[]
 
   @@map("conversation")
 }
@@ -313,6 +315,7 @@ model PromptHistory {
 
   messages     Message[] // <-- Messages generated from this prompt
   Conversation Conversation @relation(fields: [conversationId], references: [id])
+  Faq          Faq[]
 
   @@index([conversationId])
   @@map("prompt_history")
@@ -493,4 +496,21 @@ model UiConfig {
   updatedAt DateTime @updatedAt
 
   @@map("ui_config")
+}
+
+model Faq {
+  id             String         @id @default(uuid())
+  question       String         @db.Text
+  answer         String         @db.Text
+  type           String         @default("manual") // agent, doc_input, manual
+  promptId       String?
+  prompt         PromptHistory? @relation(fields: [promptId], references: [id])
+  conversationId String?
+  conversation   Conversation?  @relation(fields: [conversationId], references: [id])
+  aiAgentId      String?
+  agent          Agent?         @relation(fields: [aiAgentId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("faq")
 }
