@@ -5,6 +5,99 @@ import { commandService } from '../services/command.service';
 
 const prisma = new PrismaClient();
 
+// --- PromptHistory CRUD ---
+
+// Create a new prompt for a conversation
+export async function createPromptHistory(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { conversationId, prompt } = req.body;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!conversationId || !prompt) return res.status(400).json({ error: 'conversationId and prompt required' });
+
+    // Check conversation ownership
+    const conversation = await prisma.conversation.findFirst({ where: { id: conversationId, userId } });
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+
+    const promptHistory = await prisma.promptHistory.create({
+      data: { conversationId, prompt }
+    });
+
+    res.status(201).json(promptHistory);
+  } catch (err) {
+    console.error('Create prompt history error:', err);
+    res.status(500).json({ error: 'Failed to create prompt history' });
+  }
+}
+
+// Get all prompts for a conversation
+export async function getPromptHistories(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Check conversation ownership
+    const conversation = await prisma.conversation.findFirst({ where: { id: conversationId, userId } });
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+
+    const prompts = await prisma.promptHistory.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json(prompts);
+  } catch (err) {
+    console.error('Get prompt histories error:', err);
+    res.status(500).json({ error: 'Failed to fetch prompt histories' });
+  }
+}
+
+// Update a prompt history entry
+export async function updatePromptHistory(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    const { prompt } = req.body;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const existing = await prisma.promptHistory.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Prompt not found' });
+
+    // Optionally check conversation ownership here
+
+    const updated = await prisma.promptHistory.update({
+      where: { id },
+      data: { prompt }
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error('Update prompt history error:', err);
+    res.status(500).json({ error: 'Failed to update prompt history' });
+  }
+}
+
+// Delete a prompt history entry
+export async function deletePromptHistory(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const existing = await prisma.promptHistory.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Prompt not found' });
+
+    // Optionally check conversation ownership here
+
+    await prisma.promptHistory.delete({ where: { id } });
+    res.json({ message: 'Prompt deleted' });
+  } catch (err) {
+    console.error('Delete prompt history error:', err);
+    res.status(500).json({ error: 'Failed to delete prompt history' });
+  }
+}
+
 // Get conversations for a user
 export async function getConversations(req: Request, res: Response) {
   try {

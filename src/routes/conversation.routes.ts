@@ -1,14 +1,18 @@
 import { Router } from 'express';
 import {
-  getConversations,
-  createConversation,
-  getConversation,
-  getMessages,
   addMessage,
-  updateConversation,
+  createConversation,
+  createPromptHistory,
   deleteConversation,
-  executeCommand
+  deletePromptHistory,
+  executeCommand,
+  getConversation,
+  getConversations,
+  getMessages,
+  updateConversation,
+  updatePromptHistory,
 } from '../controllers/conversation.controller';
+import { getPromptHistories } from '../controllers/promptHistory.controller';
 
 const router = Router();
 
@@ -25,5 +29,11 @@ router.post('/:id/messages', addMessage);
 
 // Command operations
 router.post('/:id/command', executeCommand);
+
+// Example: in your conversation.routes.ts or similar
+router.post('/conversations/:conversationId/prompts', createPromptHistory);
+router.get('/conversations/:conversationId/prompts', getPromptHistories);
+router.put('/prompts/:id', updatePromptHistory);
+router.delete('/prompts/:id', deletePromptHistory);
 
 export default router;

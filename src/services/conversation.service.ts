@@ -200,7 +200,6 @@ export class ConversationService {
         sender,
         content,
         metadata: metadata ? JSON.stringify(metadata) : null,
-        tokens,
         position: messageCount
       }
     });
