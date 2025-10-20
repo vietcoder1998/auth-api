@@ -112,11 +112,16 @@ app.get('/api/config/health', async (req, res) => {
       exec('df -h --output=used,size,pcent / | tail -1', (err: Error | null, stdout: string) => {
         if (err) return cb(null);
         const parts: string[] = stdout.trim().split(/\s+/);
-        const [used, size, percent]: [string, string, string] = [
-          parts[0] || '',
-          parts[1] || '',
-          parts[2] || '',
-        ];
+        let used = parts[0] || '';
+        let size = parts[1] || '';
+        let percent = parts[2] || '';
+        // If percent missing, try to extract from rest of line
+        if (!percent && stdout) {
+          const match = stdout.match(/(\d+)%/);
+          percent = match ? match[0] : '';
+        }
+        // If all missing, return null
+        if (!used && !size && !percent) return cb(null);
         cb(`${used} / ${size} (${percent})`);
       });
     }
@@ -130,17 +135,19 @@ app.get('/api/config/health', async (req, res) => {
       uptime: process.uptime(),
       memory,
       cpu,
+      cpuLoad,
       disk: null as string | null,
     };
 
     // Get disk info and respond
     getDisk((disk) => {
+      console.log("Disk info:", disk);
       healthStatus.disk = disk;
       // Return 200 if all services are healthy, 503 if any are down
       const statusCode = databaseStatus && redisStatus ? 200 : 503;
       res.status(statusCode).json(healthStatus);
     });
-    
+
   } catch (error) {
     logger.error('Health check endpoint error:', { error });
     res.status(500).json({
