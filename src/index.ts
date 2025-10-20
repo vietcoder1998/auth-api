@@ -19,6 +19,9 @@ import { cacheMiddleware } from './middlewares/cache.middleware';
 import { logError, logger, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
+// Health check endpoint for status monitoring (no auth required)
+import os from 'os';
+import { exec } from 'child_process';
 
 dotenv.config();
 
@@ -67,7 +70,6 @@ app.use(loggerMiddleware);
 // API path config
 app.use('/api/auth', authRouter);
 
-// Health check endpoint for status monitoring (no auth required)
 app.get('/api/config/health', async (req, res) => {
   try {
     // Check database connection
@@ -89,6 +91,36 @@ app.get('/api/config/health', async (req, res) => {
       logger.error('Redis health check failed:', { error: redisError });
     }
 
+    // RAM
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memPercent = ((usedMem / totalMem) * 100).toFixed(1);
+    const memory = `${(usedMem / 1024 / 1024).toFixed(0)}MB / ${(totalMem / 1024 / 1024).toFixed(0)}MB (${memPercent}%)`;
+
+    // CPU
+    const cpus = os.cpus();
+    const cpuLoad = cpus && cpus.length > 0 ? (cpus.reduce((acc, cpu) => acc + cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.irq, 0) / (cpus.length * cpus[0].times.idle + 1)) : 0;
+    const cpu = `${cpus.length} cores`;
+
+    // Disk (async, only for Linux/Unix)
+    interface DiskCallback {
+      (disk: string | null): void;
+    }
+
+    function getDisk(cb: DiskCallback): void {
+      exec('df -h --output=used,size,pcent / | tail -1', (err: Error | null, stdout: string) => {
+        if (err) return cb(null);
+        const parts: string[] = stdout.trim().split(/\s+/);
+        const [used, size, percent]: [string, string, string] = [
+          parts[0] || '',
+          parts[1] || '',
+          parts[2] || '',
+        ];
+        cb(`${used} / ${size} (${percent})`);
+      });
+    }
+
     const healthStatus = {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -96,12 +128,19 @@ app.get('/api/config/health', async (req, res) => {
       database: databaseStatus,
       redis: redisStatus,
       uptime: process.uptime(),
+      memory,
+      cpu,
+      disk: null as string | null,
     };
 
-    // Return 200 if all services are healthy, 503 if any are down
-    const statusCode = databaseStatus && redisStatus ? 200 : 503;
+    // Get disk info and respond
+    getDisk((disk) => {
+      healthStatus.disk = disk;
+      // Return 200 if all services are healthy, 503 if any are down
+      const statusCode = databaseStatus && redisStatus ? 200 : 503;
+      res.status(statusCode).json(healthStatus);
+    });
     
-    res.status(statusCode).json(healthStatus);
   } catch (error) {
     logger.error('Health check endpoint error:', { error });
     res.status(500).json({
