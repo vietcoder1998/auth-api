@@ -16,6 +16,7 @@ async function getChannel() {
   return channel;
 }
 
+// Add a job and send to RabbitMQ (Bull-like control)
 export async function addJob(
   type: string,
   payload: any,
@@ -38,11 +39,34 @@ export async function addJob(
   });
 
   const ch = await getChannel();
+  // The message structure is Bull-like: { jobId, type, payload }
   ch.sendToQueue(JOB_QUEUE, Buffer.from(JSON.stringify({ jobId: job.id, type, payload })), {
     persistent: true,
   });
 
   return job;
+}
+
+// Process jobs from RabbitMQ (Bull-like worker control)
+export async function processJobs(
+  handler: (job: { jobId: string; type: string; payload: any }) => Promise<void>
+) {
+  const ch = await getChannel();
+  ch.consume(
+    JOB_QUEUE,
+    async (msg) => {
+      if (!msg) return;
+      try {
+        const jobData = JSON.parse(msg.content.toString());
+        await handler(jobData);
+        ch.ack(msg);
+      } catch (err) {
+        // Optionally: ch.nack(msg, false, false); // discard on error
+        ch.ack(msg); // Ack anyway to avoid infinite retry
+      }
+    },
+    { noAck: false }
+  );
 }
 
 export async function getJobs() {
