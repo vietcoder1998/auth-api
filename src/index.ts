@@ -1,9 +1,7 @@
 import cors from 'cors';
 import express from 'express';
-import fs from 'fs';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
-import YAML from 'yaml';
 import * as env from './env';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
 import { jwtTokenValidation } from './middlewares/auth.middleware';
