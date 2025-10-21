@@ -11,6 +11,7 @@ import adminRouter from './routes/admin.routes';
 import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
 import ssoAuthRouter from './routes/ssoAuth.routes';
+import publicBlogRouter from './routes/publicBlog.routes';
 // Import middlewares
 import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
@@ -68,6 +69,10 @@ app.use(boundaryResponse);
 app.use(loggerMiddleware);
 
 // API path config
+
+// Public blog/category API (no auth)
+app.use('/api/public', publicBlogRouter);
+
 app.use('/api/auth', authRouter);
 
 app.get('/api/config/health', async (req, res) => {

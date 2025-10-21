@@ -13,6 +13,32 @@ enum MessageType {
   answer
 }
 
+// Blog and Category Models
+model Category {
+  id        String  @id @default(uuid())
+  name      String  @unique
+  blogs     Blog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("category")
+}
+
+model Blog {
+  id          String    @id @default(uuid())
+  title       String
+  content     String    @db.Text
+  date        DateTime  @default(now())
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  author      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("blog")
+}
+
+
 model Label {
   id           String        @id @default(uuid())
   name         String        @unique
