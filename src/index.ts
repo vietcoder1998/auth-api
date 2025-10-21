@@ -10,19 +10,20 @@ import * as env from './env';
 import adminRouter from './routes/admin.routes';
 import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
-import ssoAuthRouter from './routes/ssoAuth.routes';
 import publicBlogRouter from './routes/publicBlog.routes';
+import ssoAuthRouter from './routes/ssoAuth.routes';
 // Import middlewares
-import { jwtTokenValidation } from './middlewares/auth.middleware';
-import { ssoKeyValidation } from './middlewares/sso.middleware';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
+import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { cacheMiddleware } from './middlewares/cache.middleware';
 import { logError, logger, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
+import { ssoKeyValidation } from './middlewares/sso.middleware';
 // Health check endpoint for status monitoring (no auth required)
-import os from 'os';
 import { exec } from 'child_process';
+import os from 'os';
+const { client } = require('./setup');
 
 dotenv.config();
 
@@ -72,10 +73,7 @@ app.use(loggerMiddleware);
 
 // Public blog/category API (no auth)
 app.use('/api/public', publicBlogRouter);
-
 app.use('/api/auth', authRouter);
-
-
 app.get('/api/config/health', async (req, res) => {
   try {
     // Check database connection
@@ -90,7 +88,6 @@ app.get('/api/config/health', async (req, res) => {
     // Check Redis connection
     let redisStatus = false;
     try {
-      const { client } = await import('./setup');
       await client.ping();
       redisStatus = true;
     } catch (redisError) {
@@ -109,10 +106,10 @@ app.get('/api/config/health', async (req, res) => {
     const cpuLoad =
       cpus && cpus.length > 0
         ? cpus.reduce(
-            (acc, cpu) => acc + cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.irq,
-            0,
-          ) /
-          (cpus.length * cpus[0].times.idle + 1)
+          (acc, cpu) => acc + cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.irq,
+          0,
+        ) /
+        (cpus.length * cpus[0].times.idle + 1)
         : 0;
     const cpu = `${cpus.length} cores`;
 
@@ -140,7 +137,7 @@ app.get('/api/config/health', async (req, res) => {
     }
 
     // Fetch jobs list
-  let jobs: any[] = [];
+    let jobs: any[] = [];
     try {
       jobs = await prisma.job.findMany({
         orderBy: { createdAt: 'desc' },
@@ -163,7 +160,7 @@ app.get('/api/config/health', async (req, res) => {
     try {
       // Check for /.dockerenv file (common Docker indicator)
       osStatus.isDocker = fs.existsSync('/.dockerenv') || fs.existsSync('/proc/self/cgroup') && fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker');
-    } catch {}
+    } catch { }
 
 
     // Child process info
@@ -181,7 +178,7 @@ app.get('/api/config/health', async (req, res) => {
         versions: process.versions,
         env: process.env,
       };
-    } catch {}
+    } catch { }
 
     const healthStatus = {
       status: 'ok',
@@ -283,13 +280,11 @@ app.get('/', (req, res) => res.json({ status: 'ok' }));
 // Serve admin GUI at /admin
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
 
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT;
 
 // Check Redis connection on startup
 async function checkRedisConnection() {
   try {
-    // Import the Redis client from setup
-    const { client } = await import('./setup');
     await client.ping();
     logInfo('✅ Redis connection successful', { file: 'index.ts', line: '135' });
     return true;
@@ -300,6 +295,8 @@ async function checkRedisConnection() {
 }
 
 app.listen(PORT, async () => {
+  await checkRedisConnection();
+
   logger.info(`Auth API running on port ${PORT}`);
   logger.info(`Admin GUI available at http://localhost:${PORT}/admin`);
   if (swaggerDocument) {
@@ -310,5 +307,4 @@ app.listen(PORT, async () => {
   }
 
   // Check Redis connection
-  await checkRedisConnection();
 });
