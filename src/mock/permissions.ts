@@ -21,6 +21,11 @@ import { agentPermissions } from './permissions/agents';
 import { jobPermissions } from './permissions/jobs';
 import { notificationPermissionsExtra } from './permissions/notifications';
 import { seedPermissions } from './permissions/seed';
+import { notificationTemplatePermissions } from './permissions/notificationTemplates';
+import { documentPermissions } from './permissions/documents';
+import { filePermissions } from './permissions/files';
+import { tokenPermissions } from './permissions/tokens';
+import { conversationPermissions } from './permissions/conversations';
 
 export const mockPermissions = [
   ...userPermissions,
@@ -44,6 +49,11 @@ export const mockPermissions = [
   ...jobPermissions,
   ...notificationPermissionsExtra,
   ...seedPermissions,
+  ...notificationTemplatePermissions,
+  ...documentPermissions,
+  ...filePermissions,
+  ...tokenPermissions,
+  ...conversationPermissions,
 ];
 
 // Modular mock roles
