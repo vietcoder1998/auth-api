@@ -151,6 +151,38 @@ app.get('/api/config/health', async (req, res) => {
       jobs = [];
     }
 
+
+    // Detect Docker environment
+    let osStatus = {
+      platform: os.platform(),
+      arch: os.arch(),
+      release: os.release(),
+      hostname: os.hostname(),
+      isDocker: false,
+    };
+    try {
+      // Check for /.dockerenv file (common Docker indicator)
+      osStatus.isDocker = fs.existsSync('/.dockerenv') || fs.existsSync('/proc/self/cgroup') && fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker');
+    } catch {}
+
+
+    // Child process info
+    let childProcessInfo = {};
+    try {
+      childProcessInfo = {
+        pid: process.pid,
+        ppid: process.ppid,
+        execPath: process.execPath,
+        argv: process.argv,
+        cwd: process.cwd(),
+        title: process.title,
+        platform: process.platform,
+        version: process.version,
+        versions: process.versions,
+        env: process.env,
+      };
+    } catch {}
+
     const healthStatus = {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -163,6 +195,9 @@ app.get('/api/config/health', async (req, res) => {
       cpuLoad,
       disk: null as string | null,
       jobs,
+      port: PORT,
+      os: osStatus,
+      childProcess: childProcessInfo,
     };
 
     // Get disk info and respond
