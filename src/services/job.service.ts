@@ -1,6 +1,7 @@
-import amqplib, { Connection, Channel, Message } from 'amqplib';
 import { PrismaClient } from '@prisma/client';
+import amqplib, { Channel, Connection, Message } from 'amqplib';
 import { RABBITMQ_URL } from '../env';
+import { logInfo, logError } from '../middlewares/logger.middle';
 const prisma = new PrismaClient();
 
 const RABBIT_URL = RABBITMQ_URL;
@@ -27,7 +28,7 @@ export async function getChannel(): Promise<Channel | undefined> {
 
   return undefined;
   } catch (err) {
-    console.error('RabbitMQ connection/channel error:', err);
+  logError('RabbitMQ connection/channel error', { error: err, file: 'job.service.ts', line: '22' });
     throw err;
   }
 }
@@ -48,14 +49,15 @@ export async function pingRabbitMQ(): Promise<boolean> {
   }
 }
 
-// Ping RabbitMQ on startup
-pingRabbitMQ().then((ok) => {
-  if (ok) {
-    console.log('✅ RabbitMQ connection successful');
-  } else {
-    console.error('❌ RabbitMQ connection failed');
-  }
-});
+// // Ping RabbitMQ on startup
+// pingRabbitMQ().then((ok) => {
+//   if (ok) {
+//     logInfo('✅ RabbitMQ connection successful', { file: 'job.service.ts', line: '38' });
+//     logInfo('RabbitMQ UI available at http://localhost:15672', { file: 'job.service.ts', line: '39' });
+//   } else {
+//     logError('❌ RabbitMQ connection failed', { file: 'job.service.ts', line: '41' });
+//   }
+// });
 
 // Supported job types
 const JOB_TYPES = ['extract', 'file-tuning', 'backup'];
