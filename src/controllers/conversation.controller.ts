@@ -132,9 +132,14 @@ export async function getConversations(req: Request, res: Response) {
     // Build where clause for search and filters
     const whereClause: any = { userId };
 
-    // Agent filter
+    // Agent filter (support comma-separated agent IDs)
     if (agentId && typeof agentId === 'string') {
-      whereClause.agentId = agentId;
+      if (agentId.includes(',')) {
+        // Multiple agent IDs
+        whereClause.agentId = { in: agentId.split(',').map((id) => id.trim()) };
+      } else {
+        whereClause.agentId = agentId;
+      }
     }
 
     // Search across multiple fields
