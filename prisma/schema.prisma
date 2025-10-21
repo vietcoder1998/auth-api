@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -22,6 +23,22 @@ model Label {
   entityLabels EntityLabel[]
 
   @@map("label")
+}
+
+model Notification {
+  id           String                @id @default(uuid())
+  message      String                @db.Text
+  type         String? // info, error, warning, etc.
+  templateId   String?
+  template     NotificationTemplate? @relation(fields: [templateId], references: [id])
+  errorPayload String?               @db.Text // JSON error payload
+  userId       String?
+  user         User?                 @relation(fields: [userId], references: [id])
+  read         Boolean               @default(false)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@map("notification")
 }
 
 model Message {
@@ -66,6 +83,7 @@ model User {
   updatedAt     DateTime       @updatedAt
   File          File[]
   Job           Job[]
+  Notification  Notification[]
 
   @@map("user")
 }
@@ -130,6 +148,7 @@ model NotificationTemplate {
   logicHistory LogicHistory[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @default(now())
+  Notification Notification[]
 
   @@map("notification_template")
 }
