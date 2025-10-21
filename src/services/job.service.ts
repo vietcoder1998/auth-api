@@ -1,8 +1,9 @@
 import amqplib from 'amqplib';
 import { PrismaClient } from '@prisma/client';
+import { RABBITMQ_URL } from '../env';
 const prisma = new PrismaClient();
 
-const RABBIT_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
+const RABBIT_URL = RABBITMQ_URL;
 const JOB_QUEUE = 'job-queue';
 
 let channel: amqplib.Channel | null = null;
