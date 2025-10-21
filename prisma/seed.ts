@@ -1,19 +1,19 @@
 /// <reference types="node" />
 import { PrismaClient } from '@prisma/client';
-import { mockAgents, mockAgentMemories, mockAgentTools, mockAgentTasks } from '../src/mock/agents';
-import { mockConversations } from '../src/mock/conversations';
-import { mockPermissions } from '../src/mock/permissions';
-import { mockUsers } from '../src/mock/users';
+import { mockAgentMemories, mockAgents, mockAgentTasks, mockAgentTools } from '../src/mock/agents';
 import { mockConfigs } from '../src/mock/configs';
-import { mockMailTemplates } from '../src/mock/mail-templates';
-import { mockNotificationTemplates } from '../src/mock/notification-templates';
-import { mockSSOEntries } from '../src/mock/sso';
-import { mockLoginHistoryEntries } from '../src/mock/login-history';
-import { mockLogicHistoryEntries } from '../src/mock/logic-history';
-import { mockLabels } from '../src/mock/labels';
+import { mockConversations } from '../src/mock/conversations';
 import { mockFaqs } from '../src/mock/faq';
 import { mockJobs } from '../src/mock/jobs';
+import { mockLabels } from '../src/mock/labels';
+import { mockLogicHistoryEntries } from '../src/mock/logic-history';
+import { mockLoginHistoryEntries } from '../src/mock/login-history';
+import { mockMailTemplates } from '../src/mock/mail-templates';
+import { mockNotificationTemplates } from '../src/mock/notification-templates';
+import { mockPermissions } from '../src/mock/permissions';
 import { mockPrompts } from '../src/mock/prompts';
+import { mockSSOEntries } from '../src/mock/sso';
+import { mockUsers } from '../src/mock/users';
 
 const prisma = new PrismaClient();
 
@@ -115,9 +115,13 @@ async function main() {
         console.warn(`⚠ Skipping prompt: '${prompt.prompt}' (missing conversationId)`);
         continue;
       }
-      const convExists = await prisma.conversation.findUnique({ where: { id: prompt.conversationId } });
+      const convExists = await prisma.conversation.findUnique({
+        where: { id: prompt.conversationId },
+      });
       if (!convExists) {
-        console.warn(`⚠ Skipping prompt: '${prompt.prompt}' (invalid conversationId: ${prompt.conversationId})`);
+        console.warn(
+          `⚠ Skipping prompt: '${prompt.prompt}' (invalid conversationId: ${prompt.conversationId})`,
+        );
         continue;
       }
       await prisma.promptHistory.create({
@@ -219,64 +223,11 @@ async function main() {
     update: {
       permissions: {
         set: permissionRecords
-          .filter((p) =>
-            [
-              'manage_users',
-              'view_reports',
-              'admin_login_history_get',
-              'admin_logic_history_get',
-              'admin_cache_get',
-              'admin_cache_post',
-              'admin_cache_delete',
-              'admin_conversations_get',
-              'admin_conversations_get_single',
-              'admin_conversations_post',
-              'admin_conversations_put',
-              'admin_conversations_delete',
-              'admin_conversations_messages_get',
-              'admin_conversations_messages_post',
-              'admin_messages_get',
-              'admin_messages_post',
-              'admin_agents_get',
-              'admin_agents_get_single',
-              'admin_agents_post',
-              'admin_agents_put',
-              'admin_agents_delete',
-              'admin_agents_memories_get',
-              'admin_agents_memories_post',
-              'view_conversations',
-              'create_conversations',
-              'view_messages',
-              'send_messages',
-              'view_ai_agents',
-              'chat_with_agents',
-              // Database connection permissions
-              'admin_database_connections_get',
-              'admin_database_connections_post',
-              'admin_database_connections_put',
-              'admin_database_connections_delete',
-              'admin_database_connections_test',
-              'admin_database_connections_check',
-              'admin_database_connections_backup',
-              'admin_database_connections_stats',
-              'view_database_connections',
-              'manage_database_connections',
-              'create_database_connections',
-              'update_database_connections',
-              'delete_database_connections',
-              'test_database_connections',
-              'backup_databases',
-              // Log management permissions
-              'admin_logs_get',
-              'admin_logs_post',
-              'admin_logs_stats',
-              'admin_logs_export',
-              'admin_logs_clear',
-              'view_logs',
-              'manage_logs',
-              'create_logs',
-            ].includes(p.name),
-          )
+          .filter((p) => {
+            // Dynamically fetch all permission names from mockPermissions
+            const adminPermissionNames = mockPermissions.map((perm: any) => perm.name);
+            return adminPermissionNames.includes(p.name);
+          })
           .map((p) => ({ id: p.id })),
       },
     },
@@ -1079,40 +1030,12 @@ async function main() {
 
   // Seed Database Connections
   console.log('🔌 Seeding Database Connections...');
-  const mockDatabaseConnections = [
-    {
-      name: 'Main MySQL',
-      description: 'Primary MySQL database for production',
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      database: 'calendation_prod',
-      username: 'root',
-      password: 'password',
-      isActive: true,
-      ssl: false,
-      timeout: 30000,
-      backupEnabled: true,
-      backupPath: '/backups/prod',
-      createdBy: superadminUser?.id || '',
-    },
-    {
-      name: 'Dev MySQL',
-      description: 'Development MySQL database',
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      database: 'calendation_dev',
-      username: 'devuser',
-      password: 'devpass',
-      isActive: true,
-      ssl: false,
-      timeout: 30000,
-      backupEnabled: false,
-      backupPath: null,
-      createdBy: adminUser?.id || '',
-    },
-  ];
+  // Import modular mock database connections
+  const { getMockDatabaseConnections } = require('../src/mock/dbConnections');
+  const mockDatabaseConnections = getMockDatabaseConnections(
+    superadminUser?.id || '',
+    adminUser?.id || '',
+  );
   const createdDatabaseConnections: any[] = [];
   for (const dbConn of mockDatabaseConnections) {
     try {
@@ -1146,51 +1069,8 @@ async function main() {
 
   // Seed UI Configs for sidebar/menu
   console.log('🖥️ Seeding UI Configs...');
-  const defaultSidebarMenu = [
-    {
-      key: '/admin',
-      icon: 'HomeOutlined',
-      label: 'Dashboard',
-    },
-    {
-      key: '/admin/system',
-      icon: 'DatabaseOutlined',
-      label: 'System Management',
-      children: [
-        { key: '/admin/system/agents', icon: 'RobotOutlined', label: 'AI Agents' },
-        { key: '/admin/system/conversations', icon: 'MessageOutlined', label: 'Conversations' },
-        { key: '/admin/system/documents', icon: 'FileTextOutlined', label: 'Document List' },
-        { key: '/admin/system/files', icon: 'FileOutlined', label: 'File List' },
-        { key: '/admin/system/users', icon: 'UserOutlined', label: 'Users' },
-        { key: '/admin/system/tokens', icon: 'KeyOutlined', label: 'Tokens' },
-        { key: '/admin/system/roles', icon: 'TeamOutlined', label: 'Roles' },
-        { key: '/admin/system/permissions', icon: 'SafetyOutlined', label: 'Permissions' },
-        { key: '/admin/system/sso', icon: 'LinkOutlined', label: 'SSO Management' },
-        { key: '/admin/system/login-history', icon: 'HistoryOutlined', label: 'Login History' },
-        { key: '/admin/system/logic-history', icon: 'AuditOutlined', label: 'Logic History' },
-        { key: '/admin/system/logs', icon: 'AuditOutlined', label: 'Application Logs' },
-        { key: '/admin/system/cache', icon: 'DatabaseOutlined', label: 'Cache' },
-        { key: '/admin/system/sockets', icon: 'ThunderboltOutlined', label: 'Socket Connections' },
-      ],
-    },
-    {
-      key: '/admin/settings',
-      icon: 'SettingOutlined',
-      label: 'Settings Management',
-      children: [
-        { key: '/admin/settings/api-keys', icon: 'KeyOutlined', label: 'API Keys' },
-        { key: '/admin/settings/mail', icon: 'MailOutlined', label: 'Mail Templates' },
-        { key: '/admin/settings/notifications', icon: 'BellOutlined', label: 'Notifications' },
-        { key: '/admin/settings/config', icon: 'SettingOutlined', label: 'Configuration' },
-        { key: '/admin/settings/seed', icon: 'DatabaseOutlined', label: 'Database Seed' },
-        {
-          key: '/admin/settings/database',
-          icon: 'DatabaseOutlined',
-          label: 'Database Connections',
-        },
-      ],
-    },
-  ];
+  // Import sidebar menu config from mock file
+  const { defaultSidebarMenu } = require('../src/mock/sidebarMenu');
 
   await prisma.uiConfig.upsert({
     where: { name: 'sidebar-superadmin' },
