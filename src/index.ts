@@ -1,17 +1,10 @@
-import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yaml';
 import * as env from './env';
-import adminRouter from './routes/admin.routes';
-import authRouter from './routes/auth.routes';
-import configRouter from './routes/config.routes';
-import publicBlogRouter from './routes/publicBlog.routes';
-import ssoAuthRouter from './routes/ssoAuth.routes';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
 import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { cacheMiddleware } from './middlewares/cache.middleware';
@@ -19,30 +12,33 @@ import { logError, loggerMiddleware, logInfo } from './middlewares/logger.middle
 import { rbac } from './middlewares/rbac.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
-import { exec } from 'child_process';
-import os from 'os';
+import prisma from './prisma';
+import adminRouter from './routes/admin.routes';
+import authRouter from './routes/auth.routes';
+import configRouter from './routes/config.routes';
+import publicBlogRouter from './routes/publicBlog.routes';
+import ssoAuthRouter from './routes/ssoAuth.routes';
+import { client } from './setup';
+import {
+  getChildProcessInfo,
+  getCpuStatus,
+  getDatabaseStatus,
+  getMemoryStatus,
+  getOsStatus,
+  getRedisStatus,
+} from './utils/healthUtils';
+import { getDisk } from './utils/validationUtils';
+import { checkRedisConnection } from './utils/validationUtils';
+import { configService } from './services/config.service';
+import { loadSwaggerDocument } from './utils/swaggerUtils';
 
-const { client } = require('./setup');
-
-dotenv.config();
-
-const prisma = new PrismaClient();
 const app = express();
 app.use(express.json());
 
 // Dynamic CORS config: fetch allowed origins from DB
 app.use(async (req, res, next) => {
-  // Example: fetch from a Config table, or fallback to env
-  let allowedOrigins: string[] = [];
-  try {
-    // If you have a Config table, fetch origins from there
-    const config = await prisma.config.findMany({ where: { key: 'cors_origin' } });
-    allowedOrigins = config.map((c) => c.value);
-    // For demo, fallback to env or default
-    allowedOrigins = env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'];
-  } catch (err) {
-    allowedOrigins = ['http://localhost:5173'];
-  }
+  // Use configService to get allowed origins
+  const allowedOrigins = await configService.getAllowedOrigins();
   cors({
     origin: allowedOrigins,
     credentials: true,
@@ -50,17 +46,7 @@ app.use(async (req, res, next) => {
 });
 
 // Swagger API docs setup
-let swaggerDocument = null;
-try {
-  logInfo('Loading swagger document...', { dir: __dirname });
-  const swaggerPath = path.join(__dirname, 'openapi.yaml');
-  if (fs.existsSync(swaggerPath)) {
-    const file = fs.readFileSync(swaggerPath, 'utf8');
-    swaggerDocument = YAML.parse(file);
-  }
-} catch (err) {
-  swaggerDocument = null;
-}
+const swaggerDocument = loadSwaggerDocument(__dirname);
 if (swaggerDocument) {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 }
@@ -74,16 +60,6 @@ app.use(loggerMiddleware);
 app.use('/api/public', publicBlogRouter);
 app.use('/api/auth', authRouter);
 app.get('/api/config/health', async (req, res) => {
-  const {
-    getDatabaseStatus,
-    getRedisStatus,
-    getMemoryStatus,
-    getCpuStatus,
-    getOsStatus,
-    getChildProcessInfo,
-  } = require('./utils/healthUtils');
-  const { getDisk } = require('./utils/validationUtils');
-
   try {
     const [databaseStatus, redisStatus] = await Promise.all([
       getDatabaseStatus(prisma),
@@ -115,7 +91,7 @@ app.get('/api/config/health', async (req, res) => {
       cpuLoad,
       disk: null as string | null,
       jobs,
-      port: PORT,
+      port: env.PORT,
       os: osStatus,
       childProcess: childProcessInfo,
     };
@@ -192,25 +168,22 @@ app.use(
   }),
   adminRouter,
 );
-app.get('/', (req, res) => res.json({ status: 'ok' }));
-
 // Apply boundary response middleware after all routes
+app.get('/', (req, res) => res.json({ status: 'ok' }));
 
 // Serve admin GUI at /admin
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
 
-const PORT = env.PORT;
-
 // Moved checkRedisConnection to utils/validationUtils.ts
-const { checkRedisConnection } = require('./utils/validationUtils');
 
-app.listen(PORT, async () => {
+app.listen(env.PORT, async () => {
   await checkRedisConnection(client);
 
-  logInfo(`Auth API running on port ${PORT}`);
-  logInfo(`Admin GUI available at http://localhost:${PORT}/admin`);
+  logInfo(`Auth API running on port ${env.PORT}`);
+  logInfo(`Admin GUI available at http://localhost:${env.PORT}/admin`);
+
   if (swaggerDocument) {
-    logInfo(`API docs available at http://localhost:${PORT}/docs`, {
+    logInfo(`API docs available at http://localhost:${env.PORT}/docs`, {
       file: 'index.ts',
       line: '147',
     });

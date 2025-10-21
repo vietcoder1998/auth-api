@@ -1,3 +1,4 @@
+
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -320,6 +321,23 @@ export class ConfigService {
 
     const results = await Promise.all(operations);
     return results;
+  }
+
+    /**
+   * Get allowed origins for CORS
+   */
+  async getAllowedOrigins(): Promise<string[]> {
+    try {
+      const configs = await prisma.config.findMany({ where: { key: 'cors_origin' } });
+      if (configs && configs.length > 0) {
+        return configs.map((c) => c.value);
+      }
+      // Fallback to env or default
+      const envOrigins = (process.env.CORS_ORIGIN || '').split(',').filter(Boolean);
+      return envOrigins.length > 0 ? envOrigins : ['http://localhost:5173'];
+    } catch (err) {
+      return ['http://localhost:5173'];
+    }
   }
 }
 
