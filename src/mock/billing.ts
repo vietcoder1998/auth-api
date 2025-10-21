@@ -1,0 +1,26 @@
+export const mockBillings = [
+  {
+    id: 'billing-1',
+    aiKeyId: 'key-1',
+    amount: 10.5,
+    currency: 'USD',
+    description: 'Usage for OpenAI GPT',
+    status: 'paid',
+    paidAt: new Date(),
+    conversationId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'billing-2',
+    aiKeyId: 'key-2',
+    amount: 5.0,
+    currency: 'USD',
+    description: 'Usage for Anthropic Claude',
+    status: 'pending',
+    paidAt: null,
+    conversationId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];

@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,9 +13,59 @@ enum MessageType {
 }
 
 // Blog and Category Models
+
+// AI Platform Model
+model AIPlatform {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.Text
+  endpoint    String? // API endpoint URL
+  apiKeys     AIKey[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ai_platform")
+}
+
+// AI Key Model
+model AIKey {
+  id          String      @id @default(uuid())
+  key         String      @unique @db.VarChar(255)
+  name        String
+  description String?     @db.Text
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id])
+  platformId  String?
+  platform    AIPlatform? @relation(fields: [platformId], references: [id])
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  billing     Billing[]
+
+  @@map("ai_key")
+}
+
+// Billing Model (linked to AIKey)
+model Billing {
+  id             String        @id @default(uuid())
+  aiKeyId        String
+  aiKey          AIKey         @relation(fields: [aiKeyId], references: [id], onDelete: Cascade)
+  amount         Float
+  currency       String        @default("USD")
+  description    String?       @db.Text
+  status         String        @default("pending") // pending, paid, failed
+  paidAt         DateTime?
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("billing")
+}
+
 model Category {
-  id        String  @id @default(uuid())
-  name      String  @unique
+  id        String   @id @default(uuid())
+  name      String   @unique
   blogs     Blog[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -25,19 +74,18 @@ model Category {
 }
 
 model Blog {
-  id          String    @id @default(uuid())
-  title       String
-  content     String    @db.Text
-  date        DateTime  @default(now())
-  categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id])
-  author      String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String   @id @default(uuid())
+  title      String
+  content    String   @db.Text
+  date       DateTime @default(now())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  author     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@map("blog")
 }
-
 
 model Label {
   id           String        @id @default(uuid())
@@ -110,6 +158,7 @@ model User {
   File          File[]
   Job           Job[]
   Notification  Notification[]
+  AIKey         AIKey[]
 
   @@map("user")
 }
@@ -375,6 +424,7 @@ model Conversation {
   updatedAt       DateTime          @default(now())
   Faq             Faq[]
   JobConversation JobConversation[]
+  Billing         Billing[]
 
   @@map("conversation")
 }

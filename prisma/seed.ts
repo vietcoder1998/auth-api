@@ -19,6 +19,39 @@ import { mockUsers } from '../src/mock/users';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Seed AI Platforms
+  const { mockAIPlatforms } = require('../src/mock/aiPlatform');
+  console.log('🤖 Seeding AI Platforms...');
+  for (const platform of mockAIPlatforms) {
+    await prisma.aIPlatform.upsert({
+      where: { id: platform.id },
+      update: {},
+      create: platform,
+    });
+  }
+
+  // Seed AI Keys
+  const { mockAIKeys } = require('../src/mock/aiKey');
+  console.log('🔑 Seeding AI Keys...');
+  for (const key of mockAIKeys) {
+    await prisma.aIKey.upsert({
+      where: { id: key.id },
+      update: {},
+      create: key,
+    });
+  }
+
+  // Seed Billings
+  const { mockBillings } = require('../src/mock/billing');
+  console.log('💳 Seeding Billings...');
+  for (const billing of mockBillings) {
+    await prisma.billing.upsert({
+      where: { id: billing.id },
+      update: {},
+      create: billing,
+    });
+  }
+
   // Seed Categories
   console.log('📚 Seeding Categories...');
   for (const category of mockCategories) {

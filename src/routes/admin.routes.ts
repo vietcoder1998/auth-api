@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import userRouter from './user.routes';
+import aiPlatformRouter from './aiPlatform.routes';
+import aiKeyRouter from './aiKey.routes';
+import billingRouter from './billing.routes';
 import roleRouter from './role.routes';
 import permissionRouter from './permission.routes';
 import tokenRouter from './token.routes';
@@ -36,6 +39,9 @@ import {
 const router = Router();
 
 router.use('/users', userRouter);
+router.use('/ai-platforms', aiPlatformRouter);
+router.use('/ai-keys', aiKeyRouter);
+router.use('/billings', billingRouter);
 router.use('/roles', roleRouter);
 router.use('/permissions', permissionRouter);
 router.use('/tokens', tokenRouter);
