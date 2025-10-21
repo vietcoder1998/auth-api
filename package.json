@@ -5,14 +5,15 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "nodemon",
-    "docker:local": "docker-compose -f docker-compose.local.yml up -d --build",
     "start": "node dist/index.js",
     "build": "tsc",
     "test": "jest --config jest.config.js --coverage",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
     "prepare": "husky install",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts",
+    "docker:local": "docker-compose -f docker-compose.local.yml up -d --build",
+    "docker:local:down": "docker-compose -f docker-compose.local.yml down"
   },
   "dependencies": {
     "@prisma/client": "^4.16.2",
