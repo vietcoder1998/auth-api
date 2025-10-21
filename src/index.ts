@@ -37,6 +37,7 @@ app.use(express.json());
 app.use(async (req, res, next) => {
   // Use configService to get allowed origins
   const allowedOrigins = await configService.getAllowedOrigins();
+  console.log('Fetching allowed origins for CORS configuration', allowedOrigins);
   logInfo('CORS check', {
     url: req.originalUrl,
     method: req.method,

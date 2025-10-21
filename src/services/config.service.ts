@@ -1,5 +1,6 @@
 
 import { PrismaClient } from '@prisma/client';
+import * as env from '../env';
 
 const prisma = new PrismaClient();
 
@@ -333,7 +334,7 @@ export class ConfigService {
         return configs.map((c) => c.value);
       }
       // Fallback to env or default
-      const envOrigins = (process.env.CORS_ORIGIN || '').split(',').filter(Boolean);
+      const envOrigins = (env.CORS_ORIGIN || '').split(',').filter(Boolean);
       return envOrigins.length > 0 ? envOrigins : ['http://localhost:5173'];
     } catch (err) {
       return ['http://localhost:5173'];
