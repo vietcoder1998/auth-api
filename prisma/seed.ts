@@ -15,12 +15,13 @@ import { mockPermissions } from '../src/mock/permissions';
 import { mockPrompts } from '../src/mock/prompts';
 import { mockSSOEntries } from '../src/mock/sso';
 import { mockUsers } from '../src/mock/users';
+const { mockAIPlatforms } = require('../src/mock/aiPlatform');
 
 const prisma = new PrismaClient();
 
 async function main() {
+  // AIPlatform, AIKey, Billing permissions are now seeded via modular mockPermissions import
   // Seed AI Platforms
-  const { mockAIPlatforms } = require('../src/mock/aiPlatform');
   console.log('🤖 Seeding AI Platforms...');
   for (const platform of mockAIPlatforms) {
     await prisma.aIPlatform.upsert({
