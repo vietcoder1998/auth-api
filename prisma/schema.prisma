@@ -12,8 +12,6 @@ enum MessageType {
   answer
 }
 
-// Blog and Category Models
-
 // AI Platform Model
 model AIPlatform {
   id           String         @id @default(uuid())
@@ -546,9 +544,10 @@ model DatabaseConnection {
   lastBackup    DateTime?
 
   // Metadata
-  createdBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  createdBy   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now())
+  JobDatabase JobDatabase[]
 
   @@map("database_connection")
 }
@@ -602,17 +601,18 @@ model SocketEvent {
 }
 
 model File {
-  id           String   @id @default(uuid())
+  id           String        @id @default(uuid())
   filename     String
   originalname String
   mimetype     String
   size         Int
-  type         String   @default("document")
+  type         String        @default("document")
   path         String // <-- Add this line
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  User         User?    @relation(fields: [userId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  User         User?         @relation(fields: [userId], references: [id])
   userId       String?
+  JobDocument  JobDocument[]
 }
 
 model UiConfig {
@@ -647,7 +647,7 @@ model Faq {
 
 model Job {
   id          String    @id @default(uuid())
-  type        String    @default("backup") // backup, fine-tuning, extract, etc.
+  type        String    @default("backup") // backup, fine-tuning, extract, document, database, conversation, etc.
   status      String    @default("pending") // pending, running, completed, failed
   payload     String?   @db.Text // JSON string for job data
   result      String?   @db.Text // JSON string for job result/output
@@ -660,8 +660,14 @@ model Job {
   userId      String?
   user        User?     @relation(fields: [userId], references: [id])
 
-  // New: link to at least one conversation
+  // Link to at least one conversation
   conversations JobConversation[]
+
+  // Link to at least one document
+  documents JobDocument[]
+
+  // Link to at least one database
+  databases JobDatabase[]
 
   @@map("job")
 }
@@ -679,4 +685,35 @@ model JobConversation {
   @@index([jobId])
   @@index([conversationId])
   @@map("job_conversation")
+}
+
+// Blog and Category Models
+// Junction table for Job <-> Document (many-to-many)
+model JobDocument {
+  id         String   @id @default(uuid())
+  jobId      String
+  documentId String
+  job        Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  document   File     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([jobId, documentId])
+  @@index([jobId])
+  @@index([documentId])
+  @@map("job_document")
+}
+
+// Junction table for Job <-> Database (many-to-many)
+model JobDatabase {
+  id         String             @id @default(uuid())
+  jobId      String
+  databaseId String
+  job        Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  database   DatabaseConnection @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now())
+
+  @@unique([jobId, databaseId])
+  @@index([jobId])
+  @@index([databaseId])
+  @@map("job_database")
 }

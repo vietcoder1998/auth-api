@@ -16,6 +16,9 @@ async function getChannel() {
   return channel;
 }
 
+// Supported job types
+const JOB_TYPES = ['extract', 'file-tuning', 'backup'];
+
 // Add a job and send to RabbitMQ (Bull-like control)
 export async function addJob(
   type: string,
@@ -24,6 +27,16 @@ export async function addJob(
   description?: string,
   conversationIds?: string[]
 ) {
+  if (!JOB_TYPES.includes(type)) {
+    throw new Error(`Invalid job type: ${type}. Supported types: ${JOB_TYPES.join(', ')}`);
+  }
+
+  // Validate payload structure per job type (optional, can be expanded)
+  // For now, just ensure it's an object
+  if (typeof payload !== 'object' || payload === null) {
+    throw new Error('Payload must be an object');
+  }
+
   const job = await prisma.job.create({
     data: {
       type,
@@ -81,13 +94,32 @@ export async function updateJob(
   id: string,
   data: Partial<{ status: string; result: any; error: string; startedAt: Date; finishedAt: Date }>
 ) {
-  return prisma.job.update({
+  // If status is 'closed', mark finishedAt and optionally restart
+  let updatedJob = await prisma.job.update({
     where: { id },
     data: {
       ...data,
       result: data.result ? JSON.stringify(data.result) : undefined,
+      finishedAt: data.status === 'closed' ? new Date() : data.finishedAt,
     },
   });
+
+  // If status is 'restart', create a new job with same type and payload
+  if (data.status === 'restart') {
+    // Fetch the original job
+    const originalJob = await prisma.job.findUnique({ where: { id } });
+    if (originalJob) {
+      // Reuse type, payload, userId, description, conversations
+      const payload = originalJob.payload ? JSON.parse(originalJob.payload) : {};
+      updatedJob = await addJob(
+        originalJob.type,
+        payload,
+        originalJob.userId ?? undefined,
+        originalJob.description || undefined
+      );
+    }
+  }
+  return updatedJob;
 }
 
 export async function deleteJob(id: string) {
