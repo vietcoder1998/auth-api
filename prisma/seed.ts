@@ -37,7 +37,7 @@ async function main() {
   for (const key of mockAIKeys) {
     try {
       // Validate platformId
-      if (key.platformId && !mockAIPlatforms.find(p => p.id === key.platformId)) {
+      if (key.platformId && !mockAIPlatforms.find((p) => p.id === key.platformId)) {
         console.warn(`⚠️ Skipping AI Key '${key.id}' (invalid platformId: ${key.platformId})`);
         continue;
       }

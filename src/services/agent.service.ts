@@ -23,7 +23,6 @@ export interface UpdateAgentData {
 }
 
 export class AgentService {
-
   /**
    * Create a new agent
    */

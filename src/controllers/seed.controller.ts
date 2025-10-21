@@ -6,7 +6,13 @@ export async function getSeedProgress(req: Request, res: Response) {
     const progress = seedService.getProgress();
     res.status(200).json({ success: true, data: progress });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to get seed progress', errors: [error instanceof Error ? error.message : 'Unknown error'] });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: 'Failed to get seed progress',
+        errors: [error instanceof Error ? error.message : 'Unknown error'],
+      });
   }
 }
 

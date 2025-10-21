@@ -43,7 +43,6 @@ export class SeedService {
   async seedAll(): Promise<SeedResult> {
     this.setProgress({ status: 'running', step: 'Starting seeding', percent: 0 });
     try {
-
       const steps = [
         { fn: this.seedPermissions.bind(this), name: 'Permissions' },
         { fn: this.seedRoles.bind(this), name: 'Roles' },
@@ -54,7 +53,10 @@ export class SeedService {
       ];
       const results: any[] = [];
       for (let i = 0; i < steps.length; i++) {
-        this.setProgress({ step: `Seeding ${steps[i].name}`, percent: Math.round((i / steps.length) * 100) });
+        this.setProgress({
+          step: `Seeding ${steps[i].name}`,
+          percent: Math.round((i / steps.length) * 100),
+        });
         try {
           const result = await steps[i].fn();
           results.push({ status: 'fulfilled', value: result });
@@ -86,7 +88,12 @@ export class SeedService {
         errors: errors.length > 0 ? errors : undefined,
       };
     } catch (error) {
-      this.setProgress({ status: 'error', step: 'Error', percent: 100, error: error instanceof Error ? error.message : 'Unknown error' });
+      this.setProgress({
+        status: 'error',
+        step: 'Error',
+        percent: 100,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       console.error('Seed all error:', error);
       return {
         success: false,

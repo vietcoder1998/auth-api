@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 // Create prompt
 export async function createPromptHistory(req: Request, res: Response) {
   const userId = req?.user?.id;
-  console.log(userId)
+  console.log(userId);
   const { conversationId, prompt } = req.body;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
   if (!conversationId || !prompt)

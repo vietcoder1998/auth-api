@@ -12,17 +12,16 @@ import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
 import publicBlogRouter from './routes/publicBlog.routes';
 import ssoAuthRouter from './routes/ssoAuth.routes';
-// Import middlewares
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
 import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { cacheMiddleware } from './middlewares/cache.middleware';
-import { logError, logger, loggerMiddleware, logInfo } from './middlewares/logger.middle';
+import { logError, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
-// Health check endpoint for status monitoring (no auth required)
 import { exec } from 'child_process';
 import os from 'os';
+
 const { client } = require('./setup');
 
 dotenv.config();
@@ -40,9 +39,9 @@ app.use(async (req, res, next) => {
     const config = await prisma.config.findMany({ where: { key: 'cors_origin' } });
     allowedOrigins = config.map((c) => c.value);
     // For demo, fallback to env or default
-    allowedOrigins = env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'];
+    allowedOrigins = env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'];
   } catch (err) {
-    allowedOrigins = ['http://localhost:3000'];
+    allowedOrigins = ['http://localhost:5173'];
   }
   cors({
     origin: allowedOrigins,
@@ -53,7 +52,7 @@ app.use(async (req, res, next) => {
 // Swagger API docs setup
 let swaggerDocument = null;
 try {
-  logger.info('Loading swagger document...', { dir: __dirname });
+  logInfo('Loading swagger document...', { dir: __dirname });
   const swaggerPath = path.join(__dirname, 'openapi.yaml');
   if (fs.existsSync(swaggerPath)) {
     const file = fs.readFileSync(swaggerPath, 'utf8');
@@ -75,111 +74,35 @@ app.use(loggerMiddleware);
 app.use('/api/public', publicBlogRouter);
 app.use('/api/auth', authRouter);
 app.get('/api/config/health', async (req, res) => {
+  const {
+    getDatabaseStatus,
+    getRedisStatus,
+    getMemoryStatus,
+    getCpuStatus,
+    getOsStatus,
+    getChildProcessInfo,
+  } = require('./utils/healthUtils');
+  const { getDisk } = require('./utils/validationUtils');
+
   try {
-    // Check database connection
-    let databaseStatus = false;
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      databaseStatus = true;
-    } catch (dbError) {
-      logger.error('Database health check failed:', { error: dbError });
-    }
-
-    // Check Redis connection
-    let redisStatus = false;
-    try {
-      await client.ping();
-      redisStatus = true;
-    } catch (redisError) {
-      logger.error('Redis health check failed:', { error: redisError });
-    }
-
-    // RAM
-    const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const usedMem = totalMem - freeMem;
-    const memPercent = ((usedMem / totalMem) * 100).toFixed(1);
-    const memory = `${(usedMem / 1024 / 1024).toFixed(0)}MB / ${(totalMem / 1024 / 1024).toFixed(0)}MB (${memPercent}%)`;
-
-    // CPU
-    const cpus = os.cpus();
-    const cpuLoad =
-      cpus && cpus.length > 0
-        ? cpus.reduce(
-          (acc, cpu) => acc + cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.irq,
-          0,
-        ) /
-        (cpus.length * cpus[0].times.idle + 1)
-        : 0;
-    const cpu = `${cpus.length} cores`;
-
-    // Disk (async, only for Linux/Unix)
-    interface DiskCallback {
-      (disk: string | null): void;
-    }
-
-    function getDisk(cb: DiskCallback): void {
-      exec('df -h --output=used,size,pcent / | tail -1', (err: Error | null, stdout: string) => {
-        if (err) return cb(null);
-        const parts: string[] = stdout.trim().split(/\s+/);
-        let used = parts[0] || '';
-        let size = parts[1] || '';
-        let percent = parts[2] || '';
-        // If percent missing, try to extract from rest of line
-        if (!percent && stdout) {
-          const match = stdout.match(/(\d+)%/);
-          percent = match ? match[0] : '';
-        }
-        // If all missing, return null
-        if (!used && !size && !percent) return cb(null);
-        cb(`${used} / ${size} (${percent})`);
-      });
-    }
-
-    // Fetch jobs list
+    const [databaseStatus, redisStatus] = await Promise.all([
+      getDatabaseStatus(prisma),
+      getRedisStatus(client),
+    ]);
+    const memory = getMemoryStatus();
+    const { cpu, cpuLoad } = getCpuStatus();
     let jobs: any[] = [];
     try {
       jobs = await prisma.job.findMany({
         orderBy: { createdAt: 'desc' },
-        take: 20 // limit to last 20 jobs
+        take: 20,
       });
     } catch (jobError) {
-      logger.error('Job fetch failed:', { error: jobError });
+      logError('Job fetch failed:', { error: jobError });
       jobs = [];
     }
-
-
-    // Detect Docker environment
-    let osStatus = {
-      platform: os.platform(),
-      arch: os.arch(),
-      release: os.release(),
-      hostname: os.hostname(),
-      isDocker: false,
-    };
-    try {
-      // Check for /.dockerenv file (common Docker indicator)
-      osStatus.isDocker = fs.existsSync('/.dockerenv') || fs.existsSync('/proc/self/cgroup') && fs.readFileSync('/proc/self/cgroup', 'utf8').includes('docker');
-    } catch { }
-
-
-    // Child process info
-    let childProcessInfo = {};
-    try {
-      childProcessInfo = {
-        pid: process.pid,
-        ppid: process.ppid,
-        execPath: process.execPath,
-        argv: process.argv,
-        cwd: process.cwd(),
-        title: process.title,
-        platform: process.platform,
-        version: process.version,
-        versions: process.versions,
-        env: process.env,
-      };
-    } catch { }
-
+    const osStatus = getOsStatus();
+    const childProcessInfo = getChildProcessInfo();
     const healthStatus = {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -196,17 +119,13 @@ app.get('/api/config/health', async (req, res) => {
       os: osStatus,
       childProcess: childProcessInfo,
     };
-
-    // Get disk info and respond
-    getDisk((disk) => {
-      console.log('Disk info:', disk);
+    getDisk((disk: string | null) => {
       healthStatus.disk = disk;
-      // Return 200 if all services are healthy, 503 if any are down
       const statusCode = databaseStatus && redisStatus ? 200 : 503;
       res.status(statusCode).json(healthStatus);
     });
   } catch (error) {
-    logger.error('Health check endpoint error:', { error });
+    logError('Health check endpoint error:', { error });
     res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
@@ -253,13 +172,13 @@ app.use(
       const shouldSkip = skipPaths.some((path) => req.originalUrl.startsWith(path));
 
       // Debug logging
-      logger.debug(`[CACHE] Cache check for ${req.originalUrl}:`, {
+      logInfo(`[CACHE] Cache check for ${req.originalUrl}:`, {
         method: req.method,
         shouldSkip,
         matchedPath: skipPaths.find((path) => req.originalUrl.startsWith(path)) || 'none',
       });
 
-      logger.info('Cache middleware check:', {
+      logInfo('Cache middleware check:', {
         file: 'index.ts',
         line: '108',
         url: req.originalUrl,
@@ -282,29 +201,18 @@ app.use('/admin', express.static(path.join(__dirname, 'gui')));
 
 const PORT = env.PORT;
 
-// Check Redis connection on startup
-async function checkRedisConnection() {
-  try {
-    await client.ping();
-    logInfo('✅ Redis connection successful', { file: 'index.ts', line: '135' });
-    return true;
-  } catch (error) {
-    logError('❌ Redis connection failed:', { file: 'index.ts', line: '138', error });
-    return false;
-  }
-}
+// Moved checkRedisConnection to utils/validationUtils.ts
+const { checkRedisConnection } = require('./utils/validationUtils');
 
 app.listen(PORT, async () => {
-  await checkRedisConnection();
+  await checkRedisConnection(client);
 
-  logger.info(`Auth API running on port ${PORT}`);
-  logger.info(`Admin GUI available at http://localhost:${PORT}/admin`);
+  logInfo(`Auth API running on port ${PORT}`);
+  logInfo(`Admin GUI available at http://localhost:${PORT}/admin`);
   if (swaggerDocument) {
-    logger.info(`API docs available at http://localhost:${PORT}/docs`, {
+    logInfo(`API docs available at http://localhost:${PORT}/docs`, {
       file: 'index.ts',
       line: '147',
     });
   }
-
-  // Check Redis connection
 });

@@ -14,21 +14,25 @@ let rabbitInstance: any = null;
 export async function getChannel(): Promise<Channel | undefined> {
   if (channel) return channel;
   try {
-  const conn = await amqplib.connect(RABBIT_URL);
-  if (!conn) throw new Error('Failed to connect to RabbitMQ');
-  rabbitInstance = conn;
+    const conn = await amqplib.connect(RABBIT_URL);
+    if (!conn) throw new Error('Failed to connect to RabbitMQ');
+    rabbitInstance = conn;
 
-  if (conn) {
-    const ch = await conn.createChannel();
-    if (!ch) throw new Error('Failed to create RabbitMQ channel');
-    channel = ch;
-    await channel.assertQueue(JOB_QUEUE, { durable: true });
-    return channel;
-  }
+    if (conn) {
+      const ch = await conn.createChannel();
+      if (!ch) throw new Error('Failed to create RabbitMQ channel');
+      channel = ch;
+      await channel.assertQueue(JOB_QUEUE, { durable: true });
+      return channel;
+    }
 
-  return undefined;
+    return undefined;
   } catch (err) {
-  logError('RabbitMQ connection/channel error', { error: err, file: 'job.service.ts', line: '22' });
+    logError('RabbitMQ connection/channel error', {
+      error: err,
+      file: 'job.service.ts',
+      line: '22',
+    });
     throw err;
   }
 }
@@ -69,21 +73,21 @@ export async function getJobDetail(id: string) {
     include: {
       conversations: {
         include: {
-          conversation: true
-        }
+          conversation: true,
+        },
       },
       documents: {
         include: {
-          document: true
-        }
+          document: true,
+        },
       },
       databases: {
         include: {
-          database: true
-        }
+          database: true,
+        },
       },
       user: true,
-    }
+    },
   });
 }
 
@@ -93,7 +97,7 @@ export async function addJob(
   payload: any,
   userId?: string,
   description?: string,
-  conversationIds?: string[]
+  conversationIds?: string[],
 ): Promise<any> {
   if (!JOB_TYPES.includes(type)) {
     throw new Error(`Invalid job type: ${type}. Supported types: ${JOB_TYPES.join(', ')}`);
@@ -109,11 +113,12 @@ export async function addJob(
       payload: JSON.stringify(payload),
       userId,
       description,
-      conversations: conversationIds && conversationIds.length
-        ? {
-            create: conversationIds.map((id) => ({ conversationId: id })),
-          }
-        : undefined,
+      conversations:
+        conversationIds && conversationIds.length
+          ? {
+              create: conversationIds.map((id) => ({ conversationId: id })),
+            }
+          : undefined,
     },
   });
 
@@ -129,7 +134,7 @@ export async function addJob(
 
 // Process jobs from RabbitMQ (Bull-like worker control)
 export async function processJobs(
-  handler: (job: { jobId: string; type: string; payload: any }) => Promise<void>
+  handler: (job: { jobId: string; type: string; payload: any }) => Promise<void>,
 ): Promise<void> {
   const ch = await getChannel();
   if (ch) {
@@ -145,7 +150,7 @@ export async function processJobs(
           ch.ack(msg); // Ack anyway to avoid infinite retry
         }
       },
-      { noAck: false }
+      { noAck: false },
     );
   }
 }
@@ -160,7 +165,7 @@ export async function getJob(id: string) {
 
 export async function updateJob(
   id: string,
-  data: Partial<{ status: string; result: any; error: string; startedAt: Date; finishedAt: Date }>
+  data: Partial<{ status: string; result: any; error: string; startedAt: Date; finishedAt: Date }>,
 ) {
   // If status is 'closed', mark finishedAt and optionally restart
   let updatedJob = await prisma.job.update({
@@ -183,7 +188,7 @@ export async function updateJob(
         originalJob.type,
         payload,
         originalJob.userId ?? undefined,
-        originalJob.description || undefined
+        originalJob.description || undefined,
       );
     }
   }

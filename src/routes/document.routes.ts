@@ -14,7 +14,6 @@ const router = Router();
 // Document upload endpoint
 router.post('/upload', upload.single('file'), uploadFile);
 
-
 router.get('/', listDocuments);
 router.get('/:id', getDocument);
 router.post('/', createDocument);

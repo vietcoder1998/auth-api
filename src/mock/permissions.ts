@@ -30,7 +30,6 @@ import { conversationPermissions } from './permissions/conversations';
 import { ssoPermissions } from './permissions/sso';
 import { apiKeyPermissions } from './permissions/apiKeys';
 
-
 import { blogPermissions, categoryPermissions } from './permissions/blog';
 import { jobExamplePermissions } from './permissions/jobExamples';
 
@@ -77,4 +76,4 @@ export const mockPermissions = [
 ];
 
 // Modular mock roles
-export { mockRoles }
+export { mockRoles };

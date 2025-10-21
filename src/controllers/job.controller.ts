@@ -5,7 +5,12 @@ export async function startExtractJobForDocument(req: Request, res: Response) {
   const documentId = req.params.id;
   const userId = req.user?.id;
   // You may want to fetch document details here if needed
-  const job = await jobService.addJob('extract', { documentId }, userId, `Extract document ${documentId}`);
+  const job = await jobService.addJob(
+    'extract',
+    { documentId },
+    userId,
+    `Extract document ${documentId}`,
+  );
   res.json({ success: true, data: job });
 }
 export async function getJobDetail(req: Request, res: Response) {
