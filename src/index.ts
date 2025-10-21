@@ -75,6 +75,7 @@ app.use('/api/public', publicBlogRouter);
 
 app.use('/api/auth', authRouter);
 
+
 app.get('/api/config/health', async (req, res) => {
   try {
     // Check database connection
@@ -138,6 +139,18 @@ app.get('/api/config/health', async (req, res) => {
       });
     }
 
+    // Fetch jobs list
+  let jobs: any[] = [];
+    try {
+      jobs = await prisma.job.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 20 // limit to last 20 jobs
+      });
+    } catch (jobError) {
+      logger.error('Job fetch failed:', { error: jobError });
+      jobs = [];
+    }
+
     const healthStatus = {
       status: 'ok',
       timestamp: new Date().toISOString(),
@@ -149,6 +162,7 @@ app.get('/api/config/health', async (req, res) => {
       cpu,
       cpuLoad,
       disk: null as string | null,
+      jobs,
     };
 
     // Get disk info and respond
@@ -168,6 +182,7 @@ app.get('/api/config/health', async (req, res) => {
       database: false,
       redis: false,
       error: 'Health check failed',
+      jobs: [],
     });
   }
 });
