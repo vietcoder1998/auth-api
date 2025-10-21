@@ -16,33 +16,50 @@ enum MessageType {
 
 // AI Platform Model
 model AIPlatform {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?  @db.Text
-  endpoint    String? // API endpoint URL
-  apiKeys     AIKey[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String         @id @default(uuid())
+  name         String         @unique
+  description  String?        @db.Text
+  endpoint     String? // API endpoint URL
+  apiKeys      AIKey[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  Agent        Agent[]
+  Conversation Conversation[]
 
   @@map("ai_platform")
 }
 
 // AI Key Model
 model AIKey {
-  id          String      @id @default(uuid())
-  key         String      @unique @db.VarChar(255)
-  name        String
-  description String?     @db.Text
-  userId      String?
-  user        User?       @relation(fields: [userId], references: [id])
-  platformId  String?
-  platform    AIPlatform? @relation(fields: [platformId], references: [id])
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  billing     Billing[]
+  id           String         @id @default(uuid())
+  key          String         @unique @db.VarChar(255)
+  name         String
+  description  String?        @db.Text
+  userId       String?
+  user         User?          @relation(fields: [userId], references: [id])
+  platformId   String?
+  platform     AIPlatform?    @relation(fields: [platformId], references: [id])
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  billing      Billing[]
+  agents       AIKeyAgent[]
+  Conversation Conversation[]
 
   @@map("ai_key")
+}
+
+// Join table for AIKey <-> Agent (many-to-many)
+model AIKeyAgent {
+  id        String   @id @default(uuid())
+  aiKeyId   String
+  agentId   String
+  aiKey     AIKey    @relation(fields: [aiKeyId], references: [id], onDelete: Cascade)
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([aiKeyId, agentId])
+  @@map("ai_key_agent")
 }
 
 // Billing Model (linked to AIKey)
@@ -369,22 +386,25 @@ model LogicHistory {
 
 // AI Agent Management Models
 model Agent {
-  id           String  @id @default(uuid())
+  id           String      @id @default(uuid())
   userId       String
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
-  description  String? @db.Text
-  model        String  @default("gpt-4") // LLM model (gpt-4, claude-3, etc.)
-  personality  String? @db.Text // JSON config for personality
-  systemPrompt String? @db.Text
-  config       String? @db.Text // JSON config (temperature, max_tokens, etc.)
-  isActive     Boolean @default(true)
+  description  String?     @db.Text
+  model        String      @default("gpt-4") // LLM model (gpt-4, claude-3, etc.)
+  personality  String?     @db.Text // JSON config for personality
+  systemPrompt String?     @db.Text
+  config       String?     @db.Text // JSON config (temperature, max_tokens, etc.)
+  isActive     Boolean     @default(true)
+  platformId   String?
+  platform     AIPlatform? @relation(fields: [platformId], references: [id])
 
   // Relationships
   memories      AgentMemory[]
   conversations Conversation[]
   tools         AgentTool[]
   tasks         AgentTask[]
+  aiKeys        AIKeyAgent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -409,14 +429,18 @@ model AgentMemory {
 }
 
 model Conversation {
-  id       String  @id @default(uuid())
-  agentId  String
-  agent    Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  userId   String
-  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title    String?
-  summary  String? @db.Text
-  isActive Boolean @default(true)
+  id         String      @id @default(uuid())
+  agentId    String
+  agent      Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiKeyId    String?
+  aiKey      AIKey?      @relation(fields: [aiKeyId], references: [id])
+  platformId String?
+  platform   AIPlatform? @relation(fields: [platformId], references: [id])
+  title      String?
+  summary    String?     @db.Text
+  isActive   Boolean     @default(true)
 
   messages      Message[]
   promptHistory PromptHistory[] // <-- Link to prompt history

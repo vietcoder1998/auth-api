@@ -23,6 +23,7 @@ export interface UpdateAgentData {
 }
 
 export class AgentService {
+
   /**
    * Create a new agent
    */
@@ -405,6 +406,22 @@ export class AgentService {
       input: task.input ? JSON.parse(task.input) : null,
       output: task.output ? JSON.parse(task.output) : null,
     };
+  }
+
+  // ...existing code...
+
+  /**
+   * Update all Conversations for an Agent to use a selected AIKey and platform
+   */
+  async updateAgentConversationsKeyPlatform(agentId: string, aiKeyId: string, platformId: string) {
+    // Bulk update all conversations for this agent
+    return await prisma.conversation.updateMany({
+      where: { agentId },
+      data: {
+        aiKeyId,
+        platformId,
+      },
+    });
   }
 }
 
