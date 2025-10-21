@@ -12,27 +12,25 @@ export function forceRestartNode(): Promise<{ success: boolean; message: string 
       const env = process.env.NODE_ENV || 'development';
       let command = '';
       if (env === 'development') {
-        command = `cd ${cwd} && npm run dev`;
+        command = `npm run dev`;
       } else {
-        command = `cd ${cwd} && npm start`;
+        command = `npm start`;
       }
-      console.log(`[Restart] NODE_ENV: ${env}, running: ${command}`);
-      // Kill current process and start new one
-      const { exec } = require('child_process');
-      exec(command, (err: any, stdout: string, stderr: string) => {
-        if (err) {
-          console.error('Restart error:', err);
-          resolve({ success: false, message: 'Failed to restart Node.js process.' });
-        } else {
-          console.log('Restart stdout:', stdout);
-          console.log('Restart stderr:', stderr);
-          resolve({ success: true, message: `Node.js process restarted with: ${command}` });
-        }
-        // Exit current process after starting new one
-        setTimeout(() => {
-          process.exit(0);
-        }, 100);
+      console.log(`[Restart] NODE_ENV: ${env}, will run: ${command} in ${cwd}`);
+      const { spawn } = require('child_process');
+      // Spawn new process detached from parent
+      const child = spawn(command, {
+        cwd,
+        shell: true,
+        detached: true,
+        stdio: 'ignore',
       });
+      child.unref();
+      // Exit current process
+      setTimeout(() => {
+        process.exit(0);
+      }, 100);
+      resolve({ success: true, message: `Node.js process killed and restarted with: ${command}` });
     } catch (err) {
       resolve({ success: false, message: 'Failed to restart Node.js process.' });
     }
