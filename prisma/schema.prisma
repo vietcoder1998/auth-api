@@ -607,12 +607,26 @@ model File {
   mimetype     String
   size         Int
   type         String        @default("document")
-  path         String // <-- Add this line
+  path         String
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   User         User?         @relation(fields: [userId], references: [id])
   userId       String?
   JobDocument  JobDocument[]
+  Document     Document?
+// Document model (1:1 with File)
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  fileId    String   @unique
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  name      String?
+  url       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("document")
 }
 
 model UiConfig {
