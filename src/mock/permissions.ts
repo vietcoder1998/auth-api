@@ -8,6 +8,11 @@ import { apiPermissions } from './permissions/api';
 import { notificationPermissions } from './permissions/notification';
 import { mockRoles } from './permissions/roles';
 import { otherPermissions } from './permissions/other';
+import { faqPermissions } from './permissions/faq';
+import { mailTemplatePermissions } from './permissions/mailTemplates';
+import { promptPermissions } from './permissions/prompts';
+import { socketPermissions } from './permissions/socket';
+import { labelPermissions } from './permissions/labels';
 
 export const mockPermissions = [
   ...userPermissions,
@@ -18,6 +23,11 @@ export const mockPermissions = [
   ...apiPermissions,
   ...notificationPermissions,
   ...otherPermissions,
+  ...faqPermissions,
+  ...mailTemplatePermissions,
+  ...promptPermissions,
+  ...socketPermissions,
+  ...labelPermissions,
 ];
 
 // Modular mock roles
