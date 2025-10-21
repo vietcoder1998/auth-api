@@ -29,11 +29,12 @@ import { getDisk } from './utils/validationUtils';
 import { checkRedisConnection } from './utils/validationUtils';
 import { configService } from './services/config.service';
 import { loadSwaggerDocument } from './utils/swaggerUtils';
+import { getJobs } from './services/job.service';
 
+const swaggerDocument = loadSwaggerDocument(__dirname);
 const app = express();
-app.use(express.json());
 
-// Dynamic CORS config: fetch allowed origins from DB
+app.use(express.json());
 app.use(async (req, res, next) => {
   // Use configService to get allowed origins
   const allowedOrigins = await configService.getAllowedOrigins();
@@ -50,15 +51,9 @@ app.use(async (req, res, next) => {
 });
 
 // Swagger API docs setup
-const swaggerDocument = loadSwaggerDocument(__dirname);
-if (swaggerDocument) {
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-}
-
+app.use('/docs', swaggerUi?.serve, swaggerUi?.setup(swaggerDocument));
 app.use(boundaryResponse);
 app.use(loggerMiddleware);
-
-// API path config
 
 // Public blog/category API (no auth)
 app.use('/api/public', publicBlogRouter);
@@ -71,16 +66,7 @@ app.get('/api/config/health', async (req, res) => {
     ]);
     const memory = getMemoryStatus();
     const { cpu, cpuLoad } = getCpuStatus();
-    let jobs: any[] = [];
-    try {
-      jobs = await prisma.job.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-      });
-    } catch (jobError) {
-      logError('Job fetch failed:', { error: jobError });
-      jobs = [];
-    }
+    const jobs = await getJobs();
     const osStatus = getOsStatus();
     const childProcessInfo = getChildProcessInfo();
     const healthStatus = {
@@ -120,15 +106,12 @@ app.get('/api/config/health', async (req, res) => {
 
 // SSO authentication routes (no JWT required)
 app.use('/api/sso', ssoAuthRouter);
-
 // Apply authentication middleware chain (order matters)
 app.use(ssoKeyValidation);
 app.use(apiKeyValidation); // Check for API key authentication
 app.use(jwtTokenValidation); // Fallback to JWT if no API key
 app.use(rbac);
-
 app.use('/api/config', configRouter);
-
 app.use(
   '/api/admin',
   cacheMiddleware({
@@ -172,14 +155,9 @@ app.use(
   }),
   adminRouter,
 );
-// Apply boundary response middleware after all routes
-app.get('/', (req, res) => res.json({ status: 'ok' }));
-
 // Serve admin GUI at /admin
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
-
-// Moved checkRedisConnection to utils/validationUtils.ts
-
+app.get('/', (req, res) => res.json({ status: 'ok' }));
 app.listen(env.PORT, async () => {
   await checkRedisConnection(client);
 
