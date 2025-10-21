@@ -26,6 +26,8 @@ import { documentPermissions } from './permissions/documents';
 import { filePermissions } from './permissions/files';
 import { tokenPermissions } from './permissions/tokens';
 import { conversationPermissions } from './permissions/conversations';
+import { apiKeyPermissions } from './permissions/apiKeys';
+import { jobExamplePermissions } from './permissions/jobExamples';
 
 export const mockPermissions = [
   ...userPermissions,
@@ -54,6 +56,8 @@ export const mockPermissions = [
   ...filePermissions,
   ...tokenPermissions,
   ...conversationPermissions,
+  ...apiKeyPermissions,
+  ...jobExamplePermissions,
 ];
 
 // Modular mock roles

@@ -1,0 +1,66 @@
+// API Key Management permissions
+export const apiKeyPermissions = [
+  {
+    name: 'admin_api_keys_get',
+    description: 'GET admin API keys endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys',
+    method: 'GET',
+  },
+  {
+    name: 'admin_api_keys_post',
+    description: 'POST admin API keys endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys',
+    method: 'POST',
+  },
+  {
+    name: 'admin_api_keys_put',
+    description: 'PUT admin API keys endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys/:id',
+    method: 'PUT',
+  },
+  {
+    name: 'admin_api_keys_patch',
+    description: 'PATCH admin API keys endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys/:id',
+    method: 'PATCH',
+  },
+  {
+    name: 'admin_api_keys_delete',
+    description: 'DELETE admin API keys endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys/:id',
+    method: 'DELETE',
+  },
+  {
+    name: 'admin_api_keys_regenerate',
+    description: 'PATCH admin API keys regenerate endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys/:id/regenerate',
+    method: 'PATCH',
+  },
+  {
+    name: 'admin_api_keys_stats',
+    description: 'GET admin API keys usage statistics endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys/stats',
+    method: 'GET',
+  },
+  {
+    name: 'admin_api_keys_logs',
+    description: 'GET admin API keys usage logs endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys/:id/logs',
+    method: 'GET',
+  },
+  {
+    name: 'admin_api_keys_specific_stats',
+    description: 'GET admin API key specific statistics endpoint',
+    category: 'apiKey',
+    route: '/api/admin/api-keys/:id/stats',
+    method: 'GET',
+  },
+];
