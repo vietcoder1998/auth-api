@@ -1,4 +1,4 @@
-import amqplib from 'amqplib';
+import amqplib, { Connection, Channel, Message } from 'amqplib';
 import { PrismaClient } from '@prisma/client';
 import { RABBITMQ_URL } from '../env';
 const prisma = new PrismaClient();
@@ -6,16 +6,56 @@ const prisma = new PrismaClient();
 const RABBIT_URL = RABBITMQ_URL;
 const JOB_QUEUE = 'job-queue';
 
-let channel: amqplib.Channel | null = null;
+let channel: any = null;
+let rabbitInstance: any = null;
 
-// Initialize RabbitMQ channel
-async function getChannel() {
+// Initialize RabbitMQ channel and instance
+export async function getChannel(): Promise<Channel | undefined> {
   if (channel) return channel;
+  try {
   const conn = await amqplib.connect(RABBIT_URL);
-  channel = await conn.createChannel();
-  await channel.assertQueue(JOB_QUEUE, { durable: true });
-  return channel;
+  if (!conn) throw new Error('Failed to connect to RabbitMQ');
+  rabbitInstance = conn;
+
+  if (conn) {
+    const ch = await conn.createChannel();
+    if (!ch) throw new Error('Failed to create RabbitMQ channel');
+    channel = ch;
+    await channel.assertQueue(JOB_QUEUE, { durable: true });
+    return channel;
+  }
+
+  return undefined;
+  } catch (err) {
+    console.error('RabbitMQ connection/channel error:', err);
+    throw err;
+  }
 }
+
+// Export RabbitMQ instance for health checks
+export function getRabbitInstance(): Connection | null {
+  return rabbitInstance;
+}
+
+// Ping RabbitMQ connection
+export async function pingRabbitMQ(): Promise<boolean> {
+  try {
+    const conn = await amqplib.connect(RABBIT_URL);
+    await conn.close();
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+// Ping RabbitMQ on startup
+pingRabbitMQ().then((ok) => {
+  if (ok) {
+    console.log('✅ RabbitMQ connection successful');
+  } else {
+    console.error('❌ RabbitMQ connection failed');
+  }
+});
 
 // Supported job types
 const JOB_TYPES = ['extract', 'file-tuning', 'backup'];
@@ -52,13 +92,11 @@ export async function addJob(
   userId?: string,
   description?: string,
   conversationIds?: string[]
-) {
+): Promise<any> {
   if (!JOB_TYPES.includes(type)) {
     throw new Error(`Invalid job type: ${type}. Supported types: ${JOB_TYPES.join(', ')}`);
   }
 
-  // Validate payload structure per job type (optional, can be expanded)
-  // For now, just ensure it's an object
   if (typeof payload !== 'object' || payload === null) {
     throw new Error('Payload must be an object');
   }
@@ -78,10 +116,11 @@ export async function addJob(
   });
 
   const ch = await getChannel();
-  // The message structure is Bull-like: { jobId, type, payload }
-  ch.sendToQueue(JOB_QUEUE, Buffer.from(JSON.stringify({ jobId: job.id, type, payload })), {
-    persistent: true,
-  });
+  if (ch) {
+    ch.sendToQueue(JOB_QUEUE, Buffer.from(JSON.stringify({ jobId: job.id, type, payload })), {
+      persistent: true,
+    });
+  }
 
   return job;
 }
@@ -89,23 +128,24 @@ export async function addJob(
 // Process jobs from RabbitMQ (Bull-like worker control)
 export async function processJobs(
   handler: (job: { jobId: string; type: string; payload: any }) => Promise<void>
-) {
+): Promise<void> {
   const ch = await getChannel();
-  ch.consume(
-    JOB_QUEUE,
-    async (msg) => {
-      if (!msg) return;
-      try {
-        const jobData = JSON.parse(msg.content.toString());
-        await handler(jobData);
-        ch.ack(msg);
-      } catch (err) {
-        // Optionally: ch.nack(msg, false, false); // discard on error
-        ch.ack(msg); // Ack anyway to avoid infinite retry
-      }
-    },
-    { noAck: false }
-  );
+  if (ch) {
+    ch.consume(
+      JOB_QUEUE,
+      async (msg: Message | null) => {
+        if (!msg) return;
+        try {
+          const jobData = JSON.parse(msg.content.toString());
+          await handler(jobData);
+          ch.ack(msg);
+        } catch (err) {
+          ch.ack(msg); // Ack anyway to avoid infinite retry
+        }
+      },
+      { noAck: false }
+    );
+  }
 }
 
 export async function getJobs() {
