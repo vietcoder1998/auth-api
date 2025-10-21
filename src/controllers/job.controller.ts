@@ -22,7 +22,7 @@ export async function createJob(req: Request, res: Response) {
 export async function listJobs(req: Request, res: Response) {
   const jobs = await jobService.getJobs();
   res.json({ success: true, data: jobs });
-}P
+}
 
 export async function getJob(req: Request, res: Response) {
   const job = await jobService.getJob(req.params.id);
