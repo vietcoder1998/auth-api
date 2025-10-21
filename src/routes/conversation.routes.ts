@@ -18,8 +18,8 @@ import {
 
 const router = Router();
 // Prompt CRUD for a conversation
-router.post('/conversations/:conversationId/prompts', createPromptHistory);
-router.get('/conversations/:conversationId/prompts', getPromptHistories);
+router.post('/:id/prompts', createPromptHistory);
+router.get('/:id/prompts', getPromptHistories);
 router.put('/prompts/:id', updatePromptHistory);
 router.delete('/prompts/:id', deletePromptHistory);
 

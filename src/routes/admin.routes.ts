@@ -28,7 +28,6 @@ import promptHistoryRouter from './promptHistory.routes';
 import uiConfigRouter from './uiconfig.routes';
 import jobRouter from './job.routes';
 import { searchAllEntities } from '../controllers/search.controller';
-import { forceRestartNode } from '../services/system.service';
 import {
   upload,
   uploadFile,
@@ -36,6 +35,7 @@ import {
   deleteFile,
   downloadDocument,
 } from '../controllers/file.controller';
+import systemRouter from './system.routes';
 
 const router = Router();
 
@@ -68,7 +68,6 @@ router.use('/ui-config', uiConfigRouter);
 router.use('/jobs', jobRouter);
 router.get('/search', searchAllEntities);
 
-import systemRouter from './system.routes';
 // ...existing code...
 router.use('/system', systemRouter);
 router.post('/files/upload', upload.single('file'), uploadFile);
