@@ -243,9 +243,16 @@ async function main() {
   // Seed permissions from mock data
   console.log('🔐 Seeding Permissions...');
 
-  // Use modular mockPermissions array
+  // Deduplicate mockPermissions by name
+  const uniquePermissions = Object.values(
+    mockPermissions.reduce((acc: Record<string, any>, perm: any) => {
+      acc[perm.name] = perm;
+      return acc;
+    }, {})
+  );
+
   const permissionRecords = await Promise.all(
-    mockPermissions.map((permission: any) =>
+    uniquePermissions.map((permission: any) =>
       prisma.permission.upsert({
         where: { name: permission.name },
         update: {},
