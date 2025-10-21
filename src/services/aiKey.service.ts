@@ -5,8 +5,21 @@ export const createAIKey = async (data: any) => {
   return prisma.aIKey.create({ data });
 };
 
+
 export const getAIKeys = async () => {
-  return prisma.aIKey.findMany({ include: { platform: true, billing: true } });
+  return prisma.aIKey.findMany({
+    include: {
+      platform: true,
+      billing: true,
+      agents: {
+        include: {
+          agent: true
+        }
+      },
+      Conversation: true,
+      user: true
+    }
+  });
 };
 
 export const getAIKeyById = async (id: string) => {
