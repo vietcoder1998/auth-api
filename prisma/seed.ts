@@ -4,6 +4,7 @@ import { mockAgentMemories, mockAgents, mockAgentTasks, mockAgentTools } from '.
 import { mockConfigs } from '../src/mock/configs';
 import { mockConversations } from '../src/mock/conversations';
 import { mockFaqs } from '../src/mock/faq';
+import { mockBlogs, mockCategories } from '../src/mock/blog';
 import { mockJobs } from '../src/mock/jobs';
 import { mockLabels } from '../src/mock/labels';
 import { mockLogicHistoryEntries } from '../src/mock/logic-history';
@@ -18,6 +19,25 @@ import { mockUsers } from '../src/mock/users';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Seed Categories
+  console.log('📚 Seeding Categories...');
+  for (const category of mockCategories) {
+    await prisma.category.upsert({
+      where: { id: category.id },
+      update: {},
+      create: category,
+    });
+  }
+
+  // Seed Blogs
+  console.log('📝 Seeding Blogs...');
+  for (const blog of mockBlogs) {
+    await prisma.blog.upsert({
+      where: { id: blog.id },
+      update: {},
+      create: blog,
+    });
+  }
   // ...existing code...
   // Seed FAQs and related messages (moved to end)
   console.log('❓ Seeding FAQs and FAQ Messages...');
