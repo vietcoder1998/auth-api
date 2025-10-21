@@ -67,6 +67,13 @@ export async function pingRabbitMQ(): Promise<boolean> {
 // Supported job types
 const JOB_TYPES = ['extract', 'file-tuning', 'backup'];
 
+// Worker paths
+const WORKER_PATHS: Record<string, string> = {
+  extract: require.resolve('../workers/extract.workers.ts'),
+  backup: require.resolve('../workers/backup.works.ts'),
+  'file-tuning': require.resolve('../workers/fine-tuning.workers.ts'),
+};
+
 // Get job details with relations
 export async function getJobDetail(id: string) {
   return prisma.job.findUnique({
@@ -145,21 +152,29 @@ export async function processJobs(
         if (!msg) return;
         try {
           const jobData = JSON.parse(msg.content.toString());
-          if (jobData.type === 'extract') {
-            // Run extract job in a new worker thread
-            const worker = new Worker(require.resolve('../workers/extractWorker.ts'));
-            worker.postMessage(jobData);
-            worker.on('message', (result) => {
-              // Optionally handle result
-              logInfo('Extract worker finished', { jobId: jobData.jobId, result });
-              worker.terminate();
-            });
-            worker.on('error', (error) => {
-              logError('Extract worker error', { jobId: jobData.jobId, error });
-              worker.terminate();
-            });
-          } else {
-            await handler(jobData);
+          switch (jobData.type) {
+            case 'extract':
+            case 'backup':
+            case 'file-tuning': {
+              const workerPath = WORKER_PATHS[jobData.type];
+              if (workerPath) {
+                const worker = new Worker(workerPath);
+                worker.postMessage(jobData);
+                worker.on('message', (result) => {
+                  logInfo(`${jobData.type} worker finished`, { jobId: jobData.jobId, result });
+                  worker.terminate();
+                });
+                worker.on('error', (error) => {
+                  logError(`${jobData.type} worker error`, { jobId: jobData.jobId, error });
+                  worker.terminate();
+                });
+              } else {
+                logError('No worker path defined for job type', { type: jobData.type });
+              }
+              break;
+            }
+            default:
+              await handler(jobData);
           }
           ch.ack(msg);
         } catch (err) {
