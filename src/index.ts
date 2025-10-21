@@ -16,6 +16,8 @@ import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
 import publicBlogRouter from './routes/publicBlog.routes';
 import ssoAuthRouter from './routes/ssoAuth.routes';
+import { configService } from './services/config.service';
+import { getJobs } from './services/job.service';
 import { client } from './setup';
 import {
   getChildProcessInfo,
@@ -25,11 +27,8 @@ import {
   getOsStatus,
   getRedisStatus,
 } from './utils/healthUtils';
-import { getDisk } from './utils/validationUtils';
-import { checkRedisConnection } from './utils/validationUtils';
-import { configService } from './services/config.service';
 import { loadSwaggerDocument } from './utils/swaggerUtils';
-import { getJobs } from './services/job.service';
+import { checkRedisConnection, getDisk } from './utils/validationUtils';
 
 const swaggerDocument = loadSwaggerDocument(__dirname);
 const app = express();
