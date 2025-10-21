@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { Worker } from 'worker_threads';
 import amqplib, { Channel, Connection, Message } from 'amqplib';
 import { RABBITMQ_URL } from '../env';
 import { logInfo, logError } from '../middlewares/logger.middle';
@@ -144,7 +145,22 @@ export async function processJobs(
         if (!msg) return;
         try {
           const jobData = JSON.parse(msg.content.toString());
-          await handler(jobData);
+          if (jobData.type === 'extract') {
+            // Run extract job in a new worker thread
+            const worker = new Worker(require.resolve('../workers/extractWorker.ts'));
+            worker.postMessage(jobData);
+            worker.on('message', (result) => {
+              // Optionally handle result
+              logInfo('Extract worker finished', { jobId: jobData.jobId, result });
+              worker.terminate();
+            });
+            worker.on('error', (error) => {
+              logError('Extract worker error', { jobId: jobData.jobId, error });
+              worker.terminate();
+            });
+          } else {
+            await handler(jobData);
+          }
           ch.ack(msg);
         } catch (err) {
           ch.ack(msg); // Ack anyway to avoid infinite retry
