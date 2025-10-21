@@ -15,13 +15,14 @@ import { mockPermissions } from '../src/mock/permissions';
 import { mockPrompts } from '../src/mock/prompts';
 import { mockSSOEntries } from '../src/mock/sso';
 import { mockUsers } from '../src/mock/users';
-const { mockAIPlatforms } = require('../src/mock/aiPlatform');
+import { mockAIPlatforms } from '../src/mock/aiPlatform';
+import { mockAIKeys } from '../src/mock/aiKey';
+import { mockBillings } from '../src/mock/billing';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // AIPlatform, AIKey, Billing permissions are now seeded via modular mockPermissions import
-  // Seed AI Platforms
+  // 1. Seed AI Platforms first
   console.log('🤖 Seeding AI Platforms...');
   for (const platform of mockAIPlatforms) {
     await prisma.aIPlatform.upsert({
@@ -31,29 +32,49 @@ async function main() {
     });
   }
 
-  // Seed AI Keys
-  const { mockAIKeys } = require('../src/mock/aiKey');
+  // 2. Seed AI Keys next
   console.log('🔑 Seeding AI Keys...');
   for (const key of mockAIKeys) {
-    await prisma.aIKey.upsert({
-      where: { id: key.id },
-      update: {},
-      create: key,
-    });
+    try {
+      // Validate platformId
+      if (key.platformId && !mockAIPlatforms.find(p => p.id === key.platformId)) {
+        console.warn(`⚠️ Skipping AI Key '${key.id}' (invalid platformId: ${key.platformId})`);
+        continue;
+      }
+      // Optionally validate userId if needed (uncomment if required)
+      // if (key.userId && !mockUsers.find(u => u.id === key.userId)) {
+      //   console.warn(`⚠️ Skipping AI Key '${key.id}' (invalid userId: ${key.userId})`);
+      //   continue;
+      // }
+      await prisma.aIKey.upsert({
+        where: { id: key.id },
+        update: {},
+        create: key,
+      });
+      console.log(`✓ Seeded AI Key: ${key.id}`);
+    } catch (error) {
+      console.error(`❌ Error seeding AI Key '${key.id}':`, error);
+    }
   }
 
-  // Seed Billings
-  const { mockBillings } = require('../src/mock/billing');
-  console.log('💳 Seeding Billings...');
-  for (const billing of mockBillings) {
-    await prisma.billing.upsert({
-      where: { id: billing.id },
-      update: {},
-      create: billing,
+  // 3. Seed Labels (required for all other entities)
+  console.log('🏷️ Seeding Labels...');
+  const createdLabels: Record<string, any> = {};
+  for (const label of mockLabels) {
+    const createdLabel = await prisma.label.upsert({
+      where: { name: label.name },
+      update: { color: label.color },
+      create: { name: label.name, color: label.color },
     });
+    createdLabels[label.name] = createdLabel;
   }
+  const mockLabelId = createdLabels['mock']?.id;
 
-  // Seed Categories
+  // 4. Seed AI Agents before any other AI-related data
+  // Map mock agent IDs to actual user IDs (will be used later)
+  // ...existing code for seeding agents (move up if needed)...
+
+  // 5. Seed Categories
   console.log('📚 Seeding Categories...');
   for (const category of mockCategories) {
     await prisma.category.upsert({
@@ -63,13 +84,23 @@ async function main() {
     });
   }
 
-  // Seed Blogs
+  // 6. Seed Blogs
   console.log('📝 Seeding Blogs...');
   for (const blog of mockBlogs) {
     await prisma.blog.upsert({
       where: { id: blog.id },
       update: {},
       create: blog,
+    });
+  }
+
+  // 7. Seed Billings
+  console.log('💳 Seeding Billings...');
+  for (const billing of mockBillings) {
+    await prisma.billing.upsert({
+      where: { id: billing.id },
+      update: {},
+      create: billing,
     });
   }
   // ...existing code...
@@ -207,26 +238,7 @@ async function main() {
       console.log(`⚠ Error creating job:`, error);
     }
   }
-  // Seed labels first (required for all other entities)
-  console.log('🏷️ Seeding Labels...');
-  const createdLabels: Record<string, any> = {};
-
-  for (const label of mockLabels) {
-    const createdLabel = await prisma.label.upsert({
-      where: { name: label.name },
-      update: {
-        color: label.color,
-      },
-      create: {
-        name: label.name,
-        color: label.color,
-      },
-    });
-    createdLabels[label.name] = createdLabel;
-  }
-
-  // Get the default mock label ID for other entities
-  const mockLabelId = createdLabels['mock']?.id;
+  // ...existing code...
 
   // Seed permissions from mock data
   console.log('🔐 Seeding Permissions...');
