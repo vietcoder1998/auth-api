@@ -173,11 +173,12 @@ async function main() {
   // Seed permissions from mock data
   console.log('🔐 Seeding Permissions...');
 
+  // Use modular mockPermissions array
   const permissionRecords = await Promise.all(
     mockPermissions.map((permission: any) =>
       prisma.permission.upsert({
         where: { name: permission.name },
-        update: {}, // or update fields if needed
+        update: {},
         create: permission,
       }),
     ),

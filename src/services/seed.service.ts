@@ -109,14 +109,14 @@ export class SeedService {
       }
 
       const permissions = await Promise.all(
-        mockPermissions.map((permission) =>
+        mockPermissions.map((permission: any) =>
           prisma.permission.create({
             data: {
               name: permission.name,
               description: permission.description,
               category: permission.category || 'general',
-              route: permission.route,
-              method: permission.method,
+              ...(permission.route ? { route: permission.route } : {}),
+              ...(permission.method ? { method: permission.method } : {}),
             },
           }),
         ),
@@ -153,9 +153,9 @@ export class SeedService {
       const allPermissions = await prisma.permission.findMany();
       const permissionMap = new Map(allPermissions.map((p) => [p.name, p.id]));
 
+      // Use only modular mockPermissions for role seeding
       const roles = await Promise.all(
-        mockRoles.map(async (role) => {
-          // Filter permissions based on role's permission filter
+        mockRoles.map(async (role: any) => {
           const rolePermissions = mockPermissions.filter(role.permissionFilter);
           const permissionIds = rolePermissions
             .map((p) => permissionMap.get(p.name))

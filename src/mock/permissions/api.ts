@@ -1,0 +1,46 @@
+export const apiPermissions = [
+  { name: 'api_access', description: 'Basic API access', category: 'api' },
+  { name: 'api_admin', description: 'Admin API access', category: 'api' },
+  {
+    name: 'auth_health',
+    description: 'GET auth health check endpoint',
+    category: 'api',
+    route: '/api/auth/health',
+    method: 'GET',
+  },
+  {
+    name: 'auth_login',
+    description: 'POST auth login endpoint',
+    category: 'api',
+    route: '/api/auth/login',
+    method: 'POST',
+  },
+  {
+    name: 'auth_register',
+    description: 'POST auth register endpoint',
+    category: 'api',
+    route: '/api/auth/register',
+    method: 'POST',
+  },
+  {
+    name: 'auth_validate',
+    description: 'POST auth validate endpoint',
+    category: 'api',
+    route: '/api/auth/validate',
+    method: 'POST',
+  },
+  {
+    name: 'auth_me',
+    description: 'GET auth me endpoint',
+    category: 'api',
+    route: '/api/auth/me',
+    method: 'GET',
+  },
+  {
+    name: 'auth_handover_user_status',
+    description: 'POST auth handover user status endpoint',
+    category: 'api',
+    route: '/api/auth/handover-user-status',
+    method: 'POST',
+  },
+];
