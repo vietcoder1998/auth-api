@@ -19,6 +19,31 @@ async function getChannel() {
 // Supported job types
 const JOB_TYPES = ['extract', 'file-tuning', 'backup'];
 
+// Get job details with relations
+export async function getJobDetail(id: string) {
+  return prisma.job.findUnique({
+    where: { id },
+    include: {
+      conversations: {
+        include: {
+          conversation: true
+        }
+      },
+      documents: {
+        include: {
+          document: true
+        }
+      },
+      databases: {
+        include: {
+          database: true
+        }
+      },
+      user: true,
+    }
+  });
+}
+
 // Add a job and send to RabbitMQ (Bull-like control)
 export async function addJob(
   type: string,

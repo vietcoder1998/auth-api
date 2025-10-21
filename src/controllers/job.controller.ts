@@ -1,3 +1,7 @@
+export async function getJobDetail(req: Request, res: Response) {
+  const job = await jobService.getJobDetail(req.params.id);
+  res.json({ success: true, data: job });
+}
 import { Request, Response } from 'express';
 import * as jobService from '../services/job.service';
 
