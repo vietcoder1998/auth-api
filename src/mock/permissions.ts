@@ -13,6 +13,14 @@ import { mailTemplatePermissions } from './permissions/mailTemplates';
 import { promptPermissions } from './permissions/prompts';
 import { socketPermissions } from './permissions/socket';
 import { labelPermissions } from './permissions/labels';
+import { dbConnectionPermissions } from './permissions/dbConnections';
+import { loginHistoryPermissions } from './permissions/loginHistory';
+import { logicHistoryPermissions } from './permissions/logicHistory';
+import { configPermissions } from './permissions/config';
+import { agentPermissions } from './permissions/agents';
+import { jobPermissions } from './permissions/jobs';
+import { notificationPermissionsExtra } from './permissions/notifications';
+import { seedPermissions } from './permissions/seed';
 
 export const mockPermissions = [
   ...userPermissions,
@@ -28,6 +36,14 @@ export const mockPermissions = [
   ...promptPermissions,
   ...socketPermissions,
   ...labelPermissions,
+  ...dbConnectionPermissions,
+  ...loginHistoryPermissions,
+  ...logicHistoryPermissions,
+  ...configPermissions,
+  ...agentPermissions,
+  ...jobPermissions,
+  ...notificationPermissionsExtra,
+  ...seedPermissions,
 ];
 
 // Modular mock roles
