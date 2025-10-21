@@ -229,3 +229,8 @@ export async function updateJob(
 export async function deleteJob(id: string) {
   return prisma.job.delete({ where: { id } });
 }
+
+processJobs(async (job) => {
+  // Default handler for unsupported job types
+  logError('No handler for job type', { type: job.type, jobId: job.jobId });
+});
