@@ -2,6 +2,7 @@
 import { userPermissions } from './permissions/user';
 import { rolePermissions } from './permissions/role';
 import { permissionPermissions } from './permissions/permission';
+import { cachePermissions } from './permissions/cache';
 import { systemPermissions } from './permissions/system';
 import { reportPermissions } from './permissions/report';
 import { apiPermissions } from './permissions/api';
@@ -26,6 +27,7 @@ import { documentPermissions } from './permissions/documents';
 import { filePermissions } from './permissions/files';
 import { tokenPermissions } from './permissions/tokens';
 import { conversationPermissions } from './permissions/conversations';
+import { ssoPermissions } from './permissions/sso';
 import { apiKeyPermissions } from './permissions/apiKeys';
 import { jobExamplePermissions } from './permissions/jobExamples';
 
@@ -43,6 +45,7 @@ export const mockPermissions = [
   ...promptPermissions,
   ...socketPermissions,
   ...labelPermissions,
+  ...cachePermissions,
   ...dbConnectionPermissions,
   ...loginHistoryPermissions,
   ...logicHistoryPermissions,
@@ -56,6 +59,7 @@ export const mockPermissions = [
   ...filePermissions,
   ...tokenPermissions,
   ...conversationPermissions,
+  ...ssoPermissions,
   ...apiKeyPermissions,
   ...jobExamplePermissions,
 ];
