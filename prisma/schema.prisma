@@ -614,7 +614,6 @@ model File {
   userId       String?
   JobDocument  JobDocument[]
   Document     Document?
-// Document model (1:1 with File)
 }
 
 model Document {
@@ -625,6 +624,8 @@ model Document {
   url       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  job       Job?     @relation(fields: [jobId], references: [id])
+  jobId     String?  @unique
 
   @@map("document")
 }
@@ -682,6 +683,8 @@ model Job {
 
   // Link to at least one database
   databases JobDatabase[]
+
+  document   Document?
 
   @@map("job")
 }
