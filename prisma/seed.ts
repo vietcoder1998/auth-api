@@ -1,10 +1,13 @@
 /// <reference types="node" />
 import { PrismaClient } from '@prisma/client';
 import { mockAgentMemories, mockAgents, mockAgentTasks, mockAgentTools } from '../src/mock/agents';
+import { mockAIKeys } from '../src/mock/aiKey';
+import { mockAIPlatforms } from '../src/mock/aiPlatform';
+import { mockBillings } from '../src/mock/billing';
+import { mockBlogs, mockCategories } from '../src/mock/blog';
 import { mockConfigs } from '../src/mock/configs';
 import { mockConversations } from '../src/mock/conversations';
 import { mockFaqs } from '../src/mock/faq';
-import { mockBlogs, mockCategories } from '../src/mock/blog';
 import { mockJobs } from '../src/mock/jobs';
 import { mockLabels } from '../src/mock/labels';
 import { mockLogicHistoryEntries } from '../src/mock/logic-history';
@@ -15,9 +18,7 @@ import { mockPermissions } from '../src/mock/permissions';
 import { mockPrompts } from '../src/mock/prompts';
 import { mockSSOEntries } from '../src/mock/sso';
 import { mockUsers } from '../src/mock/users';
-import { mockAIPlatforms } from '../src/mock/aiPlatform';
-import { mockAIKeys } from '../src/mock/aiKey';
-import { mockBillings } from '../src/mock/billing';
+const { mockModels } = require('../src/mock/model');
 
 const prisma = new PrismaClient();
 
@@ -30,6 +31,40 @@ async function main() {
       update: {},
       create: platform,
     });
+  }
+
+  // 1a. Seed AI Models (no agentId)
+  console.log('🧠 Seeding AI Models...');
+  const allPlatforms = await prisma.aIPlatform.findMany();
+  for (const model of mockModels) {
+    const platform = allPlatforms.find((p) => p.name === model.platform);
+    await prisma.aIModel.upsert({
+      where: { name: model.name },
+      update: {},
+      create: {
+        name: model.name,
+        description: model.description,
+        type: model.type,
+        platformId: platform ? platform.id : undefined,
+      },
+    });
+  }
+
+  // After models and agents are seeded, assign modelId to agents
+  const allModels = await prisma.aIModel.findMany();
+  const allAgents = await prisma.agent.findMany();
+  for (const agent of allAgents) {
+    // Use agent.model (string name) to find AIModel
+    let model = allModels.find((m) => m.name === agent.model);
+    if (!model) {
+      model = allModels[0]; // fallback: assign first model
+    }
+    if (model) {
+      await prisma.agent.update({
+        where: { id: agent.id },
+        data: { model: model.id },
+      });
+    }
   }
 
   // 2. Seed AI Keys next
@@ -107,7 +142,6 @@ async function main() {
   // Seed FAQs and related messages (moved to end)
   console.log('❓ Seeding FAQs and FAQ Messages...');
   // Build a mapping from mock agent IDs (names or symbolic IDs) to real agent IDs
-  const allAgents = await prisma.agent.findMany();
   const agentIdMap: Record<string, string> = {};
   for (const agent of allAgents) {
     // Map by name and by id for flexibility
@@ -248,7 +282,7 @@ async function main() {
     mockPermissions.reduce((acc: Record<string, any>, perm: any) => {
       acc[perm.name] = perm;
       return acc;
-    }, {})
+    }, {}),
   );
 
   const permissionRecords = await Promise.all(
@@ -741,12 +775,21 @@ async function main() {
     'user-id': regularUser?.id || '',
   };
 
-  const aiAgents = mockAgents.map((agent) => ({
-    ...agent,
-    userId: agentUserMapping[agent.ownerId] || '',
-    id: undefined, // Remove mock ID to let Prisma generate
-    ownerId: undefined, // Remove mock field
-  }));
+  const aiAgents = [];
+  for (const agent of mockAgents) {
+    let modelId = null;
+    if (agent.model) {
+      const model = await prisma.aIModel.findUnique({ where: { name: agent.model } });
+      if (model) modelId = model.id;
+    }
+    aiAgents.push({
+      ...agent,
+      userId: agentUserMapping[agent.ownerId] || '',
+      id: undefined, // Remove mock ID to let Prisma generate
+      ownerId: undefined, // Remove mock field
+      model: modelId || undefined,
+    });
+  }
 
   const createdAgents: any[] = [];
   for (const agent of aiAgents) {
@@ -764,15 +807,10 @@ async function main() {
         if (!existingAgent) {
           const createdAgent = await prisma.agent.create({
             data: agent,
-            include: {
-              user: {
-                select: { id: true, email: true, nickname: true, status: true },
-              },
-            },
           });
           createdAgents.push(createdAgent);
           console.log(
-            `✓ Created AI agent: ${agent.name} (Owner: ${createdAgent.user?.nickname}, Status: ${agent.isActive ? 'Active' : 'Inactive'})`,
+            `✓ Created AI agent: ${agent.name} (Status: ${agent.isActive ? 'Active' : 'Inactive'})`,
           );
         } else {
           createdAgents.push(existingAgent);

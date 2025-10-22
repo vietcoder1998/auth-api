@@ -1,3 +1,20 @@
+// AI Model table
+model AIModel {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  type        String // e.g. 'gpt', 'claude', 'gemini'
+  platformId  String?
+  platform    AIPlatform? @relation(fields: [platformId], references: [id])
+  // Remove agentId and agent relation; AIModel is referenced by Agent
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  SSO         SSO[]
+  Agent       Agent[]
+
+  @@map("ai_model")
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,6 +40,7 @@ model AIPlatform {
   updatedAt    DateTime       @updatedAt
   Agent        Agent[]
   Conversation Conversation[]
+  models       AIModel[]
 
   @@map("ai_platform")
 }
@@ -332,6 +350,8 @@ model Mail {
 
 model SSO {
   id           String         @id @default(uuid())
+  modelId      String?
+  model        AIModel?       @relation(fields: [modelId], references: [id], onDelete: Cascade)
   url          String
   key          String         @unique
   ssoKey       String?        @unique // Additional SSO key field for identification
@@ -391,7 +411,6 @@ model Agent {
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   description  String?     @db.Text
-  model        String      @default("gpt-4") // LLM model (gpt-4, claude-3, etc.)
   personality  String?     @db.Text // JSON config for personality
   systemPrompt String?     @db.Text
   config       String?     @db.Text // JSON config (temperature, max_tokens, etc.)
@@ -405,10 +424,12 @@ model Agent {
   tools         AgentTool[]
   tasks         AgentTask[]
   aiKeys        AIKeyAgent[]
+  model         AIModel?       @relation(fields: [aIModelId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
   Faq       Faq[]
+  aIModelId String?
 
   @@map("agent")
 }
@@ -426,7 +447,7 @@ model AgentMemory {
   type           String // 'short_term', 'long_term', 'knowledge_base'
   content        String         @db.Text
   embedding      String?        @db.Text // JSON array for vector embeddings
-  tokens         Int?           // Token count for embedded message
+  tokens         Int? // Token count for embedded message
   metadata       String?        @db.Text // JSON metadata (tags, source, date, etc.)
   importance     Int            @default(1) // 1-10 importance score
   createdAt      DateTime       @default(now())
