@@ -404,16 +404,16 @@ export class ConversationService {
     let answerMemory = null;
     if (sender === 'user') {
       // Use message.content as prompt for LLM
-      const agent = await prisma.agent.findUnique({ where: { id: agentId } });
-      const llmResponse = await llmService.generateResponse(
-        [{ role: 'user', content }], // content is the prompt
-        {
-          model: agent?.model || 'gpt-3.5-turbo',
-          systemPrompt: agent?.systemPrompt ?? undefined,
-        }
-      );
-
+      let llmResponse;
       try {
+        llmResponse = await llmService.generateResponseByAgentId(
+          [{ role: 'user', content }],
+          agentId,
+          {
+            systemPrompt: data?.content,
+          }
+        );
+
         // Save agent reply as message
         llmMessage = await prisma.message.create({
           data: {
@@ -453,7 +453,7 @@ export class ConversationService {
             tokens: 0,
             metadata: JSON.stringify({
               error: true,
-              model: agent?.model || 'gpt-3.5-turbo',
+              model: 'error',
               processingTime: 0,
             }),
           },
@@ -467,7 +467,7 @@ export class ConversationService {
           content: `Error: ${err instanceof Error ? err.message : String(err)}`,
           metadata: JSON.stringify({
             error: true,
-            model: agent?.model || 'gpt-3.5-turbo',
+            model: 'error',
           }),
           importance: 1,
         });

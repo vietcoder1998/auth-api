@@ -22,6 +22,62 @@ export interface LLMMessage {
 }
 
 export class LLMService {
+  /**
+   * Generate response using agentId (fetches key and model)
+   */
+  async generateResponseByAgentId(
+    messages: LLMMessage[],
+    agentId: string,
+    options: {
+      temperature?: number;
+      maxTokens?: number;
+      systemPrompt?: string;
+    } = {}
+  ): Promise<LLMResponse> {
+    // Find key and model for agent
+    const aiKey = await this.getApiKeyByAgentId(agentId);
+    const agent = await prisma.agent.findUnique({
+      where: { id: agentId },
+      select: { model: true },
+    });
+    const model = agent?.model || 'gpt-3.5-turbo';
+
+    // Optionally, you could instantiate OpenAI with the key here if needed
+    // For now, just pass model and options to generateResponse
+    return this.generateResponse(messages, {
+      model,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      systemPrompt: options.systemPrompt,
+      // Optionally pass apiKey if you refactor generateResponse to accept it
+    });
+  }
+  /**
+   * Fetch API key for agent by agentId
+   */
+  async getApiKeyByAgentId(agentId: string): Promise<string | null> {
+    try {
+      // Find the first active AIKey linked to the agent via AIKeyAgent
+      const aiKeyAgent = await prisma.aIKeyAgent.findFirst({
+        where: {
+          agentId,
+          aiKey: {
+            isActive: true,
+          },
+        },
+        include: {
+          aiKey: true,
+        },
+      });
+      return aiKeyAgent?.aiKey ? aiKeyAgent.aiKey.key : null;
+    } catch (error) {
+      console.error('Error fetching API key for agent:', error);
+      return null;
+    }
+  }
+
+  // F
+
   async generateResponse(
     messages: LLMMessage[],
     agentConfig: {
