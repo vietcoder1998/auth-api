@@ -27,6 +27,7 @@ import faqRouter from './faq.routes';
 import promptHistoryRouter from './promptHistory.routes';
 import uiConfigRouter from './uiconfig.routes';
 import jobRouter from './job.routes';
+import memoryRouter from './memory.routes';
 import { searchAllEntities } from '../controllers/search.controller';
 import {
   upload,
@@ -66,6 +67,7 @@ router.use('/documents', documentRouter);
 router.use('/faqs', faqRouter);
 router.use('/ui-config', uiConfigRouter);
 router.use('/jobs', jobRouter);
+router.use('/memory', memoryRouter);
 router.get('/search', searchAllEntities);
 
 // ...existing code...
