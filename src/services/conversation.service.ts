@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 
-import { convertToVector } from '../utils/embervector';
 import { MemoryService } from './memory.service';
 const prisma = new PrismaClient();
 
@@ -386,6 +385,7 @@ export class ConversationService {
     // Get agentId from conversation
     const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
     const agentId = conversation?.agentId || metadata?.agentId || '';
+
     // Save message as memory (vector)
     const memory = await MemoryService.create({
       agentId,
@@ -393,11 +393,10 @@ export class ConversationService {
       messageId: message.id,
       type: sender === 'user' ? 'short_term' : 'answer',
       content,
-      embedding: convertToVector(content),
-      tokens,
       metadata: metadata ? JSON.stringify(metadata) : null,
       importance: 1,
     });
+
     // If answer, also save as memory and link to question
     let answerMemory = null;
     if (sender === 'agent' && metadata?.questionMessageId) {
@@ -407,8 +406,6 @@ export class ConversationService {
         messageId: message.id,
         type: 'answer',
         content,
-        embedding: convertToVector(content),
-        tokens,
         metadata: JSON.stringify({ ...metadata, linkedQuestion: metadata.questionMessageId }),
         importance: 1,
       });

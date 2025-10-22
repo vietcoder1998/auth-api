@@ -1,8 +1,15 @@
 import { PrismaClient } from '@prisma/client';
+import { convertToVector } from '../utils/embervector';
 const prisma = new PrismaClient();
 
 export class MemoryService {
   static async create(data: any) {
+    // Embed vector and token count before saving
+    if (data.content) {
+      const { vector, tokens } = await convertToVector(data.content);
+      data.embedding = vector;
+      data.tokens = tokens;
+    }
     return prisma.agentMemory.create({ data });
   }
 
