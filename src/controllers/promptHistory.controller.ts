@@ -92,3 +92,14 @@ export async function getAllPromptHistories(req: Request, res: Response) {
   const prompts = await promptHistoryService.getAllPrompts();
   res.json(prompts);
 }
+
+// AI prompt generation endpoint
+export async function generatePrompt(req: Request, res: Response) {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ error: 'Prompt required' });
+
+  // Example: just echo the prompt, or call your AI service here
+  // Replace with real AI integration as needed
+  const generated = `AI generated response for: ${prompt}`;
+  res.json({ data: generated });
+}
