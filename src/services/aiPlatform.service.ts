@@ -2,7 +2,15 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const createAIPlatform = async (data: any) => {
-  return prisma.aIPlatform.create({ data });
+  const { aiModelIds, ...rest } = data;
+  return prisma.aIPlatform.create({
+    data: {
+      ...rest,
+      models: aiModelIds && Array.isArray(aiModelIds)
+        ? { connect: aiModelIds.map((id: string) => ({ id })) }
+        : undefined,
+    },
+  });
 };
 
 export const getAIPlatforms = async () => {
@@ -14,7 +22,16 @@ export const getAIPlatformById = async (id: string) => {
 };
 
 export const updateAIPlatform = async (id: string, data: any) => {
-  return prisma.aIPlatform.update({ where: { id }, data });
+  const { aiModelIds, ...rest } = data;
+  return prisma.aIPlatform.update({
+    where: { id },
+    data: {
+      ...rest,
+      models: aiModelIds && Array.isArray(aiModelIds)
+        ? { set: aiModelIds.map((id: string) => ({ id })) }
+        : undefined,
+    },
+  });
 };
 
 export const deleteAIPlatform = async (id: string) => {
