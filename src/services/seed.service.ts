@@ -404,7 +404,8 @@ export class SeedService {
         });
 
         if (!existing) {
-          await prisma.agent.create({ data: agent });
+          const { model, ...agentData } = agent;
+          await prisma.agent.create({ data: agentData });
           createdCount++;
         }
       }

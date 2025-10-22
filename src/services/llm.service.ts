@@ -34,23 +34,29 @@ export class LLMService {
       systemPrompt?: string;
     } = {}
   ): Promise<LLMResponse> {
-    // Find key and model for agent
-    const aiKey = await this.getApiKeyByAgentId(agentId);
-    const agent = await prisma.agent.findUnique({
-      where: { id: agentId },
-      select: { model: true },
-    });
-    const model = agent?.model || 'gpt-3.5-turbo';
-
-    // Optionally, you could instantiate OpenAI with the key here if needed
-    // For now, just pass model and options to generateResponse
-    return this.generateResponse(messages, {
-      model,
-      temperature: options.temperature,
-      maxTokens: options.maxTokens,
-      systemPrompt: options.systemPrompt,
-      // Optionally pass apiKey if you refactor generateResponse to accept it
-    });
+    try {
+      // Find key and model for agent
+      const aiKey = await this.getApiKeyByAgentId(agentId);
+      const agent = await prisma.agent.findUnique({
+        where: { id: agentId },
+        include: { model: true },
+      });
+      const model = typeof agent?.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo';
+      return await this.generateResponse(messages, {
+        model,
+        temperature: options.temperature,
+        maxTokens: options.maxTokens,
+        systemPrompt: options.systemPrompt,
+      });
+    } catch (error) {
+      return {
+        content: error instanceof Error ? error.message : String(error),
+        tokens: 0,
+        model: 'error',
+        processingTime: 0,
+        metadata: { isError: true },
+      };
+    }
   }
   /**
    * Fetch API key for agent by agentId
@@ -71,7 +77,8 @@ export class LLMService {
       });
       return aiKeyAgent?.aiKey ? aiKeyAgent.aiKey.key : null;
     } catch (error) {
-      console.error('Error fetching API key for agent:', error);
+      // Improved error typing: always return null, but log error
+      logInfo('Error fetching API key for agent:', error);
       return null;
     }
   }
@@ -155,8 +162,9 @@ export class LLMService {
           memories: {
             where: { type: 'long_term' },
             orderBy: { importance: 'desc' },
-            take: 5, // Get top 5 important memories
+            take: 5,
           },
+          model: true,
         },
       });
 
@@ -204,7 +212,7 @@ export class LLMService {
 
       // Generate response
       return await this.generateResponse(messages, {
-        model: agent.model,
+        model: typeof agent.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo',
         temperature: config.temperature,
         maxTokens: config.maxTokens,
         systemPrompt,

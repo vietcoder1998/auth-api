@@ -54,15 +54,12 @@ async function main() {
   const allModels = await prisma.aIModel.findMany();
   const allAgents = await prisma.agent.findMany();
   for (const agent of allAgents) {
-    // Use agent.model (string name) to find AIModel
-    let model = allModels.find((m) => m.name === agent.model);
-    if (!model) {
-      model = allModels[0]; // fallback: assign first model
-    }
-    if (model) {
+    // Assign the first AIModel's id to agent.model (relation)
+    const modelId = allModels[0]?.id;
+    if (modelId) {
       await prisma.agent.update({
         where: { id: agent.id },
-        data: { model: model.id },
+        data: { model: { connect: { id: modelId } } },
       });
     }
   }
@@ -777,17 +774,18 @@ async function main() {
 
   const aiAgents = [];
   for (const agent of mockAgents) {
-    let modelId = null;
+    let aIModelId = undefined;
     if (agent.model) {
       const model = await prisma.aIModel.findUnique({ where: { name: agent.model } });
-      if (model) modelId = model.id;
+      if (model) aIModelId = model.id;
     }
+    const { model, ...agentData } = agent;
     aiAgents.push({
-      ...agent,
+      ...agentData,
       userId: agentUserMapping[agent.ownerId] || '',
       id: undefined, // Remove mock ID to let Prisma generate
       ownerId: undefined, // Remove mock field
-      model: modelId || undefined,
+      aIModelId,
     });
   }
 
