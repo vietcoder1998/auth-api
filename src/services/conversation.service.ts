@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 import { MemoryService } from './memory.service';
+import { llmService } from './llm.service';
 const prisma = new PrismaClient();
 
 export interface CreateConversationData {
@@ -363,30 +364,31 @@ export class ConversationService {
    */
   async addMessage(data: CreateMessageData) {
     const { conversationId, sender, content, metadata, tokens } = data;
-    // Get current message count for position
-    const messageCount = await prisma.message.count({
-      where: { conversationId },
-    });
+
+    // Save user message (prompt)
+    const messageCount = await prisma.message.count({ where: { conversationId } });
     const message = await prisma.message.create({
       data: {
         conversationId,
         sender,
-        content,
+        content, // This is the prompt
         metadata: metadata ? JSON.stringify(metadata) : null,
         position: messageCount,
         tokens,
       },
     });
+
     // Update conversation's updatedAt
     await prisma.conversation.update({
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
+
     // Get agentId from conversation
     const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
     const agentId = conversation?.agentId || metadata?.agentId || '';
 
-    // Save message as memory (vector)
+    // Save user message as memory
     const memory = await MemoryService.create({
       agentId,
       conversationId,
@@ -397,23 +399,86 @@ export class ConversationService {
       importance: 1,
     });
 
-    // If answer, also save as memory and link to question
+    // If sender is user, call LLM and save response as agent message and memory
+    let llmMessage = null;
     let answerMemory = null;
-    if (sender === 'agent' && metadata?.questionMessageId) {
-      answerMemory = await MemoryService.create({
-        agentId,
-        conversationId,
-        messageId: message.id,
-        type: 'answer',
-        content,
-        metadata: JSON.stringify({ ...metadata, linkedQuestion: metadata.questionMessageId }),
-        importance: 1,
-      });
+    if (sender === 'user') {
+      // Use message.content as prompt for LLM
+      const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+      const llmResponse = await llmService.generateResponse(
+        [{ role: 'user', content }], // content is the prompt
+        {
+          model: agent?.model || 'gpt-3.5-turbo',
+          systemPrompt: agent?.systemPrompt ?? undefined,
+        }
+      );
+
+      try {
+        // Save agent reply as message
+        llmMessage = await prisma.message.create({
+          data: {
+            conversationId,
+            sender: 'agent',
+            content: llmResponse.content,
+            tokens: llmResponse.tokens,
+            metadata: JSON.stringify({
+              model: llmResponse.model,
+              processingTime: llmResponse.processingTime,
+              ...llmResponse.metadata,
+              relatedUserMessageId: message.id, // link to prompt
+            }),
+          },
+        });
+
+        // Save agent reply as memory
+        answerMemory = await MemoryService.create({
+          agentId,
+          conversationId,
+          messageId: llmMessage.id,
+          type: 'answer',
+          content: llmResponse.content,
+          metadata: JSON.stringify({
+            model: llmResponse.model,
+            relatedUserMessageId: message.id,
+          }),
+          importance: 1,
+        });
+      } catch (err) {
+        // If error, push an error message as answer (not linked to question)
+        llmMessage = await prisma.message.create({
+          data: {
+            conversationId,
+            sender: 'agent',
+            content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+            tokens: 0,
+            metadata: JSON.stringify({
+              error: true,
+              model: agent?.model || 'gpt-3.5-turbo',
+              processingTime: 0,
+            }),
+          },
+        });
+
+        answerMemory = await MemoryService.create({
+          agentId,
+          conversationId,
+          messageId: llmMessage.id,
+          type: 'answer',
+          content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+          metadata: JSON.stringify({
+            error: true,
+            model: agent?.model || 'gpt-3.5-turbo',
+          }),
+          importance: 1,
+        });
+      }
     }
+
     return {
       ...message,
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
       memory,
+      llmMessage,
       answerMemory,
     };
   }
