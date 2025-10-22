@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import aiModelRouter from './aiModel.routes';
 import userRouter from './user.routes';
 import aiPlatformRouter from './aiPlatform.routes';
 import aiKeyRouter from './aiKey.routes';
@@ -41,6 +42,7 @@ import systemRouter from './system.routes';
 const router = Router();
 
 router.use('/users', userRouter);
+router.use('/ai-models', aiModelRouter);
 router.use('/ai-platforms', aiPlatformRouter);
 router.use('/ai-keys', aiKeyRouter);
 router.use('/billings', billingRouter);
