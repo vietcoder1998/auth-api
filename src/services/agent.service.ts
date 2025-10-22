@@ -7,6 +7,7 @@ export interface CreateAgentData {
   name: string;
   description?: string;
   model?: string;
+  aiModelId?: string;
   personality?: any;
   systemPrompt?: string;
   config?: any;
@@ -16,6 +17,7 @@ export interface UpdateAgentData {
   name?: string;
   description?: string;
   model?: string;
+  aiModelId?: string;
   personality?: any;
   systemPrompt?: string;
   config?: any;
@@ -27,14 +29,14 @@ export class AgentService {
    * Create a new agent
    */
   async createAgent(data: CreateAgentData) {
-    const { userId, name, description, model, personality, systemPrompt, config } = data;
+    const { userId, name, description, model, aiModelId, personality, systemPrompt, config } = data;
 
     const agent = await prisma.agent.create({
       data: {
         userId,
         name,
         description,
-        model: model || 'gpt-4',
+        aIModelId: aiModelId,
         personality: personality ? JSON.stringify(personality) : null,
         systemPrompt,
         config: config
@@ -48,6 +50,7 @@ export class AgentService {
         user: {
           select: { id: true, email: true, nickname: true },
         },
+        model: true,
         _count: {
           select: {
             conversations: true,
@@ -59,7 +62,13 @@ export class AgentService {
       },
     });
 
-    return agent;
+    // Parse JSON fields and always include model
+    return {
+      ...agent,
+      personality: agent.personality ? JSON.parse(agent.personality) : null,
+      config: agent.config ? JSON.parse(agent.config) : null,
+      model: agent.model || null,
+    };
   }
 
   /**
@@ -72,6 +81,7 @@ export class AgentService {
         user: {
           select: { id: true, email: true, nickname: true },
         },
+        model: true,
         memories: {
           orderBy: { createdAt: 'desc' },
           take: 10,
@@ -97,6 +107,7 @@ export class AgentService {
       ...agent,
       personality: agent.personality ? JSON.parse(agent.personality) : null,
       config: agent.config ? JSON.parse(agent.config) : null,
+      model: agent.model || null,
     };
 
     return parsedAgent;
@@ -116,6 +127,11 @@ export class AgentService {
       updateData.config = JSON.stringify(data.config);
     }
 
+    if (data.aiModelId) {
+      updateData.model = { connect: { id: data.aiModelId } };
+      delete updateData.aiModelId;
+    }
+
     const agent = await prisma.agent.update({
       where: { id },
       data: updateData,
@@ -123,6 +139,7 @@ export class AgentService {
         user: {
           select: { id: true, email: true, nickname: true },
         },
+        model: true,
         _count: {
           select: {
             conversations: true,
@@ -139,6 +156,7 @@ export class AgentService {
       ...agent,
       personality: agent.personality ? JSON.parse(agent.personality) : null,
       config: agent.config ? JSON.parse(agent.config) : null,
+      model: agent.model || null,
     };
 
     return parsedAgent;
@@ -156,15 +174,25 @@ export class AgentService {
   /**
    * Get agents for user
    */
-  async getUserAgents(userId: string, page: number = 1, limit: number = 20) {
+  async getUserAgents(userId: string, page: number = 1, limit: number = 20, search?: string) {
     const skip = (page - 1) * limit;
+
+    // Build search filter
+    const where: any = { userId };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
     const [agents, total] = await Promise.all([
       prisma.agent.findMany({
-        where: { userId },
+        where,
         skip,
         take: limit,
         include: {
+          model: true,
           _count: {
             select: {
               conversations: true,
@@ -176,7 +204,7 @@ export class AgentService {
         },
         orderBy: { updatedAt: 'desc' },
       }),
-      prisma.agent.count({ where: { userId } }),
+      prisma.agent.count({ where }),
     ]);
 
     // Parse JSON fields
@@ -184,6 +212,7 @@ export class AgentService {
       ...agent,
       personality: agent.personality ? JSON.parse(agent.personality) : null,
       config: agent.config ? JSON.parse(agent.config) : null,
+      model: agent.model || null,
     }));
 
     return {
