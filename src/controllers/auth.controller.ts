@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 // Update the path below to the correct location of your Redis client setup file
 import { client } from '../setup';
-import { generateToken, generateRefreshToken, validateToken } from '../services/auth.service';
+import { generateToken, generateRefreshToken, validateToken, generateAccessTokenFromRefreshToken, getTokenExpiration } from '../services/auth.service';
 import { HistoryService } from '../services/history.service';
 import { Request, Response } from 'express';
 const prisma = new PrismaClient();
@@ -40,18 +40,30 @@ export async function login(req: Request, res: Response) {
     );
     const refreshToken = generateRefreshToken({ userId: user.id }, '7d');
 
+    // Get expiration dates
+    const accessTokenExpiresAt = getTokenExpiration(accessToken);
+    const refreshTokenExpiresAt = getTokenExpiration(refreshToken);
+
     // Save tokens in DB
     const tokenRecord = await prisma.token.create({
       data: {
         userId: user.id,
         accessToken,
         refreshToken,
-        expiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour
+        expiresAt: accessTokenExpiresAt || new Date(Date.now() + 3600 * 1000), // 1 hour fallback
+        refreshExpiresAt: refreshTokenExpiresAt || new Date(Date.now() + 7 * 24 * 3600 * 1000), // 7 days fallback
       },
     });
 
     // Cache access token in Redis
     await cacheToken(accessToken, user.id, 3600);
+    // Cache refresh token in Redis
+    if (refreshTokenExpiresAt) {
+      const ttl = Math.floor((refreshTokenExpiresAt.getTime() - Date.now()) / 1000);
+      if (ttl > 0) {
+        await cacheToken(refreshToken, user.id, ttl);
+      }
+    }
 
     // Record successful login using HistoryService
     const loginHistory = await HistoryService.recordLogin(user.id, req);
@@ -71,11 +83,27 @@ export async function login(req: Request, res: Response) {
 
     res.json({
       accessToken,
+      accessTokenExpiresAt,
       refreshToken,
+      refreshTokenExpiresAt,
       loginHistoryId: loginHistory?.id, // Return for potential logout tracking
     });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// Generate new access token from refresh token
+export function refreshAccessToken(req: Request, res: Response) {
+  try {
+    const { refreshToken } = req.body;
+    const result = generateAccessTokenFromRefreshToken(refreshToken);
+    if (!result) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+    res.json(result);
+  } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }

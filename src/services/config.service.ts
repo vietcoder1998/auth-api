@@ -330,12 +330,11 @@ export class ConfigService {
   async getAllowedOrigins(): Promise<string[]> {
     try {
       const configs = await prisma.config.findMany({ where: { key: 'cors_origin' } });
-      if (configs && configs.length > 0) {
-        return configs.map((c) => c.value);
-      }
-      // Fallback to env or default
+      const dbOrigins = configs.map((c) => c.value);
       const envOrigins = (env.CORS_ORIGIN || '').split(',').filter(Boolean);
-      return envOrigins.length > 0 ? envOrigins : ['http://localhost:5173'];
+      // Merge and deduplicate
+      const mergedOrigins = Array.from(new Set([...envOrigins, ...dbOrigins])).filter(Boolean);
+      return mergedOrigins.length > 0 ? mergedOrigins : ['http://localhost:5173'];
     } catch (err) {
       return ['http://localhost:5173'];
     }

@@ -211,7 +211,8 @@ model Token {
   accessToken  String   @unique @db.VarChar(500)
   refreshToken String   @unique @db.VarChar(500)
   createdAt    DateTime @default(now())
-  expiresAt    DateTime
+  expiresAt    DateTime @default(now())
+  refreshExpiresAt DateTime @default(now())
   user         User     @relation(fields: [userId], references: [id])
 
   @@map("token")
