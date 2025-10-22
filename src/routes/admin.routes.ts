@@ -67,10 +67,8 @@ router.use('/documents', documentRouter);
 router.use('/faqs', faqRouter);
 router.use('/ui-config', uiConfigRouter);
 router.use('/jobs', jobRouter);
-router.use('/memory', memoryRouter);
+router.use('/memories', memoryRouter);
 router.get('/search', searchAllEntities);
-
-// ...existing code...
 router.use('/system', systemRouter);
 router.post('/files/upload', upload.single('file'), uploadFile);
 router.get('/files/:filename', getFile);
