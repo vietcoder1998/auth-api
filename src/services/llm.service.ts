@@ -1,6 +1,18 @@
 import OpenAI from 'openai';
+import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
 import { logInfo } from '../middlewares/logger.middle';
+
+export interface AgentConfig {
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  systemPrompt?: string;
+  modelType?: string;
+  cloudApiUrl?: string;
+  geminiApiUrl?: string;
+  [key: string]: any;
+}
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -22,6 +34,112 @@ export interface LLMMessage {
 }
 
 export class LLMService {
+  // Default config for cloud and gemini endpoints
+  private readonly cloudConfig = {
+    apiUrl: process.env.LLM_CLOUD_API_URL || 'https://api.llmcloud.example.com/v1/chat',
+    apiKey: process.env.LLM_CLOUD_API_KEY || '', // Add your cloud API key here
+    timeout: 10000, // ms
+    headers: {
+      'Content-Type': 'application/json',
+      // You can add Authorization or other headers here
+    },
+  };
+
+  private readonly geminiConfig = {
+    apiUrl: process.env.LLM_GEMINI_API_URL || 'https://api.gemini.example.com/v1/chat',
+    apiKey: process.env.LLM_GEMINI_API_KEY || '', // Add your Gemini API key here
+    timeout: 10000, // ms
+    headers: {
+      'Content-Type': 'application/json',
+      // You can add Authorization or other headers here
+    },
+  };
+
+  // Call LLM Cloud (via axios)
+  private async callLLMCloud(messages: LLMMessage[], agentConfig: AgentConfig): Promise<LLMResponse> {
+    try {
+      const url = agentConfig.cloudApiUrl || this.cloudConfig.apiUrl;
+      const response = await axios.post(
+        url,
+        { messages, ...agentConfig },
+        {
+          headers: {
+            ...this.cloudConfig.headers,
+            ...(this.cloudConfig.apiKey ? { Authorization: `Bearer ${this.cloudConfig.apiKey}` } : {}),
+          },
+          timeout: this.cloudConfig.timeout,
+        }
+      );
+      return response.data as LLMResponse;
+    } catch (error) {
+      return this.generateMockResponse();
+    }
+  }
+
+  // Call Gemini (via axios)
+  private async callGemini(messages: LLMMessage[], agentConfig: AgentConfig): Promise<LLMResponse> {
+    try {
+      const url = agentConfig.geminiApiUrl || this.geminiConfig.apiUrl;
+      const response = await axios.post(
+        url,
+        { messages, ...agentConfig },
+        {
+          headers: {
+            ...this.geminiConfig.headers,
+            ...(this.geminiConfig.apiKey ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` } : {}),
+          },
+          timeout: this.geminiConfig.timeout,
+        }
+      );
+      return response.data as LLMResponse;
+    } catch (error) {
+      return this.generateMockResponse();
+    }
+  }
+
+  // Call GPT (OpenAI)
+  private async callGPT(messages: LLMMessage[], agentConfig: AgentConfig): Promise<LLMResponse> {
+    const startTime = Date.now();
+    const model = agentConfig.model || 'gpt-3.5-turbo';
+    const temperature = agentConfig.temperature ?? 0.7;
+    const maxTokens = agentConfig.maxTokens ?? 1000;
+    const preparedMessages: LLMMessage[] = [];
+    if (agentConfig.systemPrompt) {
+      preparedMessages.push({ role: 'system', content: agentConfig.systemPrompt });
+    }
+    preparedMessages.push(...messages);
+    try {
+      const response = await client.chat.completions.create({
+        model,
+        messages: preparedMessages,
+        temperature,
+        max_tokens: maxTokens,
+      });
+      const processingTime = Date.now() - startTime;
+      const choice = response.choices[0];
+      const content = choice?.message?.content ?? '';
+      const finishReason = choice?.finish_reason ?? null;
+      return {
+        content,
+        tokens: response.usage?.total_tokens ?? 0,
+        model: response.model,
+        processingTime,
+        metadata: {
+          promptTokens: response.usage?.prompt_tokens,
+          completionTokens: response.usage?.completion_tokens,
+          finishReason,
+        },
+      };
+    } catch (error) {
+      return {
+        content: error instanceof Error ? error.message : String(error),
+        tokens: 0,
+        model: 'error',
+        processingTime: Date.now() - startTime,
+        metadata: { isError: true },
+      };
+    }
+  }
   /**
    * Generate response using agentId (fetches key and model)
    */
@@ -87,53 +205,22 @@ export class LLMService {
 
   async generateResponse(
     messages: LLMMessage[],
-    agentConfig: {
-      model?: string;
-      temperature?: number;
-      maxTokens?: number;
-      systemPrompt?: string;
-    } = {},
+    agentConfig: AgentConfig = {},
   ): Promise<LLMResponse> {
     const startTime = Date.now();
 
     try {
-      const model = agentConfig.model || 'gpt-3.5-turbo';
-      const temperature = agentConfig.temperature ?? 0.7;
-      const maxTokens = agentConfig.maxTokens ?? 1000;
-
-      // Prepare messages for OpenAI
-      const preparedMessages: LLMMessage[] = [];
-      if (agentConfig.systemPrompt) {
-        preparedMessages.push({
-          role: 'system',
-          content: agentConfig.systemPrompt,
-        });
+      // Switch by model type (from agentConfig.modelType)
+      const modelType = agentConfig.modelType || 'gpt';
+      if (modelType === 'gpt') {
+        return await this.callGPT(messages, agentConfig);
+      } else if (modelType === 'gemini') {
+        return await this.callGemini(messages, agentConfig);
+      } else if (modelType === 'cloud') {
+        return await this.callLLMCloud(messages, agentConfig);
+      } else {
+        return this.generateMockResponse();
       }
-      preparedMessages.push(...messages);
-
-      const response = await client.chat.completions.create({
-        model,
-        messages: preparedMessages,
-        temperature,
-        max_tokens: maxTokens,
-      });
-
-      const processingTime = Date.now() - startTime;
-      const choice = response.choices[0];
-      const content = choice?.message?.content ?? '';
-      const finishReason = choice?.finish_reason ?? null;
-
-      return {
-        content,
-        tokens: response.usage?.total_tokens ?? 0,
-        model: response.model,
-        processingTime,
-        metadata: {
-          promptTokens: response.usage?.prompt_tokens,
-          completionTokens: response.usage?.completion_tokens,
-          finishReason,
-        },
-      };
     } catch (error) {
       console.error('LLM Service error:', error);
       return {
@@ -211,11 +298,14 @@ export class LLMService {
       messages.push({ role: 'user', content: userMessage });
 
       // Generate response
+      // Pass modelType from agent.model.type if available
+      const modelType = agent.model?.type || 'gpt';
       return await this.generateResponse(messages, {
         model: typeof agent.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo',
         temperature: config.temperature,
         maxTokens: config.maxTokens,
         systemPrompt,
+        modelType,
       });
     } catch (error) {
       console.error('Generate conversation response error:', error);
