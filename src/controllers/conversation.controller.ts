@@ -1,35 +1,20 @@
-import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
+import { conversationService } from '../services/conversation.service';
 import { llmService } from '../services/llm.service';
 import { commandService } from '../services/command.service';
 
-const prisma = new PrismaClient();
-
 // --- PromptHistory CRUD ---
-
-// Create a new prompt for a conversation
 export async function createPromptHistory(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
     const { conversationId, prompt } = req.body;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    if (!conversationId || !prompt)
-      return res.status(400).json({ error: 'conversationId and prompt required' });
-
-    // Check conversation ownership
-    const conversation = await prisma.conversation.findFirst({
-      where: { id: conversationId, userId },
-    });
-    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
-
-    const promptHistory = await prisma.promptHistory.create({
-      data: { conversationId, prompt },
-    });
-
+    if (!conversationId || !prompt) return res.status(400).json({ error: 'conversationId and prompt required' });
+    const promptHistory = await conversationService.createPromptHistory(userId, conversationId, prompt);
     res.status(201).json(promptHistory);
   } catch (err) {
-    console.error('Create prompt history error:', err);
-    res.status(500).json({ error: 'Failed to create prompt history' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to create prompt history';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -39,22 +24,11 @@ export async function getPromptHistories(req: Request, res: Response) {
     const userId = req.user?.id;
     const { conversationId } = req.params;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-    // Check conversation ownership
-    const conversation = await prisma.conversation.findFirst({
-      where: { id: conversationId, userId },
-    });
-    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
-
-    const prompts = await prisma.promptHistory.findMany({
-      where: { conversationId },
-      orderBy: { createdAt: 'asc' },
-    });
-
+    const prompts = await conversationService.getPromptHistories(userId, conversationId);
     res.json(prompts);
   } catch (err) {
-    console.error('Get prompt histories error:', err);
-    res.status(500).json({ error: 'Failed to fetch prompt histories' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to fetch prompt histories';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -65,21 +39,11 @@ export async function updatePromptHistory(req: Request, res: Response) {
     const { id } = req.params;
     const { prompt } = req.body;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-    const existing = await prisma.promptHistory.findUnique({ where: { id } });
-    if (!existing) return res.status(404).json({ error: 'Prompt not found' });
-
-    // Optionally check conversation ownership here
-
-    const updated = await prisma.promptHistory.update({
-      where: { id },
-      data: { prompt },
-    });
-
+    const updated = await conversationService.updatePromptHistory(userId, id, prompt);
     res.json(updated);
   } catch (err) {
-    console.error('Update prompt history error:', err);
-    res.status(500).json({ error: 'Failed to update prompt history' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to update prompt history';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -89,17 +53,11 @@ export async function deletePromptHistory(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-    const existing = await prisma.promptHistory.findUnique({ where: { id } });
-    if (!existing) return res.status(404).json({ error: 'Prompt not found' });
-
-    // Optionally check conversation ownership here
-
-    await prisma.promptHistory.delete({ where: { id } });
+    await conversationService.deletePromptHistory(userId, id);
     res.json({ message: 'Prompt deleted' });
   } catch (err) {
-    console.error('Delete prompt history error:', err);
-    res.status(500).json({ error: 'Failed to delete prompt history' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to delete prompt history';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -107,112 +65,12 @@ export async function deletePromptHistory(req: Request, res: Response) {
 export async function getConversations(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
-
-    // Extract query parameters
-    const {
-      agentId,
-      page = '1',
-      limit = '20',
-      pageSize = limit,
-      search = '',
-      q = search,
-      sortBy = 'updatedAt',
-      sortOrder = 'desc',
-    } = req.query;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    // Parse pagination parameters
-    const currentPage = Math.max(1, parseInt(page as string, 10));
-    const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
-    const skip = (currentPage - 1) * currentLimit;
-
-    // Build where clause for search and filters
-    const whereClause: any = { userId };
-
-    // Agent filter (support comma-separated agent IDs)
-    if (agentId && typeof agentId === 'string') {
-      if (agentId.includes(',')) {
-        // Multiple agent IDs
-        whereClause.agentId = { in: agentId.split(',').map((id) => id.trim()) };
-      } else {
-        whereClause.agentId = agentId;
-      }
-    }
-
-    // Search across multiple fields
-    if (q && typeof q === 'string' && q.trim()) {
-      const searchTerm = q.trim();
-      whereClause.OR = [
-        { title: { contains: searchTerm } },
-        {
-          messages: {
-            some: {
-              content: { contains: searchTerm },
-            },
-          },
-        },
-      ];
-    }
-
-    // Build orderBy clause
-    const orderBy: any = {};
-    if (sortBy === 'title') {
-      orderBy.title = sortOrder;
-    } else if (sortBy === 'createdAt') {
-      orderBy.createdAt = sortOrder;
-    } else if (sortBy === 'updatedAt') {
-      orderBy.updatedAt = sortOrder;
-    } else {
-      orderBy.updatedAt = 'desc'; // Default
-    }
-
-    // Get total count for pagination
-    const total = await prisma.conversation.count({ where: whereClause });
-
-    // Get conversations with pagination
-    const conversations = await prisma.conversation.findMany({
-      where: whereClause,
-      include: {
-        user: {
-          select: { id: true, email: true, nickname: true, status: true },
-        },
-        agent: {
-          select: { id: true, name: true, model: true, isActive: true },
-        },
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { id: true, content: true, sender: true, createdAt: true, tokens: true },
-        },
-        _count: {
-          select: { messages: true },
-        },
-      },
-      orderBy,
-      skip,
-      take: currentLimit,
-    });
-
-    // Transform the data to include lastMessage
-    const transformedConversations = conversations.map((conv) => ({
-      ...conv,
-      lastMessage: conv.messages[0] || null,
-      messages: undefined, // Remove the messages array since we only want the last one
-    }));
-
-    res.json({
-      data: transformedConversations,
-      total,
-      page: currentPage,
-      limit: currentLimit,
-      totalPages: Math.ceil(total / currentLimit),
-    });
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    const result = await conversationService.getConversations(userId, req.query);
+    res.json(result);
   } catch (err) {
-    console.error('Get conversations error:', err);
-    res.status(500).json({ error: 'Failed to fetch conversations' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to fetch conversations';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -221,47 +79,13 @@ export async function createConversation(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
     const { agentId, title } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    if (!agentId) {
-      return res.status(400).json({ error: 'Agent ID is required' });
-    }
-
-    // Check if agent belongs to user
-    const agent = await prisma.agent.findFirst({
-      where: { id: agentId, userId },
-    });
-
-    if (!agent) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-
-    const conversation = await prisma.conversation.create({
-      data: {
-        userId,
-        agentId,
-        title: title || 'New Conversation',
-      },
-      include: {
-        user: {
-          select: { id: true, email: true, nickname: true, status: true },
-        },
-        agent: {
-          select: { id: true, name: true, model: true, isActive: true },
-        },
-        _count: {
-          select: { messages: true },
-        },
-      },
-    });
-
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    if (!agentId) return res.status(400).json({ error: 'Agent ID is required' });
+    const conversation = await conversationService.createConversation(userId, agentId, title);
     res.status(201).json(conversation);
   } catch (err) {
-    console.error('Create conversation error:', err);
-    res.status(500).json({ error: 'Failed to create conversation' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to create conversation';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -271,56 +95,14 @@ export async function getConversation(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params;
     const { page = 1, limit = 50 } = req.query;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
-
-    // Get conversation
-    const conversation = await prisma.conversation.findFirst({
-      where: { id, userId },
-      include: {
-        user: {
-          select: { id: true, email: true, nickname: true, status: true },
-        },
-        agent: {
-          select: { id: true, name: true, model: true, systemPrompt: true, isActive: true },
-        },
-      },
-    });
-
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    // Get messages with pagination
-    const [messages, totalMessages] = await Promise.all([
-      prisma.message.findMany({
-        where: { conversationId: id },
-        orderBy: { position: 'asc' },
-        skip,
-        take: limitNum,
-      }),
-      prisma.message.count({ where: { conversationId: id } }),
-    ]);
-
-    res.json({
-      ...conversation,
-      messages: {
-        data: messages,
-        total: totalMessages,
-        page: pageNum,
-        limit: limitNum,
-        totalPages: Math.ceil(totalMessages / limitNum),
-      },
-    });
+    const result = await conversationService.getConversation(userId, id, pageNum, limitNum);
+    res.json(result);
   } catch (err) {
-    console.error('Get conversation error:', err);
-    res.status(500).json({ error: 'Failed to fetch conversation' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to fetch conversation';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -328,153 +110,38 @@ export async function getConversation(req: Request, res: Response) {
 export async function getMessages(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
-    const { id } = req.params; // conversation id
+    const { id } = req.params;
     const { page = 1, limit = 100, sortOrder = 'asc' } = req.query;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    // Check if conversation belongs to user
-    const conversation = await prisma.conversation.findFirst({
-      where: { id, userId },
-    });
-
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
-
-    // Get messages with pagination
-    const [messages, totalMessages] = await Promise.all([
-      prisma.message.findMany({
-        where: { conversationId: id },
-        orderBy: { position: sortOrder === 'desc' ? 'desc' : 'asc' },
-        skip,
-        take: limitNum,
-      }),
-      prisma.message.count({ where: { conversationId: id } }),
-    ]);
-
-    res.json({
-      data: messages,
-      total: totalMessages,
-      page: pageNum,
-      limit: limitNum,
-      totalPages: Math.ceil(totalMessages / limitNum),
-      conversationId: id,
-    });
+    // Use the correct method from the service
+    const result = await conversationService.getConversationMessages(id, pageNum, limitNum);
+    res.json(result);
   } catch (err) {
-    console.error('Get messages error:', err);
-    res.status(500).json({ error: 'Failed to fetch messages' });
+    const errorMsg = err instanceof Error ? err.message : 'Failed to fetch messages';
+    res.status(500).json({ error: errorMsg });
   }
 }
 
-// Add message to conversation
 export async function addMessage(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
-    const { id } = req.params; // conversation id
+    const { id } = req.params;
     const { content, sender = 'user', metadata } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    if (!content) {
-      return res.status(400).json({ error: 'Message content is required' });
-    }
-
-    // Check if conversation belongs to user
-    const conversation = await prisma.conversation.findFirst({
-      where: { id, userId },
-      include: {
-        agent: {
-          select: { id: true, name: true, model: true, systemPrompt: true, config: true },
-        },
-      },
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    if (!content) return res.status(400).json({ error: 'Message content is required' });
+    // Use the correct method signature for addMessage
+    const result = await conversationService.addMessage({
+      conversationId: id,
+      sender,
+      content,
+      metadata,
     });
-
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    // Get the next position for this conversation
-    const lastMessage = await prisma.message.findFirst({
-      where: { conversationId: id },
-      orderBy: { position: 'desc' },
-    });
-    const nextPosition = (lastMessage?.position || 0) + 1;
-
-    // Create user message
-    const message = await prisma.message.create({
-      data: {
-        conversationId: id,
-        sender,
-        content,
-        metadata: metadata ? JSON.stringify(metadata) : null,
-        position: nextPosition,
-      },
-    });
-
-    // Update conversation timestamp
-    await prisma.conversation.update({
-      where: { id },
-      data: { updatedAt: new Date() },
-    });
-
-    // If it's a user message, generate AI response
-    if (sender === 'user') {
-      try {
-        const aiResponse = await llmService.generateConversationResponse(
-          id,
-          content,
-          conversation.agent.id,
-        );
-        const aiMessage = await prisma.message.create({
-          data: {
-            conversationId: id,
-            sender: 'agent',
-            content: aiResponse.content,
-            metadata: JSON.stringify(aiResponse.metadata),
-            tokens: aiResponse.tokens,
-            position: nextPosition + 1,
-          },
-        });
-
-        res.status(201).json({
-          userMessage: message,
-          aiMessage: aiMessage,
-          messages: [message, aiMessage],
-          aiMetadata: {
-            model: aiResponse.model,
-            tokens: aiResponse.tokens,
-            processingTime: aiResponse.processingTime,
-          },
-        });
-      } catch (aiError) {
-        console.error('AI response generation failed:', aiError);
-        // Still return the user message even if AI fails
-        res.status(201).json({
-          userMessage: message,
-          aiMessage: null,
-          messages: [message],
-          aiError: 'AI response generation failed',
-        });
-      }
-    } else {
-      res.status(201).json({
-        userMessage: message,
-        aiMessage: null,
-        messages: [message],
-      });
-    }
+    res.status(201).json(result);
   } catch (err) {
-    console.error('Add message error:', err);
-    res.status(500).json({ error: 'Failed to add message' });
+    const errorMsg = err instanceof Error ? err.message : 'Failed to add message';
+    res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -484,45 +151,16 @@ export async function updateConversation(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id } = req.params;
     const { title, summary, isActive } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    // Check if conversation belongs to user
-    const existingConversation = await prisma.conversation.findFirst({
-      where: { id, userId },
-    });
-
-    if (!existingConversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
     if (summary !== undefined) updateData.summary = summary;
     if (isActive !== undefined) updateData.isActive = isActive;
-
-    const updatedConversation = await prisma.conversation.update({
-      where: { id },
-      data: updateData,
-      include: {
-        user: {
-          select: { id: true, email: true, nickname: true, status: true },
-        },
-        agent: {
-          select: { id: true, name: true, model: true, isActive: true },
-        },
-        _count: {
-          select: { messages: true },
-        },
-      },
-    });
-
+    const updatedConversation = await conversationService.updateConversation(userId, id, updateData);
     res.json(updatedConversation);
   } catch (err) {
-    console.error('Update conversation error:', err);
-    res.status(500).json({ error: 'Failed to update conversation' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to update conversation';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -531,28 +169,12 @@ export async function deleteConversation(req: Request, res: Response) {
   try {
     const userId = req.user?.id;
     const { id } = req.params;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    // Check if conversation belongs to user
-    const existingConversation = await prisma.conversation.findFirst({
-      where: { id, userId },
-    });
-
-    if (!existingConversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    await prisma.conversation.delete({
-      where: { id },
-    });
-
-    res.json({ message: 'Conversation deleted successfully' });
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    const result = await conversationService.deleteConversation(userId, id);
+    res.json(result);
   } catch (err) {
-    console.error('Delete conversation error:', err);
-    res.status(500).json({ error: 'Failed to delete conversation' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to delete conversation';
+  res.status(500).json({ error: errorMsg });
   }
 }
 
@@ -564,51 +186,12 @@ export async function executeCommand(req: Request, res: Response) {
     const userId = req.user?.id;
     const { id: conversationId } = req.params;
     const { type, parameters } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    if (!type) {
-      return res.status(400).json({ error: 'Command type is required' });
-    }
-
-    // Check if conversation belongs to user
-    const conversation = await prisma.conversation.findFirst({
-      where: { id: conversationId, userId },
-      include: { agent: true },
-    });
-
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    // Execute command
-    const result = await commandService.processCommand({
-      conversationId,
-      userId,
-      agentId: conversation.agentId,
-      type,
-      parameters,
-    });
-
-    // Log the command execution
-    await prisma.message.create({
-      data: {
-        conversationId,
-        sender: 'system',
-        content: `Command executed: /${type} - ${result.message}`,
-        metadata: JSON.stringify({
-          command: type,
-          parameters,
-          result: result.success,
-        }),
-      },
-    });
-
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    if (!type) return res.status(400).json({ error: 'Command type is required' });
+    const result = await conversationService.executeCommand(userId, conversationId, type, parameters, commandService);
     res.json(result);
   } catch (err) {
-    console.error('Execute command error:', err);
-    res.status(500).json({ error: 'Failed to execute command' });
+  const errorMsg = err instanceof Error ? err.message : 'Failed to execute command';
+  res.status(500).json({ error: errorMsg });
   }
 }

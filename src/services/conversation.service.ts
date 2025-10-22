@@ -1,6 +1,12 @@
 import { PrismaClient } from '@prisma/client';
+import { MemoryService } from './memory.service';
 
 const prisma = new PrismaClient();
+
+function convertToVector(content: string): string {
+  // TODO: Replace with real vector embedding logic
+  return JSON.stringify([Math.random(), Math.random(), Math.random()]);
+}
 
 export interface CreateConversationData {
   userId: string;
@@ -24,20 +30,142 @@ export interface CreateMessageData {
 
 export class ConversationService {
   /**
-   * Create a new conversation
+   * Create a new prompt history for a conversation
    */
-  async createConversation(data: CreateConversationData) {
-    const { userId, agentId, title } = data;
+  async createPromptHistory(userId: string, conversationId: string, prompt: string) {
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+    });
+    if (!conversation) throw new Error('Conversation not found');
+    const promptHistory = await prisma.promptHistory.create({
+      data: { conversationId, prompt },
+    });
+    return promptHistory;
+  }
 
-    // Verify agent belongs to user
+  /**
+   * Get all prompt histories for a conversation
+   */
+  async getPromptHistories(userId: string, conversationId: string) {
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+    });
+    if (!conversation) throw new Error('Conversation not found');
+    return await prisma.promptHistory.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /**
+   * Update a prompt history
+   */
+  async updatePromptHistory(userId: string, id: string, prompt: string) {
+    const existing = await prisma.promptHistory.findUnique({ where: { id } });
+    if (!existing) throw new Error('Prompt not found');
+    return await prisma.promptHistory.update({
+      where: { id },
+      data: { prompt },
+    });
+  }
+
+  /**
+   * Delete a prompt history
+   */
+  async deletePromptHistory(userId: string, id: string) {
+    const existing = await prisma.promptHistory.findUnique({ where: { id } });
+    if (!existing) throw new Error('Prompt not found');
+    await prisma.promptHistory.delete({ where: { id } });
+    return { message: 'Prompt deleted' };
+  }
+
+  async getConversations(userId: string, query: any) {
+    const {
+      agentId,
+      page = '1',
+      limit = '20',
+      pageSize = limit,
+      search = '',
+      q = search,
+      sortBy = 'updatedAt',
+      sortOrder = 'desc',
+    } = query;
+    const currentPage = Math.max(1, parseInt(page as string, 10));
+    const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
+    const skip = (currentPage - 1) * currentLimit;
+    const whereClause: any = { userId };
+    if (agentId && typeof agentId === 'string') {
+      if (agentId.includes(',')) {
+        whereClause.agentId = { in: agentId.split(',').map((id: string) => id.trim()) };
+      } else {
+        whereClause.agentId = agentId;
+      }
+    }
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      whereClause.OR = [
+        { title: { contains: searchTerm } },
+        {
+          messages: {
+            some: {
+              content: { contains: searchTerm },
+            },
+          },
+        },
+      ];
+    }
+    const orderBy: any = {};
+    if (sortBy === 'title') {
+      orderBy.title = sortOrder;
+    } else if (sortBy === 'createdAt') {
+      orderBy.createdAt = sortOrder;
+    } else if (sortBy === 'updatedAt') {
+      orderBy.updatedAt = sortOrder;
+    } else {
+      orderBy.updatedAt = 'desc';
+    }
+    const total = await prisma.conversation.count({ where: whereClause });
+    const conversations = await prisma.conversation.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: { id: true, email: true, nickname: true, status: true },
+        },
+        agent: {
+          select: { id: true, name: true, model: true, isActive: true },
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { id: true, content: true, sender: true, createdAt: true, tokens: true },
+        },
+        _count: {
+          select: { messages: true },
+        },
+      },
+      orderBy,
+      skip,
+      take: currentLimit,
+    });
+    const transformedConversations = conversations.map((conv) => ({
+      ...conv,
+      lastMessage: conv.messages[0] || null,
+      messages: undefined,
+    }));
+    return {
+      data: transformedConversations,
+      total,
+      page: currentPage,
+      limit: currentLimit,
+      totalPages: Math.ceil(total / currentLimit),
+    };
+  }
+
+  async createConversation(userId: string, agentId: string, title?: string) {
     const agent = await prisma.agent.findFirst({
       where: { id: agentId, userId },
     });
-
-    if (!agent) {
-      throw new Error('Agent not found or does not belong to user');
-    }
-
+    if (!agent) throw new Error('Agent not found or does not belong to user');
     const conversation = await prisma.conversation.create({
       data: {
         userId,
@@ -46,7 +174,7 @@ export class ConversationService {
       },
       include: {
         user: {
-          select: { id: true, email: true, nickname: true },
+          select: { id: true, email: true, nickname: true, status: true },
         },
         agent: {
           select: { id: true, name: true, model: true, isActive: true },
@@ -56,9 +184,79 @@ export class ConversationService {
         },
       },
     });
-
     return conversation;
   }
+
+  async getConversation(userId: string, id: string, page: number = 1, limit: number = 50) {
+    const conversation = await prisma.conversation.findFirst({
+      where: { id, userId },
+      include: {
+        user: {
+          select: { id: true, email: true, nickname: true, status: true },
+        },
+        agent: {
+          select: { id: true, name: true, model: true, systemPrompt: true, isActive: true },
+        },
+      },
+    });
+    if (!conversation) throw new Error('Conversation not found');
+    const skip = (page - 1) * limit;
+    const [messages, totalMessages] = await Promise.all([
+      prisma.message.findMany({
+        where: { conversationId: id },
+        orderBy: { position: 'asc' },
+        skip,
+        take: limit,
+      }),
+      prisma.message.count({ where: { conversationId: id } }),
+    ]);
+    return {
+      ...conversation,
+      messages: {
+        data: messages,
+        total: totalMessages,
+        page,
+        limit,
+        totalPages: Math.ceil(totalMessages / limit),
+      },
+    };
+  }
+
+  async updateConversation(userId: string, id: string, updateData: any) {
+    const existingConversation = await prisma.conversation.findFirst({
+      where: { id, userId },
+    });
+    if (!existingConversation) throw new Error('Conversation not found');
+    const conversation = await prisma.conversation.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: {
+          select: { id: true, email: true, nickname: true, status: true },
+        },
+        agent: {
+          select: { id: true, name: true, model: true, isActive: true },
+        },
+        _count: {
+          select: { messages: true },
+        },
+      },
+    });
+    return conversation;
+  }
+
+  async deleteConversation(userId: string, id: string) {
+    const existingConversation = await prisma.conversation.findFirst({
+      where: { id, userId },
+    });
+    if (!existingConversation) throw new Error('Conversation not found');
+    await prisma.conversation.delete({ where: { id } });
+    return { message: 'Conversation deleted successfully' };
+  }
+
+  /**
+   * Create a new conversation
+   */
 
   /**
    * Get conversation by ID
@@ -101,34 +299,10 @@ export class ConversationService {
   /**
    * Update conversation
    */
-  async updateConversation(id: string, data: UpdateConversationData) {
-    const conversation = await prisma.conversation.update({
-      where: { id },
-      data,
-      include: {
-        user: {
-          select: { id: true, email: true, nickname: true },
-        },
-        agent: {
-          select: { id: true, name: true, model: true, isActive: true },
-        },
-        _count: {
-          select: { messages: true },
-        },
-      },
-    });
-
-    return conversation;
-  }
 
   /**
    * Delete conversation
    */
-  async deleteConversation(id: string) {
-    return await prisma.conversation.delete({
-      where: { id },
-    });
-  }
 
   /**
    * Get user conversations
@@ -194,12 +368,10 @@ export class ConversationService {
    */
   async addMessage(data: CreateMessageData) {
     const { conversationId, sender, content, metadata, tokens } = data;
-
     // Get current message count for position
     const messageCount = await prisma.message.count({
       where: { conversationId },
     });
-
     const message = await prisma.message.create({
       data: {
         conversationId,
@@ -207,15 +379,38 @@ export class ConversationService {
         content,
         metadata: metadata ? JSON.stringify(metadata) : null,
         position: messageCount,
+        tokens,
       },
     });
-
     // Update conversation's updatedAt
     await prisma.conversation.update({
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
-
+    // Save message as memory (vector)
+    await MemoryService.create({
+      agentId: metadata?.agentId || '',
+      conversationId,
+      messageId: message.id,
+      type: sender === 'user' ? 'short_term' : 'answer',
+      content,
+      embedding: convertToVector(content),
+      metadata: metadata ? JSON.stringify(metadata) : null,
+      importance: 1,
+    });
+    // If answer, also save as memory and link to question
+    if (sender === 'agent' && metadata?.questionMessageId) {
+      await MemoryService.create({
+        agentId: metadata?.agentId || '',
+        conversationId,
+        messageId: message.id,
+        type: 'answer',
+        content,
+        embedding: convertToVector(content),
+        metadata: JSON.stringify({ ...metadata, linkedQuestion: metadata.questionMessageId }),
+        importance: 1,
+      });
+    }
     return {
       ...message,
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
@@ -409,6 +604,34 @@ export class ConversationService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async executeCommand(userId: string, conversationId: string, type: string, parameters: any, commandService: any) {
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+      include: { agent: true },
+    });
+    if (!conversation) throw new Error('Conversation not found');
+    const result = await commandService.processCommand({
+      conversationId,
+      userId,
+      agentId: conversation.agentId,
+      type,
+      parameters,
+    });
+    await prisma.message.create({
+      data: {
+        conversationId,
+        sender: 'system',
+        content: `Command executed: /${type} - ${result.message}`,
+        metadata: JSON.stringify({
+          command: type,
+          parameters,
+          result: result.success,
+        }),
+      },
+    });
+    return result;
   }
 }
 

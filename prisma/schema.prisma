@@ -426,6 +426,7 @@ model AgentMemory {
   type           String // 'short_term', 'long_term', 'knowledge_base'
   content        String         @db.Text
   embedding      String?        @db.Text // JSON array for vector embeddings
+  tokens         Int?           // Token count for embedded message
   metadata       String?        @db.Text // JSON metadata (tags, source, date, etc.)
   importance     Int            @default(1) // 1-10 importance score
   createdAt      DateTime       @default(now())
