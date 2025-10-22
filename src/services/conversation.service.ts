@@ -1,12 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+
+import { convertToVector } from '../utils/embervector';
 import { MemoryService } from './memory.service';
-
 const prisma = new PrismaClient();
-
-function convertToVector(content: string): string {
-  // TODO: Replace with real vector embedding logic
-  return JSON.stringify([Math.random(), Math.random(), Math.random()]);
-}
 
 export interface CreateConversationData {
   userId: string;
@@ -387,26 +383,32 @@ export class ConversationService {
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
+    // Get agentId from conversation
+    const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
+    const agentId = conversation?.agentId || metadata?.agentId || '';
     // Save message as memory (vector)
-    await MemoryService.create({
-      agentId: metadata?.agentId || '',
+    const memory = await MemoryService.create({
+      agentId,
       conversationId,
       messageId: message.id,
       type: sender === 'user' ? 'short_term' : 'answer',
       content,
       embedding: convertToVector(content),
+      tokens,
       metadata: metadata ? JSON.stringify(metadata) : null,
       importance: 1,
     });
     // If answer, also save as memory and link to question
+    let answerMemory = null;
     if (sender === 'agent' && metadata?.questionMessageId) {
-      await MemoryService.create({
-        agentId: metadata?.agentId || '',
+      answerMemory = await MemoryService.create({
+        agentId,
         conversationId,
         messageId: message.id,
         type: 'answer',
         content,
         embedding: convertToVector(content),
+        tokens,
         metadata: JSON.stringify({ ...metadata, linkedQuestion: metadata.questionMessageId }),
         importance: 1,
       });
@@ -414,6 +416,8 @@ export class ConversationService {
     return {
       ...message,
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
+      memory,
+      answerMemory,
     };
   }
 
