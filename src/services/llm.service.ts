@@ -1,5 +1,10 @@
+import OpenAI from 'openai';
 import { PrismaClient } from '@prisma/client';
 import { logInfo } from '../middlewares/logger.middle';
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const prisma = new PrismaClient();
 
@@ -17,64 +22,6 @@ export interface LLMMessage {
 }
 
 export class LLMService {
-  private apiKey: string;
-  private baseUrl: string;
-  private isApiConnected: boolean = false;
-
-  constructor() {
-    this.apiKey = process.env.OPENAI_API_KEY || '';
-    this.baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-
-    // Ping OpenAI API on initialization
-    this.pingOpenAI();
-  }
-
-  /**
-   * Ping OpenAI API to test connection
-   */
-  private async pingOpenAI(): Promise<void> {
-    try {
-      if (!this.apiKey) {
-        console.log('⚠️  OpenAI API key not configured');
-        this.isApiConnected = false;
-        return;
-      }
-
-      console.log('🔄 Testing OpenAI API connection...');
-
-      const response = await fetch(`${this.baseUrl}/models`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const modelCount = data.data?.length || 0;
-        console.log(`✅ OpenAI API connected successfully! Available models: ${modelCount}`);
-        this.isApiConnected = true;
-      } else {
-        console.error(`❌ OpenAI API connection failed: ${response.status} ${response.statusText}`);
-        this.isApiConnected = false;
-      }
-    } catch (error) {
-      console.error('❌ OpenAI API ping failed:', error instanceof Error ? error.message : error);
-      this.isApiConnected = false;
-    }
-  }
-
-  /**
-   * Get API connection status
-   */
-  isConnected(): boolean {
-    return this.isApiConnected;
-  }
-
-  /**
-   * Generate AI response using OpenAI API
-   */
   async generateResponse(
     messages: LLMMessage[],
     agentConfig: {
@@ -87,102 +34,45 @@ export class LLMService {
     const startTime = Date.now();
 
     try {
-      // If API is not connected, return mock response
-      if (!this.isApiConnected) {
-        console.log('OpenAI API not connected, returning mock response');
-        return this.generateMockResponse();
-      }
+      const model = agentConfig.model || 'gpt-3.5-turbo';
+      const temperature = agentConfig.temperature ?? 0.7;
+      const maxTokens = agentConfig.maxTokens ?? 1000;
 
-      const model = 'gpt-3.5-turbo';
-      const temperature = agentConfig.temperature || 0.7;
-      const maxTokens = agentConfig.maxTokens || 1000;
-
-      // Prepare messages with system prompt
+      // Prepare messages for OpenAI
       const preparedMessages: LLMMessage[] = [];
-
       if (agentConfig.systemPrompt) {
         preparedMessages.push({
           role: 'system',
           content: agentConfig.systemPrompt,
         });
       }
-
       preparedMessages.push(...messages);
-      logInfo(model);
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: preparedMessages,
-          temperature,
-          max_tokens: maxTokens,
-          stream: false,
-        }),
+
+      const response = await client.chat.completions.create({
+        model,
+        messages: preparedMessages,
+        temperature,
+        max_tokens: maxTokens,
       });
 
-      logInfo('GPT response', response);
-
-      if (!response.ok) {
-        // Save error message to DB as agent message
-        const errorMsg = `AI Error: ${response.status} ${response.statusText}`;
-        if (messages && messages.length > 0) {
-          // Try to get conversationId and agentId from context if possible
-          // (Assume last message has conversationId and agentId in real use)
-          // This is a placeholder; adapt as needed for your actual message structure
-          const conversationId = (messages as any)[0]?.conversationId;
-          const agentId = (messages as any)[0]?.agentId;
-          if (conversationId && agentId) {
-            await prisma.message.create({
-              data: {
-                conversationId,
-                sender: 'agent',
-                content: errorMsg,
-                agentId,
-                isError: true,
-              },
-            });
-          }
-        }
-        throw new Error(errorMsg);
-      }
-
-      const data = await response.json();
       const processingTime = Date.now() - startTime;
+      const choice = response.choices[0];
+      const content = choice?.message?.content ?? '';
+      const finishReason = choice?.finish_reason ?? null;
 
       return {
-        content: data.choices[0].message.content,
-        tokens: data.usage.total_tokens,
-        model: data.model,
+        content,
+        tokens: response.usage?.total_tokens ?? 0,
+        model: response.model,
         processingTime,
         metadata: {
-          promptTokens: data.usage.prompt_tokens,
-          completionTokens: data.usage.completion_tokens,
-          finishReason: data.choices[0].finish_reason,
+          promptTokens: response.usage?.prompt_tokens,
+          completionTokens: response.usage?.completion_tokens,
+          finishReason,
         },
       };
     } catch (error) {
       console.error('LLM Service error:', error);
-      // Save error message to DB as agent message (fallback)
-      if (messages && messages.length > 0) {
-        const conversationId = (messages as any)[0]?.conversationId;
-        const agentId = (messages as any)[0]?.agentId;
-        if (conversationId && agentId) {
-          await prisma.message.create({
-            data: {
-              conversationId,
-              sender: 'agent',
-              content: error instanceof Error ? error.message : String(error),
-              agentId,
-              isError: true,
-            },
-          });
-        }
-      }
-      // Return error as AI response
       return {
         content: error instanceof Error ? error.message : String(error),
         tokens: 0,
