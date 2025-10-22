@@ -1,3 +1,4 @@
+
 import { PrismaClient } from '@prisma/client';
 // Update the path below to the correct location of your Redis client setup file
 import { client } from '../setup';
@@ -367,6 +368,55 @@ export async function handoverUserStatus(req: Request, res: Response) {
     res.json({ user });
   } catch (error) {
     console.error('Handover user status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// Revoke refresh token
+export async function revokeRefreshToken(req: Request, res: Response) {
+  try {
+    const { tokenId } = req.params;
+    // Find token record
+    const tokenRecord = await prisma.token.findUnique({ where: { id: tokenId } });
+    if (!tokenRecord) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+    // Invalidate refresh token in DB
+    await prisma.token.update({
+      where: { id: tokenId },
+      data: { refreshExpiresAt: new Date() },
+    });
+    // Remove from Redis
+    await client.del(`token:${tokenRecord.refreshToken}`);
+    res.json({ message: 'Refresh token revoked successfully' });
+  } catch (error) {
+    console.error('Revoke refresh token error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// Generate new access token from refresh token
+export async function generateAccessTokenFromRefresh(req: Request, res: Response) {
+  try {
+    const { refreshToken } = req.body;
+    // Validate refresh token
+    const tokenRecord = await prisma.token.findFirst({ where: { refreshToken } });
+    if (!tokenRecord || new Date(tokenRecord.refreshExpiresAt) < new Date()) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+    // Generate new access token
+    const accessToken = generateToken({ userId: tokenRecord.userId }, '1h');
+    const accessTokenExpiresAt = getTokenExpiration(accessToken);
+    // Update DB
+    await prisma.token.update({
+      where: { id: tokenRecord.id },
+      data: { accessToken, expiresAt: accessTokenExpiresAt ?? new Date(Date.now() + 3600 * 1000) },
+    });
+    // Cache new access token
+    await cacheToken(accessToken, tokenRecord.userId, 3600);
+    res.json({ accessToken, accessTokenExpiresAt });
+  } catch (error) {
+    console.error('Generate access token from refresh error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
