@@ -148,6 +148,7 @@ model Message {
   faqId           String?
   faq             Faq?           @relation(fields: [faqId], references: [id])
   createdAt       DateTime       @default(now())
+  AgentMemory     AgentMemory[]
 
   @@index([conversationId, position])
   @@map("message")
@@ -206,14 +207,14 @@ model Permission {
 }
 
 model Token {
-  id           String   @id @default(uuid())
-  userId       String
-  accessToken  String   @unique @db.VarChar(500)
-  refreshToken String   @unique @db.VarChar(500)
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime @default(now())
+  id               String   @id @default(uuid())
+  userId           String
+  accessToken      String   @unique @db.VarChar(500)
+  refreshToken     String   @unique @db.VarChar(500)
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime @default(now())
   refreshExpiresAt DateTime @default(now())
-  user         User     @relation(fields: [userId], references: [id])
+  user             User     @relation(fields: [userId], references: [id])
 
   @@map("token")
 }
@@ -413,16 +414,21 @@ model Agent {
 }
 
 model AgentMemory {
-  id         String  @id @default(uuid())
-  agentId    String
-  agent      Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  type       String // 'short_term', 'long_term', 'knowledge_base'
-  content    String  @db.Text
-  embedding  String? @db.Text // JSON array for vector embeddings
-  metadata   String? @db.Text // JSON metadata (tags, source, date, etc.)
-  importance Int     @default(1) // 1-10 importance score
-
-  createdAt DateTime @default(now())
+  id             String         @id @default(uuid())
+  agentId        String
+  agent          Agent          @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  promptId       String?
+  prompt         PromptHistory? @relation(fields: [promptId], references: [id])
+  conversationId String?
+  conversation   Conversation?  @relation(fields: [conversationId], references: [id])
+  messageId      String?
+  message        Message?       @relation(fields: [messageId], references: [id])
+  type           String // 'short_term', 'long_term', 'knowledge_base'
+  content        String         @db.Text
+  embedding      String?        @db.Text // JSON array for vector embeddings
+  metadata       String?        @db.Text // JSON metadata (tags, source, date, etc.)
+  importance     Int            @default(1) // 1-10 importance score
+  createdAt      DateTime       @default(now())
 
   @@map("agent_memory")
 }
@@ -449,6 +455,7 @@ model Conversation {
   Faq             Faq[]
   JobConversation JobConversation[]
   Billing         Billing[]
+  AgentMemory     AgentMemory[]
 
   @@map("conversation")
 }
@@ -460,8 +467,9 @@ model PromptHistory {
   createdAt      DateTime @default(now())
 
   messages     Message[] // <-- Messages generated from this prompt
-  Conversation Conversation @relation(fields: [conversationId], references: [id])
+  Conversation Conversation  @relation(fields: [conversationId], references: [id])
   Faq          Faq[]
+  AgentMemory  AgentMemory[]
 
   @@index([conversationId])
   @@map("prompt_history")
@@ -685,7 +693,7 @@ model Job {
   // Link to at least one database
   databases JobDatabase[]
 
-  document   Document?
+  document Document?
 
   @@map("job")
 }
