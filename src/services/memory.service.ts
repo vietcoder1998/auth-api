@@ -13,8 +13,20 @@ export class MemoryService {
     return prisma.agentMemory.create({ data });
   }
 
-  static async getAll() {
-    return prisma.agentMemory.findMany();
+  static async getAll(query?: { q?: string }) {
+    const where = query?.q
+      ? {
+          OR: [
+            { content: { contains: query.q, mode: 'insensitive' } },
+            { type: { contains: query.q, mode: 'insensitive' } },
+            { agentId: { contains: query.q, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+    return prisma.agentMemory.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   static async getById(id: string) {
