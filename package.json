@@ -16,6 +16,9 @@
     "docker:local:down": "docker-compose -f docker-compose.local.yml down"
   },
   "dependencies": {
+    "@google/genai": "^1.26.0",
+    "@google/generative-ai": "^0.24.1",
+    "@pinecone-database/pinecone": "^6.1.2",
     "@prisma/client": "^4.16.2",
     "@types/cors": "^2.8.19",
     "@types/redis": "^4.0.10",

@@ -65,6 +65,7 @@ export class LLMService {
   private async callLLMCloud(
     messages: LLMMessage[],
     agentConfig: AgentConfig,
+    aiKey?: string | null
   ): Promise<LLMResponse> {
     try {
       const url = agentConfig.cloudApiUrl || this.cloudConfig.apiUrl;
@@ -74,15 +75,13 @@ export class LLMService {
         {
           headers: {
             ...this.cloudConfig.headers,
-            ...(this.cloudConfig.apiKey
+            ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : this.cloudConfig.apiKey
               ? { Authorization: `Bearer ${this.cloudConfig.apiKey}` }
               : {}),
           },
           timeout: this.cloudConfig.timeout,
         },
       );
-      console.log('Gemini response:', response.data);
-
       return response.data as LLMResponse;
     } catch (error) {
       return this.generateMockResponse();
@@ -90,7 +89,11 @@ export class LLMService {
   }
 
   // Call Gemini (via axios)
-  private async callGemini(messages: LLMMessage[], agentConfig: AgentConfig): Promise<LLMResponse> {
+  private async callGemini(
+    messages: LLMMessage[],
+    agentConfig: AgentConfig,
+    aiKey?: string | null
+  ): Promise<LLMResponse> {
     try {
       const url = agentConfig.geminiApiUrl || this.geminiConfig.apiUrl;
       const response = await axios.post(
@@ -99,14 +102,13 @@ export class LLMService {
         {
           headers: {
             ...this.geminiConfig.headers,
-            ...(this.geminiConfig.apiKey
+            ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : this.geminiConfig.apiKey
               ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` }
               : {}),
           },
           timeout: this.geminiConfig.timeout,
         },
       );
-      console.log('Gemini response:', response.data);
       return response.data as LLMResponse;
     } catch (error) {
       return this.generateMockResponse();
@@ -114,7 +116,11 @@ export class LLMService {
   }
 
   // Call GPT (OpenAI)
-  private async callGPT(messages: LLMMessage[], agentConfig: AgentConfig): Promise<LLMResponse> {
+  private async callGPT(
+    messages: LLMMessage[],
+    agentConfig: AgentConfig,
+    aiKey?: string | null
+  ): Promise<LLMResponse> {
     const startTime = Date.now();
     const model = agentConfig.model || 'gpt-3.5-turbo';
     const temperature = agentConfig.temperature ?? 0.7;
@@ -125,7 +131,10 @@ export class LLMService {
     }
     preparedMessages.push(...messages);
     try {
-      const response = await client.chat.completions.create({
+      const openaiClient = new OpenAI({
+        apiKey: aiKey || process.env.OPENAI_API_KEY,
+      });
+      const response = await openaiClient.chat.completions.create({
         model,
         messages: preparedMessages,
         temperature,
@@ -177,12 +186,14 @@ export class LLMService {
       });
       const model =
         typeof agent?.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo';
+      const modelType = agent?.model?.type || 'gpt';
       return await this.generateResponse(messages, {
         model,
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         systemPrompt: options.systemPrompt,
-      });
+        modelType,
+      }, aiKey);
     } catch (error) {
       return {
         content: error instanceof Error ? error.message : String(error),
@@ -223,19 +234,19 @@ export class LLMService {
   async generateResponse(
     messages: LLMMessage[],
     agentConfig: AgentConfig = {},
+    aiKey?: string | null
   ): Promise<LLMResponse> {
     const startTime = Date.now();
-
     try {
       // Switch by model type (from agentConfig.modelType)
       const modelType = this.getModelType(agentConfig.modelType);
       switch (modelType) {
         case 'gpt':
-          return await this.callGPT(messages, agentConfig);
+          return await this.callGPT(messages, agentConfig, aiKey);
         case 'gemini':
-          return await this.callGemini(messages, agentConfig);
+          return await this.callGemini(messages, agentConfig, aiKey);
         case 'cloud':
-          return await this.callLLMCloud(messages, agentConfig);
+          return await this.callLLMCloud(messages, agentConfig, aiKey);
         default:
           return this.generateMockResponse();
       }
@@ -260,7 +271,7 @@ export class LLMService {
     agentId: string,
   ): Promise<LLMResponse> {
     try {
-      // Get agent configuration
+      const aiKey = await this.getApiKeyByAgentId(agentId);
       const agent = await prisma.agent.findUnique({
         where: { id: agentId },
         include: {
@@ -325,7 +336,7 @@ export class LLMService {
         maxTokens: config.maxTokens,
         systemPrompt,
         modelType,
-      });
+      }, aiKey);
     } catch (error) {
       console.error('Generate conversation response error:', error);
       return this.generateMockResponse();

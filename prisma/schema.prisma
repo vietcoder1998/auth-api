@@ -125,7 +125,7 @@ model Label {
   name         String        @unique
   color        String?
   createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  updatedAt    DateTime      @default(now())
   description  String?
   entityLabels EntityLabel[]
 
@@ -144,7 +144,7 @@ model Notification {
   read         Boolean               @default(false)
   status       Int                   @default(1) // 1=active, 0=hidden/deleted
   createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
+  updatedAt    DateTime              @default(now())
 
   @@map("notification")
 }
@@ -205,7 +205,7 @@ model Role {
   permissions Permission[]
   users       User[]
   createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  updatedAt   DateTime     @default(now())
 
   @@map("role")
 }
@@ -446,7 +446,7 @@ model AgentMemory {
   message        Message?       @relation(fields: [messageId], references: [id])
   type           String // 'short_term', 'long_term', 'knowledge_base'
   content        String         @db.Text
-  embedding      String?        @db.Text // JSON array for vector embeddings
+  vectorId       String?        // <-- NEW: stores Redis vector key
   tokens         Int? // Token count for embedded message
   metadata       String?        @db.Text // JSON metadata (tags, source, date, etc.)
   importance     Int            @default(1) // 1-10 importance score
@@ -640,7 +640,7 @@ model File {
   type         String        @default("document")
   path         String
   createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  updatedAt    DateTime      @default(now())
   User         User?         @relation(fields: [userId], references: [id])
   userId       String?
   JobDocument  JobDocument[]
@@ -667,7 +667,7 @@ model UiConfig {
   value     String   @db.Text
   role      String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@map("ui_config")
 }
