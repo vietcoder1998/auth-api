@@ -45,40 +45,6 @@ export class LLMService {
     // });
   }
 
-  /**
-   * Adapt agentConfig for request body based on LLM type
-   */
-  private adaptAgentConfigForLLM(modelType: string, agentConfig: AgentConfig): any {
-    switch (modelType) {
-      case 'gpt':
-        // OpenAI expects: model, temperature, max_tokens, systemPrompt
-        return {
-          model: agentConfig.model,
-          temperature: agentConfig.temperature,
-          max_tokens: agentConfig.maxTokens,
-          systemPrompt: agentConfig.systemPrompt,
-        };
-      case 'gemini':
-        // Gemini expects: model, temperature, maxTokens, systemPrompt
-        return {
-          model: agentConfig.model,
-          temperature: agentConfig.temperature,
-          maxTokens: agentConfig.maxTokens,
-          systemPrompt: agentConfig.systemPrompt,
-        };
-      case 'cloud':
-        // Cloud expects: model, temperature, maxTokens, systemPrompt, plus any custom fields
-        return {
-          model: agentConfig.model,
-          temperature: agentConfig.temperature,
-          maxTokens: agentConfig.maxTokens,
-          systemPrompt: agentConfig.systemPrompt,
-          ...agentConfig,
-        };
-      default:
-        return agentConfig;
-    }
-  }
   // Helper to determine model type
   private getModelType(type?: string): string {
     const supported = ['gpt', 'gemini', 'cloud'];

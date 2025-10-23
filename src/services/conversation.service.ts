@@ -378,10 +378,15 @@ export class ConversationService {
       },
     });
 
-    // Update conversation's updatedAt
+    // Add message to conversation's messages relation
     await prisma.conversation.update({
       where: { id: conversationId },
-      data: { updatedAt: new Date() },
+      data: {
+        updatedAt: new Date(),
+        messages: {
+          connect: { id: message.id },
+        },
+      },
     });
 
     // Get agentId from conversation
