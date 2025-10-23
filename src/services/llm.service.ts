@@ -2,8 +2,8 @@ import { MemoryService } from './memory.service';
 import { vectorService } from './vector.service';
 
 import { PrismaClient } from '@prisma/client';
-import axios from 'axios';
-import OpenAI from 'openai';
+import { GPTService } from './gpt.service';
+import { CloudService } from './cloude.service';
 import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
 import { logger, logInfo } from '../middlewares/logger.middle';
 import { GeminiService } from './gemini.service';
@@ -19,9 +19,6 @@ export interface AgentConfig {
   [key: string]: any;
 }
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 const prisma = new PrismaClient();
 
@@ -40,51 +37,14 @@ export interface LLMMessage {
 }
 
 export class LLMService {
-  private enabledGeminiModels: string[] = [];
-
   constructor() {
-    this.pingEnabledGeminiModels();
+    // Optionally, you can fetch enabled Gemini models here and store if needed
+    // Example:
+    // GeminiService.pingEnabledGeminiModels(this.geminiConfig).then(models => {
+    //   this.enabledGeminiModels = models;
+    // });
   }
 
-  /**
-   * Ping Gemini API to get enabled models
-   */
-  private async pingEnabledGeminiModels(): Promise<void> {
-    try {
-      // Example endpoint: GET https://generativelanguage.googleapis.com/v1/models?key={API_KEY}
-      const baseUrl = this.geminiConfig.apiUrl;
-      const token = this.geminiConfig.apiKey;
-      // Remove trailing path to get base
-      const modelsUrl =
-        baseUrl.replace(/\/v1\/chat$/, '/v1/models') +
-        (token ? `?key=${encodeURIComponent(token)}` : '');
-      const response = await axios.get(modelsUrl);
-      if (response.data && Array.isArray(response.data.models)) {
-        this.enabledGeminiModels = response.data.models.map((m: any) => m.name);
-        logger.info('Enabled Gemini models:', this.enabledGeminiModels);
-      } else {
-        logger.info('No enabled Gemini models found.');
-      }
-    } catch (error) {
-      logger.error('Error pinging Gemini models:', String(error));
-    }
-  }
-  /**
-   * Build Gemini endpoint URL: base + model + ":generateContent"
-   */
-  private getGeminiUrl(agentConfig: AgentConfig): string {
-    const baseUrl = agentConfig.geminiApiUrl || this.geminiConfig.apiUrl;
-    const model = agentConfig.model || '';
-    // Ensure trailing slash if needed
-    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
-    let url = `${normalizedBase}${model}:generateContent`;
-    // Add ?key={token} if token is present
-    const token = agentConfig.geminiApiKey || this.geminiConfig.apiKey;
-    if (token) {
-      url += `?key=${encodeURIComponent(token)}`;
-    }
-    return url;
-  }
   /**
    * Adapt agentConfig for request body based on LLM type
    */
@@ -146,163 +106,33 @@ export class LLMService {
     },
   };
 
-  // Call LLM Cloud (via axios)
+  // Call LLM Cloud via CloudService
   private async callLLMCloud(
     messages: LLMMessage[],
     agentConfig: AgentConfig,
     aiKey?: string | null,
   ): Promise<LLMResponse> {
-    try {
-      const url = agentConfig.cloudApiUrl || this.cloudConfig.apiUrl;
-      const modelType = 'cloud';
-      const adaptedConfig = this.adaptAgentConfigForLLM(modelType, agentConfig);
-      const requestPayload = { messages, ...adaptedConfig };
-      const requestHeaders = {
-        ...this.cloudConfig.headers,
-        ...(aiKey
-          ? { Authorization: `Bearer ${aiKey}` }
-          : this.cloudConfig.apiKey
-            ? { Authorization: `Bearer ${this.cloudConfig.apiKey}` }
-            : {}),
-      };
-      const response = await axios.post(url, requestPayload, {
-        headers: requestHeaders,
-        timeout: this.cloudConfig.timeout,
-      });
-      return {
-        ...(response.data as LLMResponse),
-        debug: {
-          request: { url, payload: requestPayload, headers: requestHeaders },
-          response: response.data,
-          llmServiceModel: 'cloud',
-          adaptedConfig,
-        },
-      };
-    } catch (error) {
-      // Avoid circular structure in logger
-      logger.error('LLM Cloud call error:', String(error));
-      return this.generateDebugResponse('cloud', error);
-    }
+    return await CloudService.callLLMCloud(messages, agentConfig, this.cloudConfig, aiKey);
   }
 
-  /**
-   * Generate Gemini API request body from messages and config
-   */
-  private generateGeminiBody(messages: LLMMessage[], adaptedConfig: any): any {
-    let promptText = '';
-    if (Array.isArray(messages) && messages.length > 0) {
-      // Prefer last user message, else join all
-      const lastUser = messages.filter((m) => m.role === 'user').pop();
-      promptText = lastUser ? lastUser.content : messages.map((m) => m.content).join('\n');
-    }
-    // Only include valid Gemini fields in payload
-    const { model, maxTokens } = adaptedConfig;
-    const payload: any = {
-      contents: [
-        {
-          parts: [{ text: promptText }],
-        },
-      ],
-    };
-    if (model) payload.model = model;
-    if (maxTokens) payload.maxTokens = maxTokens;
-    return payload;
-  }
+  // ...existing code...
 
-  // Call Gemini (via axios)
+  // Call Gemini via GeminiService
   private async callGemini(
     messages: LLMMessage[],
     agentConfig: AgentConfig,
     aiKey?: string | null,
   ): Promise<LLMResponse> {
-    try {
-      const modelType = 'gemini';
-      const url = this.getGeminiUrl(agentConfig);
-      const adaptedConfig = this.adaptAgentConfigForLLM(modelType, agentConfig);
-      const requestPayload = this.generateGeminiBody(messages, adaptedConfig);
-      const requestHeaders = {
-        ...this.geminiConfig.headers,
-        // ...(aiKey
-        //   ? { Authorization: `Bearer ${aiKey}` }
-        //   : this.geminiConfig.apiKey
-        //     ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` }
-        //     : {}),
-      };
-      const response = await axios.post(url, requestPayload, {
-        headers: requestHeaders,
-        timeout: this.geminiConfig.timeout,
-      });
-      // Convert Gemini response to plain string content
-      // Use GeminiService.extractContent to get content string
-      // and spread the rest of response.data
-      const content = GeminiService.extractContent(
-        response.data?.candidates || response.data?.data || response.data,
-      );
-      return {
-        ...response.data,
-        content,
-        debug: {
-          request: { url, payload: requestPayload, headers: requestHeaders },
-          response: response.data,
-          llmServiceModel: 'gemini',
-          adaptedConfig,
-        },
-      };
-    } catch (error) {
-      logger.error('LLM Cloud call error:', String(error));
-      return this.generateDebugResponse('gemini', error);
-    }
+    return await GeminiService.callGemini(messages, agentConfig, this.geminiConfig, aiKey);
   }
 
-  // Call GPT (OpenAI)
+  // Call GPT via GPTService
   private async callGPT(
     messages: LLMMessage[],
     agentConfig: AgentConfig,
     aiKey?: string | null,
   ): Promise<LLMResponse> {
-    const startTime = Date.now();
-    const preparedMessages: LLMMessage[] = [];
-    if (agentConfig.systemPrompt) {
-      preparedMessages.push({ role: 'system', content: agentConfig.systemPrompt });
-    }
-    preparedMessages.push(...messages);
-    try {
-      const openaiClient = new OpenAI({
-        apiKey: aiKey || process.env.OPENAI_API_KEY,
-      });
-      const modelType = 'gpt';
-      const adaptedConfig = this.adaptAgentConfigForLLM(modelType, agentConfig);
-      const requestPayload = {
-        ...adaptedConfig,
-        messages: preparedMessages,
-      };
-      const response = await openaiClient.chat.completions.create(requestPayload);
-      const processingTime = Date.now() - startTime;
-      const choice = response.choices[0];
-      const content = choice?.message?.content ?? '';
-      const finishReason = choice?.finish_reason ?? null;
-      return {
-        content,
-        tokens: response.usage?.total_tokens ?? 0,
-        model: response.model,
-        processingTime,
-        metadata: {
-          promptTokens: response.usage?.prompt_tokens,
-          completionTokens: response.usage?.completion_tokens,
-          finishReason,
-        },
-        debug: {
-          request: requestPayload,
-          response,
-          llmServiceModel: 'gpt',
-          adaptedConfig,
-        },
-      };
-    } catch (error) {
-      logger.error('LLM Cloud call error:', String(error));
-
-      return this.generateDebugResponse('gpt', error, Date.now() - startTime);
-    }
+    return await GPTService.callGPT(messages, agentConfig, aiKey);
   }
   /**
    * Generate a debug response for error cases, including axios error message if available
