@@ -4,14 +4,14 @@ import { client } from '../setup';
 import { logger } from './logger.middle';
 
 // Generate cache key from request
-function generateCacheKey(req: Request): string {
+export function generateCacheKey(req: Request): string {
   const { method, originalUrl, body, query } = req;
   const data = JSON.stringify({ method, url: originalUrl, body, query });
   return `cache:${crypto.createHash('md5').update(data).digest('hex')}`;
 }
 
 // Generate a URL-based cache key for easier pattern matching
-function generateUrlBasedCacheKey(req: Request): string {
+export function generateUrlBasedCacheKey(req: Request): string {
   const cleanUrl = req.originalUrl.split('?')[0]; // Remove query params for the pattern
   const queryString = req.originalUrl.includes('?') ? req.originalUrl.split('?')[1] : '';
   const hash = crypto
@@ -25,7 +25,7 @@ function generateUrlBasedCacheKey(req: Request): string {
 }
 
 // Invalidate cache by URL path pattern
-async function invalidateCacheByUrlPattern(urlPath: string): Promise<number> {
+export async function invalidateCacheByUrlPattern(urlPath: string): Promise<number> {
   try {
     if (!client.isOpen) {
       logger.info('Redis not connected, skipping cache invalidation');
@@ -269,9 +269,6 @@ export async function invalidateCache(pattern: string = '*') {
     return 0;
   }
 }
-
-// Export the URL-based cache invalidation function
-export { invalidateCacheByUrlPattern };
 
 // Cache statistics
 export async function getCacheStats() {
