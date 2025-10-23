@@ -39,6 +39,83 @@ export interface LLMMessage {
 }
 
 export class LLMService {
+  private enabledGeminiModels: string[] = [];
+
+  constructor() {
+    this.pingEnabledGeminiModels();
+  }
+
+  /**
+   * Ping Gemini API to get enabled models
+   */
+  private async pingEnabledGeminiModels(): Promise<void> {
+    try {
+      // Example endpoint: GET https://generativelanguage.googleapis.com/v1/models?key={API_KEY}
+      const baseUrl = this.geminiConfig.apiUrl;
+      const token = this.geminiConfig.apiKey;
+      // Remove trailing path to get base
+      const modelsUrl = baseUrl.replace(/\/v1\/chat$/, '/v1/models') + (token ? `?key=${encodeURIComponent(token)}` : '');
+      const response = await axios.get(modelsUrl);
+      if (response.data && Array.isArray(response.data.models)) {
+        this.enabledGeminiModels = response.data.models.map((m: any) => m.name);
+        logger.info('Enabled Gemini models:', this.enabledGeminiModels);
+      } else {
+        logger.info('No enabled Gemini models found.');
+      }
+    } catch (error) {
+      logger.error('Error pinging Gemini models:', String(error));
+    }
+  }
+  /**
+   * Build Gemini endpoint URL: base + model + ":generateContent"
+   */
+  private getGeminiUrl(agentConfig: AgentConfig): string {
+    const baseUrl = agentConfig.geminiApiUrl || this.geminiConfig.apiUrl;
+    const model = agentConfig.model || '';
+    // Ensure trailing slash if needed
+    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+    let url = `${normalizedBase}${model}:generateContent`;
+    // Add ?key={token} if token is present
+    const token = agentConfig.geminiApiKey || this.geminiConfig.apiKey;
+    if (token) {
+      url += `?key=${encodeURIComponent(token)}`;
+    }
+    return url;
+  }
+  /**
+   * Adapt agentConfig for request body based on LLM type
+   */
+  private adaptAgentConfigForLLM(modelType: string, agentConfig: AgentConfig): any {
+    switch (modelType) {
+      case 'gpt':
+        // OpenAI expects: model, temperature, max_tokens, systemPrompt
+        return {
+          model: agentConfig.model,
+          temperature: agentConfig.temperature,
+          max_tokens: agentConfig.maxTokens,
+          systemPrompt: agentConfig.systemPrompt,
+        };
+      case 'gemini':
+        // Gemini expects: model, temperature, maxTokens, systemPrompt
+        return {
+          model: agentConfig.model,
+          temperature: agentConfig.temperature,
+          maxTokens: agentConfig.maxTokens,
+          systemPrompt: agentConfig.systemPrompt,
+        };
+      case 'cloud':
+        // Cloud expects: model, temperature, maxTokens, systemPrompt, plus any custom fields
+        return {
+          model: agentConfig.model,
+          temperature: agentConfig.temperature,
+          maxTokens: agentConfig.maxTokens,
+          systemPrompt: agentConfig.systemPrompt,
+          ...agentConfig,
+        };
+      default:
+        return agentConfig;
+    }
+  }
   // Helper to determine model type
   private getModelType(type?: string): string {
     const supported = ['gpt', 'gemini', 'cloud'];
@@ -74,7 +151,9 @@ export class LLMService {
   ): Promise<LLMResponse> {
     try {
       const url = agentConfig.cloudApiUrl || this.cloudConfig.apiUrl;
-      const requestPayload = { messages, ...agentConfig };
+      const modelType = 'cloud';
+      const adaptedConfig = this.adaptAgentConfigForLLM(modelType, agentConfig);
+      const requestPayload = { messages, ...adaptedConfig };
       const requestHeaders = {
         ...this.cloudConfig.headers,
         ...(aiKey
@@ -93,6 +172,7 @@ export class LLMService {
           request: { url, payload: requestPayload, headers: requestHeaders },
           response: response.data,
           llmServiceModel: 'cloud',
+          adaptedConfig,
         },
       };
     } catch (error) {
@@ -108,6 +188,30 @@ export class LLMService {
     }
   }
 
+  /**
+   * Generate Gemini API request body from messages and config
+   */
+  private generateGeminiBody(messages: LLMMessage[], adaptedConfig: any): any {
+    let promptText = '';
+    if (Array.isArray(messages) && messages.length > 0) {
+      // Prefer last user message, else join all
+      const lastUser = messages.filter(m => m.role === 'user').pop();
+      promptText = lastUser ? lastUser.content : messages.map(m => m.content).join('\n');
+    }
+    // Only include valid Gemini fields in payload
+    const { model, maxTokens } = adaptedConfig;
+    const payload: any = {
+      contents: [
+        {
+          parts: [{ text: promptText }],
+        },
+      ],
+    };
+    if (model) payload.model = model;
+    if (maxTokens) payload.maxTokens = maxTokens;
+    return payload;
+  }
+
   // Call Gemini (via axios)
   private async callGemini(
     messages: LLMMessage[],
@@ -115,15 +219,17 @@ export class LLMService {
     aiKey?: string | null,
   ): Promise<LLMResponse> {
     try {
-      const url = agentConfig.geminiApiUrl || this.geminiConfig.apiUrl;
-      const requestPayload = { messages, ...agentConfig };
+      const modelType = 'gemini';
+      const url = this.getGeminiUrl(agentConfig);
+      const adaptedConfig = this.adaptAgentConfigForLLM(modelType, agentConfig);
+      const requestPayload = this.generateGeminiBody(messages, adaptedConfig);
       const requestHeaders = {
         ...this.geminiConfig.headers,
-        ...(aiKey
-          ? { Authorization: `Bearer ${aiKey}` }
-          : this.geminiConfig.apiKey
-            ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` }
-            : {}),
+        // ...(aiKey
+        //   ? { Authorization: `Bearer ${aiKey}` }
+        //   : this.geminiConfig.apiKey
+        //     ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` }
+        //     : {}),
       };
       const response = await axios.post(url, requestPayload, {
         headers: requestHeaders,
@@ -135,11 +241,11 @@ export class LLMService {
           request: { url, payload: requestPayload, headers: requestHeaders },
           response: response.data,
           llmServiceModel: 'gemini',
+          adaptedConfig,
         },
       };
     } catch (error) {
       logger.error('LLM Cloud call error:', String(error));
-
       return {
         ...this.generateMockResponse(),
         debug: {
@@ -157,9 +263,6 @@ export class LLMService {
     aiKey?: string | null,
   ): Promise<LLMResponse> {
     const startTime = Date.now();
-    const model = agentConfig.model || 'gpt-3.5-turbo';
-    const temperature = agentConfig.temperature ?? 0.7;
-    const maxTokens = agentConfig.maxTokens ?? 1000;
     const preparedMessages: LLMMessage[] = [];
     if (agentConfig.systemPrompt) {
       preparedMessages.push({ role: 'system', content: agentConfig.systemPrompt });
@@ -169,11 +272,11 @@ export class LLMService {
       const openaiClient = new OpenAI({
         apiKey: aiKey || process.env.OPENAI_API_KEY,
       });
+      const modelType = 'gpt';
+      const adaptedConfig = this.adaptAgentConfigForLLM(modelType, agentConfig);
       const requestPayload = {
-        model,
+        ...adaptedConfig,
         messages: preparedMessages,
-        temperature,
-        max_tokens: maxTokens,
       };
       const response = await openaiClient.chat.completions.create(requestPayload);
       const processingTime = Date.now() - startTime;
@@ -194,6 +297,7 @@ export class LLMService {
           request: requestPayload,
           response,
           llmServiceModel: 'gpt',
+          adaptedConfig,
         },
       };
     } catch (error) {
