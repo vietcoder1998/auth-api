@@ -460,12 +460,11 @@ export class LLMService {
     const answerVector = await vectorService.saveMessage(llmResponse.content);
     // 4. Save to memory (link answer to question)
     const memory = await MemoryService.create({
-      agentId,
-      content: llmResponse.content,
-      type: 'long_term',
-      vectorId: answerVector?.vectorId,
-      linkedQuestionVectorId: questionVector?.vectorId,
-      conversationId,
+  agentId,
+  content: llmResponse.content,
+  type: 'long_term',
+  vectorId: answerVector?.vectorId,
+  conversationId,
     });
     // 5. Save answer message and link to question (if MessageService exists)
     // const message = await MessageService.create({

@@ -1,8 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from 'redis';
-
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-
+import { GEMINI_API_KEY } from '../env';
+import { REDIS_URL } from '../env';
 export interface RedisVector {
   vectorId: string;
   embedding: number[];
@@ -17,7 +16,7 @@ export class VectorService {
 
   constructor() {
     // GoogleGenerativeAI expects the API key string directly
-    this.genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY || '');
+    this.genAI = new GoogleGenerativeAI(GEMINI_API_KEY || '');
     this.redisClient = createClient({ url: REDIS_URL });
     this.redisClient.connect().catch(console.error);
   }
@@ -39,7 +38,11 @@ export class VectorService {
       // Normalize ContentEmbedding to number[]
       const embedding = Array.isArray(result.embedding)
         ? (result.embedding as number[])
-        : ((result.embedding as any).values ?? (result.embedding as any).data ?? (result.embedding as any).value ?? (result.embedding as any).embedding ?? (result.embedding as any)) as number[];
+        : (((result.embedding as any).values ??
+            (result.embedding as any).data ??
+            (result.embedding as any).value ??
+            (result.embedding as any).embedding ??
+            (result.embedding as any)) as number[]);
 
       // Calculate token count (simple whitespace split)
       const token = typeof message === 'string' ? message.trim().split(/\s+/).length : 0;
@@ -50,10 +53,7 @@ export class VectorService {
       }
 
       // Save embedding to Redis as a JSON string
-      const key =
-        (options?.collection || 'embeddings') +
-        ':' +
-        Date.now().toString();
+      const key = (options?.collection || 'embeddings') + ':' + Date.now().toString();
       await this.redisClient.set(key, JSON.stringify({ message, embedding, token }));
 
       console.log('Saved embedding to Redis:', key);
@@ -80,16 +80,13 @@ export class VectorService {
   async saveEmbedding(
     embedding: number[],
     message: string = '',
-    options?: { dbIndex?: number; collection?: string }
+    options?: { dbIndex?: number; collection?: string },
   ): Promise<boolean> {
     try {
       if (typeof options?.dbIndex === 'number') {
         await this.redisClient.select(options.dbIndex);
       }
-      const key =
-        (options?.collection || 'embeddings') +
-        ':' +
-        Date.now().toString();
+      const key = (options?.collection || 'embeddings') + ':' + Date.now().toString();
       const token = typeof message === 'string' ? message.trim().split(/\s+/).length : 0;
       await this.redisClient.set(key, JSON.stringify({ message, embedding, token }));
       console.log('Saved embedding to Redis:', key);
@@ -108,7 +105,7 @@ export class VectorService {
    */
   async findSameVectorDb(
     embedding: number[],
-    options?: { dbIndex?: number; collection?: string; threshold?: number }
+    options?: { dbIndex?: number; collection?: string; threshold?: number },
   ): Promise<RedisVector[]> {
     const collection = options?.collection || 'embeddings';
     const threshold = typeof options?.threshold === 'number' ? options.threshold : 0.85;
@@ -134,7 +131,12 @@ export class VectorService {
             embedding: storedEmbedding,
             message,
             similarity,
-            token: typeof token === 'number' ? token : (typeof message === 'string' ? message.trim().split(/\s+/).length : 0),
+            token:
+              typeof token === 'number'
+                ? token
+                : typeof message === 'string'
+                  ? message.trim().split(/\s+/).length
+                  : 0,
           });
         }
       }
@@ -150,7 +152,7 @@ export class VectorService {
 
   async findSameVectorFromMessage(
     message: string,
-    options?: { dbIndex?: number; collection?: string; threshold?: number }
+    options?: { dbIndex?: number; collection?: string; threshold?: number },
   ): Promise<RedisVector[]> {
     try {
       const model = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
@@ -158,7 +160,11 @@ export class VectorService {
       // Normalize ContentEmbedding to number[]
       const embedding = Array.isArray(result.embedding)
         ? (result.embedding as number[])
-        : ((result.embedding as any).values ?? (result.embedding as any).data ?? (result.embedding as any).value ?? (result.embedding as any).embedding ?? (result.embedding as any)) as number[];
+        : (((result.embedding as any).values ??
+            (result.embedding as any).data ??
+            (result.embedding as any).value ??
+            (result.embedding as any).embedding ??
+            (result.embedding as any)) as number[]);
       return await this.findSameVectorDb(embedding, options);
     } catch (error) {
       console.error('Error finding similar vectors from message:', error);
@@ -171,10 +177,7 @@ export class VectorService {
    * @param id The Redis key to remove (e.g., embeddings:timestamp)
    * @param options Optional config (e.g. db index, collection name)
    */
-  async removeVectorDataById(
-    id: string,
-    options?: { dbIndex?: number }
-  ): Promise<boolean> {
+  async removeVectorDataById(id: string, options?: { dbIndex?: number }): Promise<boolean> {
     try {
       if (typeof options?.dbIndex === 'number') {
         await this.redisClient.select(options.dbIndex);
@@ -192,7 +195,9 @@ export class VectorService {
    * @param vectorIds Array of vectorId strings
    * @returns Array of { vectorId, embedding } objects (missing ones will be null)
    */
-  async getVectorsByIds(vectorIds: string[]): Promise<Array<{ vectorId: string; embedding: number[] } | null>> {
+  async getVectorsByIds(
+    vectorIds: string[],
+  ): Promise<Array<{ vectorId: string; embedding: number[] } | null>> {
     return Promise.all(
       vectorIds.map(async (vectorId) => {
         const value = await this.redisClient.get(vectorId);
@@ -204,7 +209,7 @@ export class VectorService {
           };
         }
         return null;
-      })
+      }),
     );
   }
 
