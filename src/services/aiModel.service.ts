@@ -4,6 +4,10 @@ const prisma = new PrismaClient();
 
 export class AIModelService {
   async createAIModel(data: Omit<AIModel, 'id' | 'createdAt' | 'updatedAt'>): Promise<AIModel> {
+    const existing = await prisma.aIModel.findFirst({ where: { name: data.name } });
+    if (existing) {
+      throw new Error('Model name already exists');
+    }
     return prisma.aIModel.create({ data });
   }
 
@@ -16,6 +20,12 @@ export class AIModelService {
   }
 
   async updateAIModel(id: string, data: Partial<Omit<AIModel, 'id' | 'createdAt' | 'updatedAt'>>): Promise<AIModel> {
+    if (data.name) {
+      const existing = await prisma.aIModel.findFirst({ where: { name: data.name, NOT: { id } } });
+      if (existing) {
+        throw new Error('Model name already exists');
+      }
+    }
     return prisma.aIModel.update({ where: { id }, data });
   }
 
