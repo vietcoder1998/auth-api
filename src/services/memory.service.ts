@@ -18,7 +18,16 @@ export class MemoryService {
       }
     }
     delete data.embedding; // Remove legacy field if present
-    return prisma.agentMemory.create({ data });
+    // Fix: Use connect for agent and conversation relations
+    const { agentId, conversationId, content, ...rest } = data;
+    return prisma.agentMemory.create({
+      data: {
+        ...rest,
+        content: typeof content === 'string' ? content : '',
+        agent: agentId ? { connect: { id: agentId } } : undefined,
+        conversation: conversationId ? { connect: { id: conversationId } } : undefined,
+      },
+    });
   }
 
   /**
