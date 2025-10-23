@@ -259,13 +259,6 @@ export class ConversationService {
     return { message: 'Conversation deleted successfully' };
   }
 
-  /**
-   * Create a new conversation
-   */
-
-  /**
-   * Get conversation by ID
-   */
   async getConversationById(id: string) {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
@@ -301,17 +294,6 @@ export class ConversationService {
     return parsedConversation;
   }
 
-  /**
-   * Update conversation
-   */
-
-  /**
-   * Delete conversation
-   */
-
-  /**
-   * Get user conversations
-   */
   async getUserConversations(
     userId: string,
     agentId?: string,
@@ -368,9 +350,6 @@ export class ConversationService {
     };
   }
 
-  /**
-   * Add message to conversation
-   */
   async addMessage(data: CreateMessageData) {
     const { conversationId, sender, content, metadata, tokens } = data;
 
@@ -397,6 +376,18 @@ export class ConversationService {
         },
       },
     });
+
+    // Also add a promptHistory for this message
+    try {
+      await prisma.promptHistory.create({
+        data: {
+          conversationId,
+          prompt: content,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to create promptHistory for message:', err);
+    }
 
     // Invalidate cache for conversations after message
     try {
@@ -478,9 +469,6 @@ export class ConversationService {
     };
   }
 
-  /**
-   * Get conversation messages
-   */
   async getConversationMessages(conversationId: string, page: number = 1, limit: number = 50) {
     const skip = (page - 1) * limit;
 
@@ -509,9 +497,6 @@ export class ConversationService {
     };
   }
 
-  /**
-   * Update message
-   */
   async updateMessage(messageId: string, content: string, metadata?: any) {
     const updateData: any = { content };
 
