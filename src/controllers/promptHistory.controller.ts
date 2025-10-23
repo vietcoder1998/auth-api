@@ -96,7 +96,7 @@ export async function getAllPromptHistories(req: Request, res: Response) {
 
 // AI prompt generation endpoint
 export async function generatePrompt(req: Request, res: Response) {
-  const { prompt, agentId, modelId, conversationId } = req.body;
+  const { prompt, agentId, conversationId } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt required' });
   if (!agentId) return res.status(400).json({ error: 'agentId required' });
   if (!conversationId) return res.status(400).json({ error: 'conversationId required' });
