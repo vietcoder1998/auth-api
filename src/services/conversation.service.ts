@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 
 import { llmService } from './llm.service';
 import { MemoryService } from './memory.service';
+import { invalidateCacheByUrlPattern } from '../middlewares/cache.middleware';
+
 const prisma = new PrismaClient();
 
 export interface CreateConversationData {
@@ -36,6 +38,13 @@ export class ConversationService {
     const promptHistory = await prisma.promptHistory.create({
       data: { conversationId, prompt },
     });
+    // Invalidate cache for conversations after prompt
+    try {
+      const { invalidateCacheByUrlPattern } = await import('../middlewares/cache.middleware');
+      await invalidateCacheByUrlPattern('/api/admin/conversations');
+    } catch (err) {
+      console.error('Failed to invalidate cache after prompt:', err);
+    }
     return promptHistory;
   }
 
@@ -200,7 +209,7 @@ export class ConversationService {
     const [messages, totalMessages] = await Promise.all([
       prisma.message.findMany({
         where: { conversationId: id },
-        orderBy: { position: 'asc' },
+        orderBy: { createdAt: 'asc' },
         skip,
         take: limit,
       }),
@@ -268,7 +277,7 @@ export class ConversationService {
           select: { id: true, name: true, model: true, isActive: true },
         },
         messages: {
-          orderBy: { position: 'asc' },
+          orderBy: { createdAt: 'asc' },
         },
         _count: {
           select: { messages: true },
@@ -389,6 +398,13 @@ export class ConversationService {
       },
     });
 
+    // Invalidate cache for conversations after message
+    try {
+      await invalidateCacheByUrlPattern('/api/admin/conversations');
+    } catch (err) {
+      console.error('Failed to invalidate cache after message:', err);
+    }
+
     // Get agentId from conversation
     const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
     const agentId = conversation?.agentId || metadata?.agentId || '';
@@ -473,7 +489,7 @@ export class ConversationService {
         where: { conversationId },
         skip,
         take: limit,
-        orderBy: { position: 'asc' },
+        orderBy: { createdAt: 'asc' },
       }),
       prisma.message.count({ where: { conversationId } }),
     ]);
@@ -538,7 +554,7 @@ export class ConversationService {
   async generateConversationSummary(conversationId: string) {
     const messages = await prisma.message.findMany({
       where: { conversationId },
-      orderBy: { position: 'asc' },
+      orderBy: { createdAt: 'asc' },
       take: 100, // Limit to last 100 messages for summary
     });
 
@@ -624,7 +640,7 @@ export class ConversationService {
         },
         skip,
         take: limit,
-        orderBy: { position: 'asc' },
+        orderBy: { createdAt: 'asc' },
       }),
       prisma.message.count({
         where: {
