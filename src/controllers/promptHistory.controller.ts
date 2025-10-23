@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import { promptHistoryService } from '../services/promptHistory.service';
+import { llmService, LLMMessage } from '../services/llm.service';
 const prisma = new PrismaClient();
 
 // Create prompt
@@ -95,11 +96,12 @@ export async function getAllPromptHistories(req: Request, res: Response) {
 
 // AI prompt generation endpoint
 export async function generatePrompt(req: Request, res: Response) {
-  const { prompt } = req.body;
+  const { prompt, agentId, modelId, conversationId } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt required' });
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  if (!conversationId) return res.status(400).json({ error: 'conversationId required' });
 
-  // Example: just echo the prompt, or call your AI service here
-  // Replace with real AI integration as needed
-  const generated = `AI generated response for: ${prompt}`;
-  res.json({ data: generated });
+  // Use llmService.processAndSaveConversation for full orchestration
+  const llmRes = await llmService.processAndSaveConversation(conversationId, prompt, agentId);
+  res.json(llmRes);
 }

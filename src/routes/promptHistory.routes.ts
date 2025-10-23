@@ -13,23 +13,11 @@ const router = Router();
 
 // GET /prompts (all prompts, not bound to conversation, not under /api/admin)
 router.get('/', getAllPromptHistories);
-
-// POST /api/admin/conversations/:conversationId/prompts
 router.post('/conversations/:conversationId/prompts', createPromptHistory);
-
-// GET /api/admin/conversations/:conversationId/prompts
 router.get('/conversations/:conversationId/prompts', getPromptHistories);
-
-// POST /api/admin/prompts/generate (AI generate endpoint)
 router.post('/generate', generatePrompt);
-
-// GET /api/admin/prompts/:id
 router.get('/prompts/:id', getPromptHistoryById);
-
-// PUT /api/admin/prompts/:id
 router.put('/prompts/:id', updatePromptHistory);
-
-// DELETE /api/admin/prompts/:id
 router.delete('/prompts/:id', deletePromptHistory);
 router.get('/prompts', getAllPromptHistories);
 
