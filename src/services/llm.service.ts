@@ -1,3 +1,6 @@
+import { vectorService } from './vector.service';
+import { MemoryService } from './memory.service';
+
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import OpenAI from 'openai';
@@ -405,6 +408,50 @@ export class LLMService {
       console.error('Summarize conversation error:', error);
       return 'Conversation summary unavailable';
     }
+  }
+  
+  // import { MessageService } from './message.service'; // Uncomment if MessageService exists
+  /**
+   * Full process: generate answer, embed, save to memory/message, link answer to question
+   * @param conversationId Conversation ID
+   * @param userMessage User's question
+   * @param agentId Agent ID
+   * @returns LLMResponse with additional context
+   */
+  async processAndSaveConversation(
+    conversationId: string,
+    userMessage: string,
+    agentId: string
+  ): Promise<LLMResponse & { questionVector?: any; answerVector?: any; memory?: any; /* message?: any */ }> {
+    // 1. Generate answer
+    const llmResponse = await this.generateConversationResponse(conversationId, userMessage, agentId);
+    // 2. Save question embedding
+    const questionVector = await vectorService.saveMessage(userMessage);
+    // 3. Save answer embedding
+    const answerVector = await vectorService.saveMessage(llmResponse.content);
+    // 4. Save to memory (link answer to question)
+    const memory = await MemoryService.create({
+      agentId,
+      content: llmResponse.content,
+      type: 'long_term',
+      vectorId: answerVector?.vectorId,
+      linkedQuestionVectorId: questionVector?.vectorId,
+      conversationId,
+    });
+    // 5. Save answer message and link to question (if MessageService exists)
+    // const message = await MessageService.create({
+    //   conversationId,
+    //   content: llmResponse.content,
+    //   sender: 'agent',
+    //   linkedQuestionVectorId: questionVector?.vectorId,
+    // });
+    return {
+      ...llmResponse,
+      questionVector,
+      answerVector,
+      memory,
+      // message,
+    };
   }
 }
 

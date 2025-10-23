@@ -1,8 +1,25 @@
+
 import { Request, Response } from 'express';
 import { conversationService } from '../services/conversation.service';
 import { llmService } from '../services/llm.service';
 import { commandService } from '../services/command.service';
 
+// LLM full process: generate, embed, save, link
+export async function processAndSaveConversation(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { conversationId, userMessage, agentId } = req.body;
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    if (!conversationId || !userMessage || !agentId) {
+      return res.status(400).json({ error: 'conversationId, userMessage, and agentId are required' });
+    }
+    const result = await llmService.processAndSaveConversation(conversationId, userMessage, agentId);
+    res.status(201).json(result);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to process and save conversation';
+    res.status(500).json({ error: errorMsg });
+  }
+}
 // --- PromptHistory CRUD ---
 export async function createPromptHistory(req: Request, res: Response) {
   try {
