@@ -6,6 +6,7 @@ import axios from 'axios';
 import OpenAI from 'openai';
 import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
 import { logger, logInfo } from '../middlewares/logger.middle';
+import { GeminiService } from './gemini.service';
 
 export interface AgentConfig {
   model?: string;
@@ -54,7 +55,9 @@ export class LLMService {
       const baseUrl = this.geminiConfig.apiUrl;
       const token = this.geminiConfig.apiKey;
       // Remove trailing path to get base
-      const modelsUrl = baseUrl.replace(/\/v1\/chat$/, '/v1/models') + (token ? `?key=${encodeURIComponent(token)}` : '');
+      const modelsUrl =
+        baseUrl.replace(/\/v1\/chat$/, '/v1/models') +
+        (token ? `?key=${encodeURIComponent(token)}` : '');
       const response = await axios.get(modelsUrl);
       if (response.data && Array.isArray(response.data.models)) {
         this.enabledGeminiModels = response.data.models.map((m: any) => m.name);
@@ -189,8 +192,8 @@ export class LLMService {
     let promptText = '';
     if (Array.isArray(messages) && messages.length > 0) {
       // Prefer last user message, else join all
-      const lastUser = messages.filter(m => m.role === 'user').pop();
-      promptText = lastUser ? lastUser.content : messages.map(m => m.content).join('\n');
+      const lastUser = messages.filter((m) => m.role === 'user').pop();
+      promptText = lastUser ? lastUser.content : messages.map((m) => m.content).join('\n');
     }
     // Only include valid Gemini fields in payload
     const { model, maxTokens } = adaptedConfig;
@@ -229,8 +232,15 @@ export class LLMService {
         headers: requestHeaders,
         timeout: this.geminiConfig.timeout,
       });
+      // Convert Gemini response to plain string content
+      // Use GeminiService.extractContent to get content string
+      // and spread the rest of response.data
+      const content = GeminiService.extractContent(
+        response.data?.candidates || response.data?.data || response.data,
+      );
       return {
-        ...(response.data as LLMResponse),
+        ...response.data,
+        content,
         debug: {
           request: { url, payload: requestPayload, headers: requestHeaders },
           response: response.data,
@@ -297,7 +307,11 @@ export class LLMService {
   /**
    * Generate a debug response for error cases, including axios error message if available
    */
-  private generateDebugResponse(modelType: string, error: any, processingTime?: number): LLMResponse {
+  private generateDebugResponse(
+    modelType: string,
+    error: any,
+    processingTime?: number,
+  ): LLMResponse {
     let message = error instanceof Error ? error.message : String(error);
     // If axios error, try to extract response.data.error
     if (error && error.response && error.response.data && error.response.data.error) {
@@ -307,7 +321,10 @@ export class LLMService {
       ...this.generateMockResponse(),
       content: message,
       model: 'error',
-      processingTime: typeof processingTime === 'number' ? processingTime : Math.floor(Math.random() * 2000) + 500,
+      processingTime:
+        typeof processingTime === 'number'
+          ? processingTime
+          : Math.floor(Math.random() * 2000) + 500,
       metadata: { isError: true },
       debug: {
         error: message,
