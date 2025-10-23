@@ -178,13 +178,7 @@ export class LLMService {
     } catch (error) {
       // Avoid circular structure in logger
       logger.error('LLM Cloud call error:', String(error));
-      return {
-        ...this.generateMockResponse(),
-        debug: {
-          error: error instanceof Error ? error.message : String(error),
-          llmServiceModel: 'cloud',
-        },
-      };
+      return this.generateDebugResponse('cloud', error);
     }
   }
 
@@ -246,13 +240,7 @@ export class LLMService {
       };
     } catch (error) {
       logger.error('LLM Cloud call error:', String(error));
-      return {
-        ...this.generateMockResponse(),
-        debug: {
-          error: error instanceof Error ? error.message : String(error),
-          llmServiceModel: 'gemini',
-        },
-      };
+      return this.generateDebugResponse('gemini', error);
     }
   }
 
@@ -303,18 +291,29 @@ export class LLMService {
     } catch (error) {
       logger.error('LLM Cloud call error:', String(error));
 
-      return {
-        content: error instanceof Error ? error.message : String(error),
-        tokens: 0,
-        model: 'error',
-        processingTime: Date.now() - startTime,
-        metadata: { isError: true },
-        debug: {
-          error: error instanceof Error ? error.message : String(error),
-          llmServiceModel: 'gpt',
-        },
-      };
+      return this.generateDebugResponse('gpt', error, Date.now() - startTime);
     }
+  }
+  /**
+   * Generate a debug response for error cases, including axios error message if available
+   */
+  private generateDebugResponse(modelType: string, error: any, processingTime?: number): LLMResponse {
+    let message = error instanceof Error ? error.message : String(error);
+    // If axios error, try to extract response.data.error
+    if (error && error.response && error.response.data && error.response.data.error) {
+      message = error.response.data.error.message;
+    }
+    return {
+      ...this.generateMockResponse(),
+      content: message,
+      model: 'error',
+      processingTime: typeof processingTime === 'number' ? processingTime : Math.floor(Math.random() * 2000) + 500,
+      metadata: { isError: true },
+      debug: {
+        error: message,
+        llmServiceModel: modelType,
+      },
+    };
   }
   /**
    * Generate response using agentId (fetches key and model)

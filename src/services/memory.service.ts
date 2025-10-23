@@ -8,6 +8,10 @@ export class MemoryService {
    */
   static async create(data: any) {
     if (data.content) {
+      // Ensure content is a string for Prisma
+      if (typeof data.content === 'object') {
+        data.content = JSON.stringify(data.content);
+      }
       const vector = await vectorService.saveMessage(data.content);
       if (vector) {
         data.vectorId = vector.vectorId;
