@@ -1,9 +1,10 @@
-import { vectorService } from './vector.service';
 import { MemoryService } from './memory.service';
+import { vectorService } from './vector.service';
 
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import OpenAI from 'openai';
+import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
 import { logInfo } from '../middlewares/logger.middle';
 
 export interface AgentConfig {
@@ -46,8 +47,8 @@ export class LLMService {
   }
   // Default config for cloud and gemini endpoints
   private readonly cloudConfig = {
-    apiUrl: process.env.LLM_CLOUD_API_URL || 'https://api.llmcloud.example.com/v1/chat',
-    apiKey: process.env.LLM_CLOUD_API_KEY || '', // Add your cloud API key here
+    apiUrl: LLM_CLOUD_API_URL || 'https://api.llmcloud.example.com/v1/chat',
+    apiKey: LLM_CLOUD_API_KEY || '',
     timeout: 10000, // ms
     headers: {
       'Content-Type': 'application/json',
@@ -56,8 +57,8 @@ export class LLMService {
   };
 
   private readonly geminiConfig = {
-    apiUrl: process.env.LLM_GEMINI_API_URL || 'https://api.gemini.example.com/v1/chat',
-    apiKey: process.env.LLM_GEMINI_API_KEY || '', // Add your Gemini API key here
+    apiUrl: GEMINI_API_URL || 'https://api.gemini.example.com/v1/chat',
+    apiKey: GEMINI_API_KEY || '',
     timeout: 10000, // ms
     headers: {
       'Content-Type': 'application/json',
@@ -69,36 +70,38 @@ export class LLMService {
   private async callLLMCloud(
     messages: LLMMessage[],
     agentConfig: AgentConfig,
-    aiKey?: string | null
+    aiKey?: string | null,
   ): Promise<LLMResponse> {
     try {
       const url = agentConfig.cloudApiUrl || this.cloudConfig.apiUrl;
       const requestPayload = { messages, ...agentConfig };
       const requestHeaders = {
         ...this.cloudConfig.headers,
-        ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : this.cloudConfig.apiKey
-          ? { Authorization: `Bearer ${this.cloudConfig.apiKey}` }
-          : {}),
+        ...(aiKey
+          ? { Authorization: `Bearer ${aiKey}` }
+          : this.cloudConfig.apiKey
+            ? { Authorization: `Bearer ${this.cloudConfig.apiKey}` }
+            : {}),
       };
-      const response = await axios.post(
-        url,
-        requestPayload,
-        {
-          headers: requestHeaders,
-          timeout: this.cloudConfig.timeout,
-        },
-      );
+      const response = await axios.post(url, requestPayload, {
+        headers: requestHeaders,
+        timeout: this.cloudConfig.timeout,
+      });
       return {
         ...(response.data as LLMResponse),
         debug: {
           request: { url, payload: requestPayload, headers: requestHeaders },
           response: response.data,
+          llmServiceModel: 'cloud',
         },
       };
     } catch (error) {
       return {
         ...this.generateMockResponse(),
-        debug: { error: error instanceof Error ? error.message : String(error) },
+        debug: {
+          error: error instanceof Error ? error.message : String(error),
+          llmServiceModel: 'cloud',
+        },
       };
     }
   }
@@ -107,36 +110,38 @@ export class LLMService {
   private async callGemini(
     messages: LLMMessage[],
     agentConfig: AgentConfig,
-    aiKey?: string | null
+    aiKey?: string | null,
   ): Promise<LLMResponse> {
     try {
       const url = agentConfig.geminiApiUrl || this.geminiConfig.apiUrl;
       const requestPayload = { messages, ...agentConfig };
       const requestHeaders = {
         ...this.geminiConfig.headers,
-        ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : this.geminiConfig.apiKey
-          ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` }
-          : {}),
+        ...(aiKey
+          ? { Authorization: `Bearer ${aiKey}` }
+          : this.geminiConfig.apiKey
+            ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` }
+            : {}),
       };
-      const response = await axios.post(
-        url,
-        requestPayload,
-        {
-          headers: requestHeaders,
-          timeout: this.geminiConfig.timeout,
-        },
-      );
+      const response = await axios.post(url, requestPayload, {
+        headers: requestHeaders,
+        timeout: this.geminiConfig.timeout,
+      });
       return {
         ...(response.data as LLMResponse),
         debug: {
           request: { url, payload: requestPayload, headers: requestHeaders },
           response: response.data,
+          llmServiceModel: 'gemini',
         },
       };
     } catch (error) {
       return {
         ...this.generateMockResponse(),
-        debug: { error: error instanceof Error ? error.message : String(error) },
+        debug: {
+          error: error instanceof Error ? error.message : String(error),
+          llmServiceModel: 'gemini',
+        },
       };
     }
   }
@@ -145,7 +150,7 @@ export class LLMService {
   private async callGPT(
     messages: LLMMessage[],
     agentConfig: AgentConfig,
-    aiKey?: string | null
+    aiKey?: string | null,
   ): Promise<LLMResponse> {
     const startTime = Date.now();
     const model = agentConfig.model || 'gpt-3.5-turbo';
@@ -184,6 +189,7 @@ export class LLMService {
         debug: {
           request: requestPayload,
           response,
+          llmServiceModel: 'gpt',
         },
       };
     } catch (error) {
@@ -193,7 +199,10 @@ export class LLMService {
         model: 'error',
         processingTime: Date.now() - startTime,
         metadata: { isError: true },
-        debug: { error: error instanceof Error ? error.message : String(error) },
+        debug: {
+          error: error instanceof Error ? error.message : String(error),
+          llmServiceModel: 'gpt',
+        },
       };
     }
   }
@@ -219,13 +228,17 @@ export class LLMService {
       const model =
         typeof agent?.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo';
       const modelType = agent?.model?.type || 'gpt';
-      return await this.generateResponse(messages, {
-        model,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
-        systemPrompt: options.systemPrompt,
-        modelType,
-      }, aiKey);
+      return await this.generateResponse(
+        messages,
+        {
+          model,
+          temperature: options.temperature,
+          maxTokens: options.maxTokens,
+          systemPrompt: options.systemPrompt,
+          modelType,
+        },
+        aiKey,
+      );
     } catch (error) {
       return {
         content: error instanceof Error ? error.message : String(error),
@@ -266,12 +279,13 @@ export class LLMService {
   async generateResponse(
     messages: LLMMessage[],
     agentConfig: AgentConfig = {},
-    aiKey?: string | null
+    aiKey?: string | null,
   ): Promise<LLMResponse> {
     const startTime = Date.now();
     try {
       // Switch by model type (from agentConfig.modelType)
       const modelType = this.getModelType(agentConfig.modelType);
+      console.log(modelType)
       switch (modelType) {
         case 'gpt':
           return await this.callGPT(messages, agentConfig, aiKey);
@@ -360,15 +374,19 @@ export class LLMService {
 
       // Generate response
       // Pass modelType from agent.model.type if available
-      const modelType = agent.model?.type || 'gpt';
-      return await this.generateResponse(messages, {
-        model:
-          typeof agent.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo',
-        temperature: config.temperature,
-        maxTokens: config.maxTokens,
-        systemPrompt,
-        modelType,
-      }, aiKey);
+      const modelType = (agent.model?.type || 'gpt')?.toLowerCase();
+      return await this.generateResponse(
+        messages,
+        {
+          model:
+            typeof agent.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo',
+          temperature: config.temperature,
+          maxTokens: config.maxTokens,
+          systemPrompt,
+          modelType,
+        },
+        aiKey,
+      );
     } catch (error) {
       console.error('Generate conversation response error:', error);
       return this.generateMockResponse();
@@ -450,21 +468,27 @@ export class LLMService {
   async processAndSaveConversation(
     conversationId: string,
     userMessage: string,
-    agentId: string
-  ): Promise<LLMResponse & { questionVector?: any; answerVector?: any; memory?: any; /* message?: any */ }> {
+    agentId: string,
+  ): Promise<
+    LLMResponse & { questionVector?: any; answerVector?: any; memory?: any /* message?: any */ }
+  > {
     // 1. Generate answer
-    const llmResponse = await this.generateConversationResponse(conversationId, userMessage, agentId);
+    const llmResponse = await this.generateConversationResponse(
+      conversationId,
+      userMessage,
+      agentId,
+    );
     // 2. Save question embedding
     const questionVector = await vectorService.saveMessage(userMessage);
     // 3. Save answer embedding
     const answerVector = await vectorService.saveMessage(llmResponse.content);
     // 4. Save to memory (link answer to question)
     const memory = await MemoryService.create({
-  agentId,
-  content: llmResponse.content,
-  type: 'long_term',
-  vectorId: answerVector?.vectorId,
-  conversationId,
+      agentId,
+      content: llmResponse.content,
+      type: 'long_term',
+      vectorId: answerVector?.vectorId,
+      conversationId,
     });
     // 5. Save answer message and link to question (if MessageService exists)
     // const message = await MessageService.create({

@@ -8,3 +8,6 @@ export const JWT_SECRET = process.env.JWT_SECRET || '';
 export const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
 export const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+export const GEMINI_API_URL = process.env.GEMINI_API_URL || '';
+export const LLM_CLOUD_API_KEY = process.env.LLM_CLOUD_API_KEY || '';
+export const LLM_CLOUD_API_URL = process.env.LLM_CLOUD_API_URL || '';
