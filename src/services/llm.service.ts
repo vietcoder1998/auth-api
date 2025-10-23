@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import OpenAI from 'openai';
 import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
-import { logInfo } from '../middlewares/logger.middle';
+import { logger, logInfo } from '../middlewares/logger.middle';
 
 export interface AgentConfig {
   model?: string;
@@ -96,6 +96,8 @@ export class LLMService {
         },
       };
     } catch (error) {
+      // Avoid circular structure in logger
+      logger.error('LLM Cloud call error:', String(error));
       return {
         ...this.generateMockResponse(),
         debug: {
@@ -136,6 +138,8 @@ export class LLMService {
         },
       };
     } catch (error) {
+      logger.error('LLM Cloud call error:', String(error));
+
       return {
         ...this.generateMockResponse(),
         debug: {
@@ -193,6 +197,8 @@ export class LLMService {
         },
       };
     } catch (error) {
+      logger.error('LLM Cloud call error:', String(error));
+
       return {
         content: error instanceof Error ? error.message : String(error),
         tokens: 0,
@@ -285,7 +291,7 @@ export class LLMService {
     try {
       // Switch by model type (from agentConfig.modelType)
       const modelType = this.getModelType(agentConfig.modelType);
-      console.log(modelType)
+      console.log(modelType);
       switch (modelType) {
         case 'gpt':
           return await this.callGPT(messages, agentConfig, aiKey);
@@ -297,7 +303,7 @@ export class LLMService {
           return this.generateMockResponse();
       }
     } catch (error) {
-      console.error('LLM Service error:', error);
+      logger.error('LLM Cloud call error:', error);
       return {
         content: error instanceof Error ? error.message : String(error),
         tokens: 0,
