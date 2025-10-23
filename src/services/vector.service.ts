@@ -8,6 +8,7 @@ export interface RedisVector {
   embedding: number[];
   message: string;
   similarity: number;
+  token: number;
 }
 
 export class VectorService {
@@ -40,6 +41,9 @@ export class VectorService {
         ? (result.embedding as number[])
         : ((result.embedding as any).values ?? (result.embedding as any).data ?? (result.embedding as any).value ?? (result.embedding as any).embedding ?? (result.embedding as any)) as number[];
 
+      // Calculate token count (simple whitespace split)
+      const token = typeof message === 'string' ? message.trim().split(/\s+/).length : 0;
+
       // Optionally select Redis DB index
       if (typeof options?.dbIndex === 'number') {
         await this.redisClient.select(options.dbIndex);
@@ -50,7 +54,7 @@ export class VectorService {
         (options?.collection || 'embeddings') +
         ':' +
         Date.now().toString();
-      await this.redisClient.set(key, JSON.stringify({ message, embedding }));
+      await this.redisClient.set(key, JSON.stringify({ message, embedding, token }));
 
       console.log('Saved embedding to Redis:', key);
       // Return RedisVector object
@@ -59,6 +63,7 @@ export class VectorService {
         embedding,
         message,
         similarity: 1, // similarity is 1 for the saved message itself
+        token,
       };
     } catch (error) {
       console.error('Error saving message to Redis vector DB:', error);
@@ -85,7 +90,8 @@ export class VectorService {
         (options?.collection || 'embeddings') +
         ':' +
         Date.now().toString();
-      await this.redisClient.set(key, JSON.stringify({ message, embedding }));
+      const token = typeof message === 'string' ? message.trim().split(/\s+/).length : 0;
+      await this.redisClient.set(key, JSON.stringify({ message, embedding, token }));
       console.log('Saved embedding to Redis:', key);
       return true;
     } catch (error) {
@@ -118,7 +124,7 @@ export class VectorService {
       for (const key of keys) {
         const value = await this.redisClient.get(key);
         if (!value) continue;
-        const { message, embedding: storedEmbedding } = JSON.parse(value);
+        const { message, embedding: storedEmbedding, token } = JSON.parse(value);
 
         // Compute cosine similarity
         const similarity = this.cosineSimilarity(embedding, storedEmbedding);
@@ -128,6 +134,7 @@ export class VectorService {
             embedding: storedEmbedding,
             message,
             similarity,
+            token: typeof token === 'number' ? token : (typeof message === 'string' ? message.trim().split(/\s+/).length : 0),
           });
         }
       }
