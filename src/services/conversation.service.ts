@@ -1,8 +1,99 @@
 import { PrismaClient } from '@prisma/client';
 
+
 import { llmService } from './llm.service';
 import { MemoryService } from './memory.service';
 import { invalidateCacheByUrlPattern } from '../middlewares/cache.middleware';
+
+// Response types
+export interface ConversationPromptHistory {
+  id: string;
+  conversationId: string;
+  prompt: string;
+  createdAt: Date;
+}
+
+export interface ConversationPromptHistoryList {
+  data: ConversationPromptHistory[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface ConversationListItem {
+  id: string;
+  userId: string;
+  agentId: string;
+  title: string | null;
+  summary?: string | null;
+  isActive?: boolean | null;
+  lastMessage?: any;
+  _count?: { messages: number };
+  agent?: any;
+  user?: any;
+}
+
+export interface ConversationListResponse {
+  data: ConversationListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface ConversationDetail {
+  id: string;
+  userId: string;
+  agentId: string;
+  title: string | null;
+  summary?: string | null;
+  isActive?: boolean | null;
+  user?: any;
+  agent?: any;
+  messages: {
+    data: any[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface MessageResponse {
+  id: string;
+  conversationId: string;
+  sender: 'user' | 'agent' | 'system';
+  content: string;
+  metadata?: any;
+  tokens?: number;
+  position?: number;
+  createdAt?: Date;
+  memory?: any;
+  llmMessage?: any;
+  answerMemory?: any;
+}
+
+export interface MessageListResponse {
+  data: any[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface DeleteResponse {
+  message: string;
+}
+
+export interface ConversationStats {
+  totalMessages: number;
+  totalTokens: number;
+  messagesBySender: Record<string, number>;
+  tokensBySender: Record<string, number>;
+  firstMessage: Date | null;
+  lastMessage: Date | null;
+}
 
 const prisma = new PrismaClient();
 
@@ -30,7 +121,7 @@ export class ConversationService {
   /**
    * Create a new prompt history for a conversation
    */
-  async createPromptHistory(userId: string, conversationId: string, prompt: string) {
+  async createPromptHistory(userId: string, conversationId: string, prompt: string): Promise<ConversationPromptHistory> {
     const conversation = await prisma.conversation.findFirst({
       where: { id: conversationId, userId },
     });
@@ -51,7 +142,7 @@ export class ConversationService {
   /**
    * Get all prompt histories for a conversation
    */
-  async getPromptHistories(userId: string, conversationId: string) {
+  async getPromptHistories(userId: string, conversationId: string): Promise<ConversationPromptHistory[]> {
     const conversation = await prisma.conversation.findFirst({
       where: { id: conversationId, userId },
     });
@@ -65,7 +156,7 @@ export class ConversationService {
   /**
    * Update a prompt history
    */
-  async updatePromptHistory(userId: string, id: string, prompt: string) {
+  async updatePromptHistory(userId: string, id: string, prompt: string): Promise<ConversationPromptHistory> {
     const existing = await prisma.promptHistory.findUnique({ where: { id } });
     if (!existing) throw new Error('Prompt not found');
     return await prisma.promptHistory.update({
@@ -77,14 +168,14 @@ export class ConversationService {
   /**
    * Delete a prompt history
    */
-  async deletePromptHistory(userId: string, id: string) {
+  async deletePromptHistory(userId: string, id: string): Promise<DeleteResponse> {
     const existing = await prisma.promptHistory.findUnique({ where: { id } });
     if (!existing) throw new Error('Prompt not found');
     await prisma.promptHistory.delete({ where: { id } });
     return { message: 'Prompt deleted' };
   }
 
-  async getConversations(userId: string, query: any) {
+  async getConversations(userId: string, query: any): Promise<ConversationListResponse> {
     const {
       agentId,
       page = '1',
@@ -154,6 +245,9 @@ export class ConversationService {
     });
     const transformedConversations = conversations.map((conv) => ({
       ...conv,
+      title: conv.title ?? '',
+      summary: conv.summary ?? '',
+      isActive: conv.isActive ?? null,
       lastMessage: conv.messages[0] || null,
       messages: undefined,
     }));
@@ -166,7 +260,7 @@ export class ConversationService {
     };
   }
 
-  async createConversation(userId: string, agentId: string, title?: string) {
+  async createConversation(userId: string, agentId: string, title?: string): Promise<ConversationListItem> {
     const agent = await prisma.agent.findFirst({
       where: { id: agentId, userId },
     });
@@ -189,10 +283,15 @@ export class ConversationService {
         },
       },
     });
-    return conversation;
+    return {
+      ...conversation,
+      title: conversation.title ?? '',
+      summary: conversation.summary ?? '',
+      isActive: conversation.isActive ?? null,
+    };
   }
 
-  async getConversation(userId: string, id: string, page: number = 1, limit: number = 50) {
+  async getConversation(userId: string, id: string, page: number = 1, limit: number = 50): Promise<ConversationDetail> {
     const conversation = await prisma.conversation.findFirst({
       where: { id, userId },
       include: {
@@ -217,6 +316,9 @@ export class ConversationService {
     ]);
     return {
       ...conversation,
+      title: conversation.title ?? '',
+      summary: conversation.summary ?? '',
+      isActive: conversation.isActive ?? null,
       messages: {
         data: messages,
         total: totalMessages,
@@ -227,7 +329,7 @@ export class ConversationService {
     };
   }
 
-  async updateConversation(userId: string, id: string, updateData: any) {
+  async updateConversation(userId: string, id: string, updateData: any): Promise<ConversationListItem> {
     const existingConversation = await prisma.conversation.findFirst({
       where: { id, userId },
     });
@@ -247,10 +349,15 @@ export class ConversationService {
         },
       },
     });
-    return conversation;
+    return {
+      ...conversation,
+      title: conversation.title ?? '',
+      summary: conversation.summary ?? '',
+      isActive: conversation.isActive ?? null,
+    };
   }
 
-  async deleteConversation(userId: string, id: string) {
+  async deleteConversation(userId: string, id: string): Promise<DeleteResponse> {
     const existingConversation = await prisma.conversation.findFirst({
       where: { id, userId },
     });
@@ -259,7 +366,7 @@ export class ConversationService {
     return { message: 'Conversation deleted successfully' };
   }
 
-  async getConversationById(id: string) {
+  async getConversationById(id: string): Promise<ConversationDetail> {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       include: {
@@ -291,7 +398,25 @@ export class ConversationService {
       })),
     };
 
-    return parsedConversation;
+    // Ensure messages property matches ConversationDetail interface
+    return {
+      ...parsedConversation,
+      title: parsedConversation.title ?? '',
+      summary: parsedConversation.summary ?? '',
+      isActive: parsedConversation.isActive ?? null,
+      messages: {
+        data: Array.isArray(parsedConversation.messages)
+          ? parsedConversation.messages.map((msg) => ({
+              ...msg,
+              tokens: msg.tokens ?? -1,
+            }))
+          : [],
+        total: Array.isArray(parsedConversation.messages) ? parsedConversation.messages.length : 0,
+        page: 1,
+        limit: parsedConversation.messages?.length ?? 0,
+        totalPages: 1,
+      },
+    };
   }
 
   async getUserConversations(
@@ -300,7 +425,7 @@ export class ConversationService {
     page: number = 1,
     limit: number = 20,
     search?: string,
-  ) {
+  ): Promise<ConversationListResponse> {
     const skip = (page - 1) * limit;
 
     const where: any = { userId };
@@ -341,8 +466,14 @@ export class ConversationService {
       prisma.conversation.count({ where }),
     ]);
 
+    const transformedConversations = conversations.map((conv) => ({
+      ...conv,
+      title: conv.title ?? '',
+      summary: conv.summary ?? '',
+      isActive: conv.isActive ?? null,
+    }));
     return {
-      data: conversations,
+      data: transformedConversations,
       total,
       page,
       limit,
@@ -350,7 +481,7 @@ export class ConversationService {
     };
   }
 
-  async addMessage(data: CreateMessageData) {
+  async addMessage(data: CreateMessageData): Promise<MessageResponse> {
     const { conversationId, sender, content, metadata, tokens } = data;
 
     // Save user message (prompt)
@@ -417,13 +548,7 @@ export class ConversationService {
 
     let llmResponse;
     try {
-      llmResponse = await llmService.generateResponseByAgentId(
-        [{ role: 'user', content }],
-        agentId,
-        {
-          systemPrompt: data?.content,
-        },
-      );
+      llmResponse = await llmService.processAndSaveConversation(conversationId, content, agentId);
 
       // Save agent reply as message
       llmMessage = await prisma.message.create({
@@ -461,15 +586,21 @@ export class ConversationService {
     }
 
     return {
-      ...message,
+      id: message.id,
+      conversationId: message.conversationId,
+      sender: (['user', 'agent', 'system'].includes(message.sender) ? message.sender : 'user') as 'user' | 'agent' | 'system',
+      content: message.content,
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
+      tokens: message.tokens ?? -1,
+      position: message.position,
+      createdAt: message.createdAt,
       memory,
       llmMessage,
       answerMemory,
     };
   }
 
-  async getConversationMessages(conversationId: string, page: number = 1, limit: number = 50) {
+  async getConversationMessages(conversationId: string, page: number = 1, limit: number = 50): Promise<MessageListResponse> {
     const skip = (page - 1) * limit;
 
     const [messages, total] = await Promise.all([
@@ -497,7 +628,7 @@ export class ConversationService {
     };
   }
 
-  async updateMessage(messageId: string, content: string, metadata?: any) {
+  async updateMessage(messageId: string, content: string, metadata?: any): Promise<MessageResponse> {
     const updateData: any = { content };
 
     if (metadata) {
@@ -511,6 +642,8 @@ export class ConversationService {
 
     return {
       ...message,
+      sender: (['user', 'agent', 'system'].includes(message.sender) ? message.sender : 'user') as 'user' | 'agent' | 'system',
+      tokens: message.tokens ?? -1,
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
     };
   }
@@ -518,7 +651,7 @@ export class ConversationService {
   /**
    * Delete message
    */
-  async deleteMessage(messageId: string) {
+  async deleteMessage(messageId: string): Promise<any> {
     return await prisma.message.delete({
       where: { id: messageId },
     });
@@ -527,7 +660,7 @@ export class ConversationService {
   /**
    * Clear conversation messages
    */
-  async clearConversationMessages(conversationId: string) {
+  async clearConversationMessages(conversationId: string): Promise<any> {
     return await prisma.message.deleteMany({
       where: { conversationId },
     });
@@ -536,7 +669,7 @@ export class ConversationService {
   /**
    * Get conversation summary
    */
-  async generateConversationSummary(conversationId: string) {
+  async generateConversationSummary(conversationId: string): Promise<string> {
     const messages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
@@ -570,7 +703,7 @@ export class ConversationService {
   /**
    * Get conversation statistics
    */
-  async getConversationStats(conversationId: string) {
+  async getConversationStats(conversationId: string): Promise<ConversationStats> {
     const messages = await prisma.message.findMany({
       where: { conversationId },
       select: {
@@ -612,7 +745,7 @@ export class ConversationService {
     query: string,
     page: number = 1,
     limit: number = 20,
-  ) {
+  ): Promise<MessageListResponse> {
     const skip = (page - 1) * limit;
 
     const [messages, total] = await Promise.all([
@@ -658,7 +791,7 @@ export class ConversationService {
     type: string,
     parameters: any,
     commandService: any,
-  ) {
+  ): Promise<any> {
     const conversation = await prisma.conversation.findFirst({
       where: { id: conversationId, userId },
       include: { agent: true },

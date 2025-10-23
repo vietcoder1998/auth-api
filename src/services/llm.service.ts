@@ -36,6 +36,12 @@ export interface LLMMessage {
   content: string;
 }
 
+export interface LLMResponseWithVectors extends LLMResponse {
+  questionVector?: any;
+  answerVector?: any;
+  memory?: any;
+}
+
 export class LLMService {
   constructor() {
     // Optionally, you can fetch enabled Gemini models here and store if needed
@@ -103,31 +109,6 @@ export class LLMService {
   /**
    * Generate a debug response for error cases, including axios error message if available
    */
-  private generateDebugResponse(
-    modelType: string,
-    error: any,
-    processingTime?: number,
-  ): LLMResponse {
-    let message = error instanceof Error ? error.message : String(error);
-    // If axios error, try to extract response.data.error
-    if (error && error.response && error.response.data && error.response.data.error) {
-      message = error.response.data.error.message;
-    }
-    return {
-      ...this.generateMockResponse(),
-      content: message,
-      model: 'error',
-      processingTime:
-        typeof processingTime === 'number'
-          ? processingTime
-          : Math.floor(Math.random() * 2000) + 500,
-      metadata: { isError: true },
-      debug: {
-        error: message,
-        llmServiceModel: modelType,
-      },
-    };
-  }
   /**
    * Generate response using agentId (fetches key and model)
    */
@@ -391,9 +372,7 @@ export class LLMService {
     conversationId: string,
     userMessage: string,
     agentId: string,
-  ): Promise<
-    LLMResponse & { questionVector?: any; answerVector?: any; memory?: any /* message?: any */ }
-  > {
+  ): Promise<LLMResponseWithVectors> {
     // 1. Generate answer
     const llmResponse = await this.generateConversationResponse(
       conversationId,
