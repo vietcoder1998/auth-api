@@ -591,14 +591,17 @@ export class LLMService {
     const questionVector = await vectorService.saveMessage(userMessage);
     // 3. Save answer embedding
     const answerVector = await vectorService.saveMessage(llmResponse.content);
-    // 4. Save to memory (link answer to question)
-    const memory = await MemoryService.create({
-      agentId,
-      content: llmResponse.content,
-      type: 'long_term',
-      vectorId: answerVector?.vectorId,
-      conversationId,
-    });
+    // 4. Save to memory (link answer to question) only if not error
+    let memory = null;
+    if (llmResponse.model !== 'error') {
+      memory = await MemoryService.create({
+        agentId,
+        content: llmResponse.content,
+        type: 'long_term',
+        vectorId: answerVector?.vectorId,
+        conversationId,
+      });
+    }
     // 5. Save answer message and link to question (if MessageService exists)
     // const message = await MessageService.create({
     //   conversationId,
