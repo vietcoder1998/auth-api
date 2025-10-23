@@ -29,6 +29,7 @@ export interface LLMResponse {
   model: string;
   processingTime: number;
   metadata?: any;
+  debug?: any;
 }
 
 export interface LLMMessage {
@@ -72,22 +73,33 @@ export class LLMService {
   ): Promise<LLMResponse> {
     try {
       const url = agentConfig.cloudApiUrl || this.cloudConfig.apiUrl;
+      const requestPayload = { messages, ...agentConfig };
+      const requestHeaders = {
+        ...this.cloudConfig.headers,
+        ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : this.cloudConfig.apiKey
+          ? { Authorization: `Bearer ${this.cloudConfig.apiKey}` }
+          : {}),
+      };
       const response = await axios.post(
         url,
-        { messages, ...agentConfig },
+        requestPayload,
         {
-          headers: {
-            ...this.cloudConfig.headers,
-            ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : this.cloudConfig.apiKey
-              ? { Authorization: `Bearer ${this.cloudConfig.apiKey}` }
-              : {}),
-          },
+          headers: requestHeaders,
           timeout: this.cloudConfig.timeout,
         },
       );
-      return response.data as LLMResponse;
+      return {
+        ...(response.data as LLMResponse),
+        debug: {
+          request: { url, payload: requestPayload, headers: requestHeaders },
+          response: response.data,
+        },
+      };
     } catch (error) {
-      return this.generateMockResponse();
+      return {
+        ...this.generateMockResponse(),
+        debug: { error: error instanceof Error ? error.message : String(error) },
+      };
     }
   }
 
@@ -99,22 +111,33 @@ export class LLMService {
   ): Promise<LLMResponse> {
     try {
       const url = agentConfig.geminiApiUrl || this.geminiConfig.apiUrl;
+      const requestPayload = { messages, ...agentConfig };
+      const requestHeaders = {
+        ...this.geminiConfig.headers,
+        ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : this.geminiConfig.apiKey
+          ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` }
+          : {}),
+      };
       const response = await axios.post(
         url,
-        { messages, ...agentConfig },
+        requestPayload,
         {
-          headers: {
-            ...this.geminiConfig.headers,
-            ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : this.geminiConfig.apiKey
-              ? { Authorization: `Bearer ${this.geminiConfig.apiKey}` }
-              : {}),
-          },
+          headers: requestHeaders,
           timeout: this.geminiConfig.timeout,
         },
       );
-      return response.data as LLMResponse;
+      return {
+        ...(response.data as LLMResponse),
+        debug: {
+          request: { url, payload: requestPayload, headers: requestHeaders },
+          response: response.data,
+        },
+      };
     } catch (error) {
-      return this.generateMockResponse();
+      return {
+        ...this.generateMockResponse(),
+        debug: { error: error instanceof Error ? error.message : String(error) },
+      };
     }
   }
 
@@ -137,12 +160,13 @@ export class LLMService {
       const openaiClient = new OpenAI({
         apiKey: aiKey || process.env.OPENAI_API_KEY,
       });
-      const response = await openaiClient.chat.completions.create({
+      const requestPayload = {
         model,
         messages: preparedMessages,
         temperature,
         max_tokens: maxTokens,
-      });
+      };
+      const response = await openaiClient.chat.completions.create(requestPayload);
       const processingTime = Date.now() - startTime;
       const choice = response.choices[0];
       const content = choice?.message?.content ?? '';
@@ -157,6 +181,10 @@ export class LLMService {
           completionTokens: response.usage?.completion_tokens,
           finishReason,
         },
+        debug: {
+          request: requestPayload,
+          response,
+        },
       };
     } catch (error) {
       return {
@@ -165,6 +193,7 @@ export class LLMService {
         model: 'error',
         processingTime: Date.now() - startTime,
         metadata: { isError: true },
+        debug: { error: error instanceof Error ? error.message : String(error) },
       };
     }
   }
@@ -409,7 +438,7 @@ export class LLMService {
       return 'Conversation summary unavailable';
     }
   }
-  
+
   // import { MessageService } from './message.service'; // Uncomment if MessageService exists
   /**
    * Full process: generate answer, embed, save to memory/message, link answer to question
