@@ -8,9 +8,19 @@ class JobQueue {
   async sendToQueue(job: any): Promise<void> {
     const ch = await this.getChannel();
     if (ch) {
-      ch.sendToQueue('job-queue', Buffer.from(JSON.stringify({ jobId: job.id, type: job.type, payload: JSON.parse(job.payload || '{}') })), {
-        persistent: true,
-      });
+      ch.sendToQueue(
+        'job-queue',
+        Buffer.from(
+          JSON.stringify({
+            jobId: job.id,
+            type: job.type,
+            payload: JSON.parse(job.payload || '{}'),
+          }),
+        ),
+        {
+          persistent: true,
+        },
+      );
     }
   }
   prisma: PrismaClient;
@@ -26,6 +36,9 @@ class JobQueue {
 
   constructor() {
     this.prisma = new PrismaClient();
+    this.processJobs(async (job) => {
+      logError('No handler for job type', { type: job.type, jobId: job.jobId });
+    });
   }
 
   async getChannel(): Promise<Channel | null | undefined> {
@@ -200,7 +213,3 @@ class JobQueue {
 }
 
 export const jobQueue = new JobQueue();
-
-jobQueue.processJobs(async (job) => {
-  logError('No handler for job type', { type: job.type, jobId: job.jobId });
-});
