@@ -17,8 +17,8 @@ import configRouter from './routes/config.routes';
 import publicBlogRouter from './routes/publicBlog.routes';
 import ssoAuthRouter from './routes/ssoAuth.routes';
 import { configService } from './services/config.service';
-import { getJobs } from './services/job.service';
 import { client } from './setup';
+import { jobQueue } from './services/job.service';
 import {
   getChildProcessInfo,
   getCpuStatus,
@@ -34,7 +34,7 @@ const swaggerDocument = loadSwaggerDocument(__dirname);
 const app = express();
 
 app.use(express.json());
-app.use(async (req, res, next) => {
+app.use(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
   // Use configService to get allowed origins
   const allowedOrigins = await configService.getAllowedOrigins();
   logInfo('CORS check', {
@@ -57,7 +57,7 @@ app.use(loggerMiddleware);
 // Public blog/category API (no auth)
 app.use('/api/public', publicBlogRouter);
 app.use('/api/auth', authRouter);
-app.get('/api/config/health', async (req, res) => {
+app.get('/api/config/health', async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const [databaseStatus, redisStatus] = await Promise.all([
       getDatabaseStatus(prisma),
@@ -65,10 +65,10 @@ app.get('/api/config/health', async (req, res) => {
     ]);
     const memory = getMemoryStatus();
     const { cpu, cpuLoad } = getCpuStatus();
-    const jobs = await getJobs();
+  const jobs = await jobQueue.getJobs();
     const osStatus = getOsStatus();
     const childProcessInfo = getChildProcessInfo();
-    const healthStatus = {
+    const healthStatus: Record<string, any> = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       api: true,
@@ -89,7 +89,7 @@ app.get('/api/config/health', async (req, res) => {
       const statusCode = databaseStatus && redisStatus ? 200 : 503;
       res.status(statusCode).json(healthStatus);
     });
-  } catch (error) {
+  } catch (error: any) {
     logError('Health check endpoint error:', { error });
     res.status(500).json({
       status: 'error',
@@ -156,7 +156,7 @@ app.use(
 );
 // Serve admin GUI at /admin
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
-app.get('/', (req, res) => res.json({ status: 'ok' }));
+app.get('/', (req: express.Request, res: express.Response) => res.json({ status: 'ok' }));
 app.listen(env.PORT, async () => {
   await checkRedisConnection(client);
 

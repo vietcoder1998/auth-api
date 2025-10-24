@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import { addJob } from './job.service';
+import { PrismaClient, Document } from '@prisma/client';
+import { jobQueue } from './job.service';
 import * as XLSX from 'xlsx';
 
 const prisma = new PrismaClient();
@@ -23,28 +23,28 @@ export class DocumentService {
 		url?: string;
 		fileId: string;
 		type?: string;
-	}) {
+	}): Promise<Document> {
 		return prisma.document.create({ data });
 	}
 
 	// Get document by id
-	async getDocument(id: string) {
+	async getDocument(id: string): Promise<Document | null> {
 		return prisma.document.findUnique({ where: { id } });
 	}
 
 	// Update document
-	async updateDocument(id: string, data: Partial<{ name: string; url: string; type: string }>) {
+	async updateDocument(id: string, data: Partial<{ name: string; url: string; type: string }>): Promise<Document> {
 		return prisma.document.update({ where: { id }, data });
 	}
 
 	// Delete document
-	async deleteDocument(id: string) {
+	async deleteDocument(id: string): Promise<Document> {
 		return prisma.document.delete({ where: { id } });
 	}
 
 	// List documents with filter
-	async listDocuments(filter: DocumentFilter = {}) {
-		const where: any = {};
+	async listDocuments(filter: DocumentFilter = {}): Promise<Document[]> {
+		const where: Record<string, any> = {};
 		if (filter.name) where.name = { contains: filter.name };
 		if (filter.type) where.type = filter.type;
 		if (filter.createdAtFrom || filter.createdAtTo) {
@@ -105,7 +105,7 @@ export class DocumentService {
 	async createChunkJob(documentId: string, fileContent: string, fileType: string, userId?: string) {
 		const chunks = await this.splitFileToChunks(fileContent, fileType);
 		// Call job service to process chunks
-		return addJob('extract', { documentId, chunks }, userId, `Chunk break for document ${documentId}`);
+		return jobQueue.addJob('extract', { documentId, chunks }, userId, `Chunk break for document ${documentId}`);
 	}
 }
 
