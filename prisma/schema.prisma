@@ -1,3 +1,20 @@
+// Prompt Template Model
+model PromptTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.Text
+  content     String   @db.Text // The actual prompt template text
+  type        String? // e.g. 'system', 'user', 'agent', 'instruction'
+  metadata    String?  @db.Text // JSON metadata (tags, source, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  promptHistories PromptHistory[]
+
+  @@map("prompt_template")
+}
+
 // AI Model table
 model AIModel {
   id          String      @id @default(uuid())
@@ -446,7 +463,7 @@ model AgentMemory {
   message        Message?       @relation(fields: [messageId], references: [id])
   type           String // 'short_term', 'long_term', 'knowledge_base'
   content        String         @db.Text
-  vectorId       String?        // <-- NEW: stores Redis vector key
+  vectorId       String? // <-- NEW: stores Redis vector key
   tokens         Int? // Token count for embedded message
   metadata       String?        @db.Text // JSON metadata (tags, source, date, etc.)
   importance     Int            @default(1) // 1-10 importance score
@@ -488,10 +505,12 @@ model PromptHistory {
   prompt         String   @db.Text // The prompt text
   createdAt      DateTime @default(now())
 
-  messages     Message[] // <-- Messages generated from this prompt
-  Conversation Conversation  @relation(fields: [conversationId], references: [id])
-  Faq          Faq[]
-  AgentMemory  AgentMemory[]
+  messages         Message[] // <-- Messages generated from this prompt
+  Conversation     Conversation    @relation(fields: [conversationId], references: [id])
+  Faq              Faq[]
+  AgentMemory      AgentMemory[]
+  PromptTemplate   PromptTemplate? @relation(fields: [promptTemplateId], references: [id])
+  promptTemplateId String?
 
   @@index([conversationId])
   @@map("prompt_history")
