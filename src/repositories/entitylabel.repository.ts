@@ -3,12 +3,12 @@ import { BaseRepository } from './base.repository';
 import { EntityLabelDto, EntityLabelModel } from '../interfaces';
 
 export class EntityLabelRepository extends BaseRepository<EntityLabelModel, EntityLabelDto, EntityLabelDto> {
-    constructor(entityLabelDelegate = prisma.entityLabel) {
+    constructor(entityLabelDelegate: any = prisma.entityLabel) {
         super(entityLabelDelegate);
     }
 
     async findByEntity(entityId: string, entityType: string) {
-        return this.model.findMany({ 
+        return (this.model as any).findMany({ 
             where: { entityId, entityType },
             include: { label: true }
         });
@@ -17,12 +17,12 @@ export class EntityLabelRepository extends BaseRepository<EntityLabelModel, Enti
     async findByLabel(labelId: string, entityType?: string) {
         const where: any = { labelId };
         if (entityType) where.entityType = entityType;
-        return this.model.findMany({ where, include: { label: true } });
+        return (this.model as any).findMany({ where, include: { label: true } });
     }
 
     async deleteByEntity(entityId: string, entityType: string, labelIds?: string[]) {
         const where: any = { entityId, entityType };
         if (labelIds && labelIds.length > 0) where.labelId = { in: labelIds };
-        return this.model.deleteMany({ where });
+        return (this.model as any).deleteMany({ where });
     }
 }

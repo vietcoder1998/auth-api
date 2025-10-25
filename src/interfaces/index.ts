@@ -27,3 +27,5 @@ export * from './config.interface';
 export * from './faq.interface';
 export * from './entitylabel.interface';
 export * from './document.interface';
+export * from './loginhistory.interface';
+export * from './logichistory.interface';

@@ -269,9 +269,7 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
       limit: currentLimit,
       totalPages: Math.ceil(total / currentLimit),
     };
-  }
-
-  async createConversation(userId: string, agentId: string, title?: string): Promise<ConversationListItem> {
+  }  async createConversation(userId: string, agentId: string, title?: string): Promise<ConversationListItem> {
     const agent = await prisma.agent.findFirst({
       where: { id: agentId, userId },
     });

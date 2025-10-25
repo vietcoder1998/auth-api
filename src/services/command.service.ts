@@ -1,9 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import { llmService } from './llm.service';
 import { ToolRepository } from '../repositories/tool.repository';
+import { AgentMemoryRepository } from '../repositories/agentmemory.repository';
+import { AgentTaskRepository } from '../repositories/agenttask.repository';
 
 const prisma = new PrismaClient();
 const toolRepository = new ToolRepository();
+const agentMemoryRepository = new AgentMemoryRepository();
+const agentTaskRepository = new AgentTaskRepository();
 
 export interface CommandResult {
   success: boolean;
@@ -54,7 +58,6 @@ export class CommandService {
       };
     }
   }
-
   /**
    * Handle cache-related commands
    */
@@ -64,9 +67,7 @@ export class CommandService {
     switch (parameters?.action) {
       case 'remove_all':
         // Clear all agent memories
-        await prisma.agentMemory.deleteMany({
-          where: { agentId: context.agentId },
-        });
+        await agentMemoryRepository.deleteByAgentId(context.agentId);
         return {
           success: true,
           message: 'All agent cache/memories cleared successfully',
@@ -74,12 +75,7 @@ export class CommandService {
         };
 
       case 'remove_short_term':
-        await prisma.agentMemory.deleteMany({
-          where: {
-            agentId: context.agentId,
-            type: 'short_term',
-          },
-        });
+        await agentMemoryRepository.deleteByType(context.agentId, 'short_term');
         return {
           success: true,
           message: 'Short-term cache cleared successfully',
@@ -87,12 +83,7 @@ export class CommandService {
         };
 
       case 'remove_long_term':
-        await prisma.agentMemory.deleteMany({
-          where: {
-            agentId: context.agentId,
-            type: 'long_term',
-          },
-        });
+        await agentMemoryRepository.deleteByType(context.agentId, 'long_term');
         return {
           success: true,
           message: 'Long-term cache cleared successfully',
@@ -108,7 +99,6 @@ export class CommandService {
         };
     }
   }
-
   /**
    * Handle memory-related commands
    */
@@ -117,14 +107,12 @@ export class CommandService {
 
     switch (parameters?.action) {
       case 'add':
-        const memory = await prisma.agentMemory.create({
-          data: {
-            agentId: context.agentId,
-            type: parameters.type || 'long_term',
-            content: parameters.content,
-            importance: parameters.importance || 5,
-            metadata: parameters.metadata ? JSON.stringify(parameters.metadata) : null,
-          },
+        const memory = await agentMemoryRepository.create({
+          agentId: context.agentId,
+          type: parameters.type || 'long_term',
+          content: parameters.content,
+          importance: parameters.importance || 5,
+          metadata: parameters.metadata ? JSON.stringify(parameters.metadata) : null,
         });
         return {
           success: true,
@@ -134,16 +122,11 @@ export class CommandService {
         };
 
       case 'search':
-        const memories = await prisma.agentMemory.findMany({
-          where: {
-            agentId: context.agentId,
-            content: {
-              contains: parameters.query,
-            },
-          },
-          orderBy: { importance: 'desc' },
-          take: parameters.limit || 10,
-        });
+        const memories = await agentMemoryRepository.searchByContent(
+          context.agentId,
+          parameters.query,
+          parameters.limit || 10
+        );
         return {
           success: true,
           message: `Found ${memories.length} memories`,
@@ -257,7 +240,6 @@ export class CommandService {
         };
     }
   }
-
   /**
    * Handle task-related commands
    */
@@ -266,13 +248,11 @@ export class CommandService {
 
     switch (parameters?.action) {
       case 'create':
-        const task = await prisma.agentTask.create({
-          data: {
-            agentId: context.agentId,
-            name: parameters.name,
-            input: parameters.input ? JSON.stringify(parameters.input) : null,
-            status: 'pending',
-          },
+        const task = await agentTaskRepository.create({
+          agentId: context.agentId,
+          name: parameters.name,
+          input: parameters.input ? JSON.stringify(parameters.input) : null,
+          status: 'pending',
         });
         return {
           success: true,
@@ -282,26 +262,18 @@ export class CommandService {
         };
 
       case 'list':
-        const tasks = await prisma.agentTask.findMany({
-          where: { agentId: context.agentId },
-          orderBy: { createdAt: 'desc' },
-          take: parameters.limit || 20,
-        });
+        const tasks = await agentTaskRepository.findByAgentId(context.agentId);
+        // Limit results
+        const limitedTasks = tasks.slice(0, parameters.limit || 20);
         return {
           success: true,
-          message: `Found ${tasks.length} tasks`,
-          data: tasks,
+          message: `Found ${limitedTasks.length} tasks`,
+          data: limitedTasks,
           type: 'task',
         };
 
       case 'cancel':
-        await prisma.agentTask.updateMany({
-          where: {
-            agentId: context.agentId,
-            status: { in: ['pending', 'running'] },
-          },
-          data: { status: 'cancelled' },
-        });
+        await agentTaskRepository.cancelPendingTasks(context.agentId);
         return {
           success: true,
           message: 'All pending/running tasks cancelled',

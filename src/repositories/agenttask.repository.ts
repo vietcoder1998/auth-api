@@ -27,4 +27,14 @@ export class AgentTaskRepository extends BaseRepository<AgentTaskModel, AgentTas
             data: { status }
         });
     }
+
+    async cancelPendingTasks(agentId: string) {
+        return (this.model as any).updateMany({
+            where: {
+                agentId,
+                status: { in: ['pending', 'running'] }
+            },
+            data: { status: 'cancelled' }
+        });
+    }
 }

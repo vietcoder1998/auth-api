@@ -7,17 +7,18 @@ export class SSORepository extends BaseRepository<SSOModel, SSODto, SSODto> {
         super(ssoDelegate);
     }
 
-    async findByProvider(provider: string) {
-        return this.model.findMany({ where: { provider } });
-    }
-
+    // Note: SSO model doesn't have provider or providerId fields in schema
+    // Only has: url, key, ssoKey, userId, deviceIP, etc.
+    
     async findByUserId(userId: string) {
         return this.model.findMany({ where: { userId } });
     }
 
-    async findByProviderAndProviderId(provider: string, providerId: string) {
-        return this.model.findFirst({ 
-            where: { provider, providerId }
-        });
+    async findBySsoKey(ssoKey: string) {
+        return this.model.findFirst({ where: { ssoKey } });
+    }
+
+    async findByKey(key: string) {
+        return this.model.findFirst({ where: { key } });
     }
 }

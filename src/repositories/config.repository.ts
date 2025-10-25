@@ -11,7 +11,6 @@ export class ConfigRepository extends BaseRepository<ConfigModel, ConfigDto, Con
         return this.model.findFirst({ where: { key } });
     }
 
-    async findByCategory(category: string) {
-        return this.model.findMany({ where: { category } });
-    }
+    // Note: Config model doesn't have category field in schema
+    // Removed findByCategory method as it doesn't exist in Prisma schema
 }

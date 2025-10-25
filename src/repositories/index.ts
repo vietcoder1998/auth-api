@@ -24,3 +24,5 @@ export * from './config.repository';
 export * from './faq.repository';
 export * from './entitylabel.repository';
 export * from './document.repository';
+export * from './loginhistory.repository';
+export * from './logichistory.repository';

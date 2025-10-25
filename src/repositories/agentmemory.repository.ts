@@ -20,4 +20,27 @@ export class AgentMemoryRepository extends BaseRepository<AgentMemoryModel, Agen
             orderBy: { createdAt: 'desc' }
         });
     }
+
+    async deleteByAgentId(agentId: string) {
+        return (this.model as any).deleteMany({ 
+            where: { agentId }
+        });
+    }
+
+    async deleteByType(agentId: string, type: string) {
+        return (this.model as any).deleteMany({ 
+            where: { agentId, type }
+        });
+    }
+
+    async searchByContent(agentId: string, query: string, limit: number = 10) {
+        return (this.model as any).findMany({ 
+            where: { 
+                agentId,
+                content: { contains: query }
+            },
+            orderBy: { importance: 'desc' },
+            take: limit
+        });
+    }
 }

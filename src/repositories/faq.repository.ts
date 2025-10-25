@@ -7,19 +7,8 @@ export class FaqRepository extends BaseRepository<FaqModel, FaqDto, FaqDto> {
         super(faqDelegate);
     }
 
-    async findByCategory(category: string) {
-        return this.model.findMany({ 
-            where: { category },
-            orderBy: { order: 'asc' }
-        });
-    }
-
-    async findPublished() {
-        return this.model.findMany({ 
-            where: { isPublished: true },
-            orderBy: { order: 'asc' }
-        });
-    }
+    // Note: Faq model doesn't have category or order fields in schema
+    // Removed findByCategory and findPublished methods
 
     async searchByQuery(query: string) {
         return this.model.findMany({

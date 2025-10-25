@@ -14,9 +14,9 @@ export class PromptHistoryRepository extends BaseRepository<PromptHistoryModel, 
         });
     }
 
-    async findByTemplateId(templateId: string) {
+    async findByPromptTemplateId(promptTemplateId: string) {
         return this.model.findMany({ 
-            where: { templateId },
+            where: { promptTemplateId },
             orderBy: { createdAt: 'desc' }
         });
     }

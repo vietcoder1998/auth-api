@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { LoginHistoryRepository, LogicHistoryRepository } from '../repositories';
 
 const prisma = new PrismaClient();
 
@@ -23,20 +24,21 @@ interface LogicHistoryData {
 }
 
 export class HistoryService {
+  private static loginHistoryRepository = new LoginHistoryRepository();
+  private static logicHistoryRepository = new LogicHistoryRepository();
+
   /**
    * Create a login history entry
    */
   static async createLoginHistory(data: LoginHistoryData) {
     try {
-      return await prisma.loginHistory.create({
-        data: {
-          userId: data.userId,
-          ssoId: data.ssoId || null,
-          deviceIP: data.deviceIP || null,
-          userAgent: data.userAgent || null,
-          location: data.location || null,
-          status: 'active',
-        },
+      return await this.loginHistoryRepository.create({
+        userId: data.userId,
+        ssoId: data.ssoId || null,
+        deviceIP: data.deviceIP || null,
+        userAgent: data.userAgent || null,
+        location: data.location || null,
+        status: 'active',
       });
     } catch (error) {
       console.error('Failed to create login history:', error);
@@ -49,13 +51,7 @@ export class HistoryService {
    */
   static async logoutUser(loginHistoryId: string) {
     try {
-      return await prisma.loginHistory.update({
-        where: { id: loginHistoryId },
-        data: {
-          status: 'logged_out',
-          logoutAt: new Date(),
-        },
-      });
+      return await this.loginHistoryRepository.logoutSession(loginHistoryId);
     } catch (error) {
       console.error('Failed to update logout:', error);
       return null;
@@ -67,19 +63,17 @@ export class HistoryService {
    */
   static async createLogicHistory(data: LogicHistoryData) {
     try {
-      return await prisma.logicHistory.create({
-        data: {
-          userId: data.userId,
-          action: data.action,
-          entityType: data.entityType || null,
-          entityId: data.entityId || null,
-          oldValues: data.oldValues ? JSON.stringify(data.oldValues) : null,
-          newValues: data.newValues ? JSON.stringify(data.newValues) : null,
-          ipAddress: data.ipAddress || null,
-          userAgent: data.userAgent || null,
-          notificationTemplateId: data.notificationTemplateId || null,
-          notificationSent: false,
-        },
+      return await this.logicHistoryRepository.create({
+        userId: data.userId,
+        action: data.action,
+        entityType: data.entityType || null,
+        entityId: data.entityId || null,
+        oldValues: data.oldValues ? JSON.stringify(data.oldValues) : null,
+        newValues: data.newValues ? JSON.stringify(data.newValues) : null,
+        ipAddress: data.ipAddress || null,
+        userAgent: data.userAgent || null,
+        notificationTemplateId: data.notificationTemplateId || null,
+        notificationSent: false,
       });
     } catch (error) {
       console.error('Failed to create logic history:', error);
@@ -189,19 +183,12 @@ export class HistoryService {
       return undefined;
     }
   }
-
   /**
    * Get active login sessions for a user
    */
   static async getActiveUserSessions(userId: string) {
     try {
-      return await prisma.loginHistory.findMany({
-        where: {
-          userId,
-          status: 'active',
-        },
-        orderBy: { loginAt: 'desc' },
-      });
+      return await this.loginHistoryRepository.findActiveByUserId(userId);
     } catch (error) {
       console.error('Failed to get active sessions:', error);
       return [];
@@ -213,16 +200,7 @@ export class HistoryService {
    */
   static async forceLogoutAllSessions(userId: string) {
     try {
-      return await prisma.loginHistory.updateMany({
-        where: {
-          userId,
-          status: 'active',
-        },
-        data: {
-          status: 'logged_out',
-          logoutAt: new Date(),
-        },
-      });
+      return await this.loginHistoryRepository.logoutAllUserSessions(userId);
     } catch (error) {
       console.error('Failed to force logout sessions:', error);
       return null;
@@ -237,17 +215,7 @@ export class HistoryService {
       const cutoffDate = new Date();
       cutoffDate.setHours(cutoffDate.getHours() - maxAgeHours);
 
-      return await prisma.loginHistory.updateMany({
-        where: {
-          status: 'active',
-          loginAt: {
-            lt: cutoffDate,
-          },
-        },
-        data: {
-          status: 'expired',
-        },
-      });
+      return await this.loginHistoryRepository.expireOldSessions(cutoffDate);
     } catch (error) {
       console.error('Failed to cleanup expired sessions:', error);
       return null;
