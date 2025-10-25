@@ -1,6 +1,9 @@
 
 import { PrismaClient } from '@prisma/client';
 import * as env from '../env';
+import { BaseService } from './base.service';
+import { ConfigRepository } from '../repositories/config.repository';
+import { ConfigDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
@@ -13,7 +16,14 @@ export interface UpdateConfigData {
   value: string;
 }
 
-export class ConfigService {
+export class ConfigService extends BaseService<any, ConfigDto, ConfigDto> {
+  private configRepository: ConfigRepository;
+
+  constructor() {
+    const configRepository = new ConfigRepository();
+    super(configRepository);
+    this.configRepository = configRepository;
+  }
   /**
    * Set configuration value
    */

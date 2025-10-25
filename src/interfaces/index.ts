@@ -25,3 +25,5 @@ export * from './sso.interface';
 export * from './apikey.interface';
 export * from './config.interface';
 export * from './faq.interface';
+export * from './entitylabel.interface';
+export * from './document.interface';

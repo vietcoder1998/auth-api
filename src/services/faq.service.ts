@@ -1,67 +1,43 @@
 import { PrismaClient } from '@prisma/client';
+import { BaseService } from './base.service';
+import { FaqRepository } from '../repositories/faq.repository';
+import { FaqDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
-export class FaqService {
+export class FaqService extends BaseService<any, FaqDto, FaqDto> {
+  private faqRepository: FaqRepository;
+
+  constructor() {
+    const faqRepository = new FaqRepository();
+    super(faqRepository);
+    this.faqRepository = faqRepository;
+  }
   async listFaqs(q?: string) {
-    const where: any = {};
     if (q && typeof q === 'string' && q.trim()) {
-      where.OR = [
-        { question: { contains: q, mode: 'insensitive' } },
-        { answer: { contains: q, mode: 'insensitive' } },
-        { type: { contains: q, mode: 'insensitive' } },
-      ];
+      return this.faqRepository.searchByQuery(q);
     }
     return prisma.faq.findMany({
-      where,
       orderBy: { createdAt: 'desc' },
-      include: {
-        prompt: true,
-        conversation: true,
-        agent: true,
-      },
+      include: { prompt: true, conversation: true, agent: true },
     });
   }
 
   async getFaq(id: string) {
-    return prisma.faq.findUnique({ where: { id } });
+    return this.faqRepository.findById(id);
   }
 
   async createFaq(data: any) {
-    return prisma.faq.create({ data });
+    return this.faqRepository.create(data);
   }
 
   async updateFaq(id: string, data: any) {
-    // Only allow scalar fields and relation IDs
-    const {
-      question,
-      answer,
-      type,
-      promptId,
-      conversationId,
-      aiAgentId,
-      createdAt,
-      updatedAt,
-      description,
-    } = data;
-    return prisma.faq.update({
-      where: { id },
-      data: {
-        question,
-        answer,
-        type,
-        promptId,
-        conversationId,
-        aiAgentId,
-        createdAt,
-        updatedAt,
-        description,
-      },
-    });
+    const { question, answer, type, promptId, conversationId, aiAgentId, createdAt, updatedAt, description } = data;
+    return this.faqRepository.update(id, { question, answer, type, promptId, conversationId, aiAgentId, createdAt, updatedAt, description });
   }
 
   async deleteFaq(id: string) {
-    return prisma.faq.delete({ where: { id } });
+    return this.faqRepository.delete(id);
   }
 }
 

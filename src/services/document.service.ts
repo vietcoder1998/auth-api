@@ -1,6 +1,9 @@
 import { PrismaClient, Document } from '@prisma/client';
 import { jobQueue } from './job.service';
 import * as XLSX from 'xlsx';
+import { BaseService } from './base.service';
+import { DocumentRepository } from '../repositories/document.repository';
+import { DocumentDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
@@ -16,33 +19,31 @@ export interface DocumentChunk {
 	index: number;
 }
 
-export class DocumentService {
-	// Create a document
-	async createDocument(data: {
-		name: string;
-		url?: string;
-		fileId: string;
-		type?: string;
-	}): Promise<Document> {
-		return prisma.document.create({ data });
+export class DocumentService extends BaseService<any, DocumentDto, DocumentDto> {
+	private documentRepository: DocumentRepository;
+
+	constructor() {
+		const documentRepository = new DocumentRepository();
+		super(documentRepository);
+		this.documentRepository = documentRepository;
 	}
 
-	// Get document by id
+	async createDocument(data: { name: string; url?: string; fileId: string; type?: string }): Promise<Document> {
+		return this.documentRepository.create(data as any);
+	}
+
 	async getDocument(id: string): Promise<Document | null> {
-		return prisma.document.findUnique({ where: { id } });
+		return this.documentRepository.findById(id);
 	}
 
-	// Update document
 	async updateDocument(id: string, data: Partial<{ name: string; url: string; type: string }>): Promise<Document> {
-		return prisma.document.update({ where: { id }, data });
+		return this.documentRepository.update(id, data as any);
 	}
 
-	// Delete document
 	async deleteDocument(id: string): Promise<Document> {
-		return prisma.document.delete({ where: { id } });
+		return this.documentRepository.delete(id);
 	}
 
-	// List documents with filter
 	async listDocuments(filter: DocumentFilter = {}): Promise<Document[]> {
 		const where: Record<string, any> = {};
 		if (filter.name) where.name = { contains: filter.name };

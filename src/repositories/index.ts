@@ -22,3 +22,5 @@ export * from './sso.repository';
 export * from './apikey.repository';
 export * from './config.repository';
 export * from './faq.repository';
+export * from './entitylabel.repository';
+export * from './document.repository';

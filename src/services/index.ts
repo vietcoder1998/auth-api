@@ -3,11 +3,20 @@ export { userService } from './user.service';
 export { roleService } from './role.service';
 export { permissionService } from './permission.service';
 export { configService } from './config.service';
+export { faqService } from './faq.service';
+export { documentService } from './document.service';
 
 // Authentication & Security
 export { apiKeyService } from './apiKey.service';
 export { tokenService } from './token.service';
 export { ssoService } from './sso.service';
+
+// AI Services
+export { aiKeyService } from './aiKey.service';
+export { aiModelService } from './aiModel.service';
+export { aiPlatformService } from './aiPlatform.service';
+export { promptTemplateService } from './promptTemplate.service';
+export { promptHistoryService } from './promptHistory.service';
 
 // Communication
 export { mailService } from './mail.service';

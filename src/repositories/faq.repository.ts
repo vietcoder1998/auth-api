@@ -21,7 +21,7 @@ export class FaqRepository extends BaseRepository<FaqModel, FaqDto, FaqDto> {
         });
     }
 
-    async search(query: string) {
+    async searchByQuery(query: string) {
         return this.model.findMany({
             where: {
                 OR: [
@@ -29,7 +29,7 @@ export class FaqRepository extends BaseRepository<FaqModel, FaqDto, FaqDto> {
                     { answer: { contains: query } }
                 ]
             },
-            orderBy: { order: 'asc' }
+            orderBy: { createdAt: 'desc' }
         });
     }
 }

@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-
-
+import { BaseService } from './base.service';
+import { ConversationRepository } from '../repositories/conversation.repository';
+import { MessageRepository } from '../repositories/message.repository';
+import { ConversationDto } from '../interfaces';
 import { llmService } from './llm.service';
 import { MemoryService } from './memory.service';
 import { invalidateCacheByUrlPattern } from '../middlewares/cache.middleware';
@@ -117,7 +119,16 @@ export interface CreateMessageData {
   tokens?: number;
 }
 
-export class ConversationService {
+export class ConversationService extends BaseService<any, ConversationDto, ConversationDto> {
+  private conversationRepository: ConversationRepository;
+  private messageRepository: MessageRepository;
+
+  constructor() {
+    const conversationRepository = new ConversationRepository();
+    super(conversationRepository);
+    this.conversationRepository = conversationRepository;
+    this.messageRepository = new MessageRepository();
+  }
   /**
    * Create a new prompt history for a conversation
    */
