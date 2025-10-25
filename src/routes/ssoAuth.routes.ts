@@ -1,9 +1,8 @@
-import { Router } from 'express';
-import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { Request, Response, Router } from 'express';
 import { logger } from '../middlewares/logger.middle';
-import { ssoKeyValidation, requireSSO } from '../middlewares/sso.middleware';
-import { HistoryService, historyService } from '../services/history.service';
+import { requireSSO, ssoKeyValidation } from '../middlewares/sso.middleware';
+import { historyService } from '../services/history.service';
 import { SSOValidationUtils } from '../utils/ssoValidation';
 
 const router = Router();
@@ -178,17 +177,17 @@ router.get('/me', ssoKeyValidation, requireSSO, async (req: Request, res: Respon
       status: user.status,
       role: user.role
         ? {
-            id: user.role.id,
-            name: user.role.name,
-            permissions: user.role.permissions.map((p) => ({
-              id: p.id,
-              name: p.name,
-              description: p.description,
-              category: p.category,
-              route: p.route,
-              method: p.method,
-            })),
-          }
+          id: user.role.id,
+          name: user.role.name,
+          permissions: user.role.permissions.map((p) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            category: p.category,
+            route: p.route,
+            method: p.method,
+          })),
+        }
         : null,
       sso: {
         id: sso.id,
