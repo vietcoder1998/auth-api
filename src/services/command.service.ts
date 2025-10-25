@@ -1,7 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import { llmService } from './llm.service';
+import { ToolRepository } from '../repositories/tool.repository';
 
 const prisma = new PrismaClient();
+const toolRepository = new ToolRepository();
 
 export interface CommandResult {
   success: boolean;
@@ -323,13 +325,7 @@ export class CommandService {
 
     switch (parameters?.action) {
       case 'enable':
-        await prisma.tool.updateMany({
-          where: {
-            agentId: context.agentId,
-            name: parameters.name,
-          },
-          data: { enabled: true },
-        });
+        await toolRepository.enableTool(context.agentId, parameters.name);
         return {
           success: true,
           message: `Tool "${parameters.name}" enabled successfully`,
@@ -337,13 +333,7 @@ export class CommandService {
         };
 
       case 'disable':
-        await prisma.tool.updateMany({
-          where: {
-            agentId: context.agentId,
-            name: parameters.name,
-          },
-          data: { enabled: false },
-        });
+        await toolRepository.disableTool(context.agentId, parameters.name);
         return {
           success: true,
           message: `Tool "${parameters.name}" disabled successfully`,
@@ -351,9 +341,7 @@ export class CommandService {
         };
 
       case 'list':
-        const tools = await prisma.tool.findMany({
-          where: { agentId: context.agentId },
-        });
+        const tools = await toolRepository.listAgentTools(context.agentId);
         return {
           success: true,
           message: `Found ${tools.length} tools`,

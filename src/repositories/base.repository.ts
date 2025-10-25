@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { BaseInterface, SearchParams } from '../interfaces';
 
-export class BaseRepository<T> extends BaseInterface {
+export class BaseRepository<T, Dto, Dro> extends BaseInterface {
   protected prisma: PrismaClient;
   protected model: T;
 
