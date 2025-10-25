@@ -1,11 +1,11 @@
+import { PrismaClient } from '@prisma/client';
+import { ConversationRepository } from '../../src/repositories/conversation.repository';
+import { MessageRepository } from '../../src/repositories/message.repository';
+
 /**
  * Conversations Seeder
  * Handles seeding of conversations and messages
  */
-
-import { PrismaClient } from '@prisma/client';
-import { ConversationRepository } from '../../src/repositories/conversation.repository';
-import { MessageRepository } from '../../src/repositories/message.repository';
 
 export class ConversationsSeeder {
   private conversationRepo: ConversationRepository;
@@ -19,8 +19,8 @@ export class ConversationsSeeder {
     userMapping: Record<string, any>,
     agentMapping: Record<string, any[]>
   ) {
-    this.conversationRepo = new ConversationRepository(prisma);
-    this.messageRepo = new MessageRepository(prisma);
+    this.conversationRepo = new ConversationRepository(prisma.conversation);
+    this.messageRepo = new MessageRepository(prisma.message);
     this.userMapping = userMapping;
     this.agentMapping = agentMapping;
   }

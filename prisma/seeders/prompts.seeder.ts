@@ -1,17 +1,17 @@
+import { PrismaClient } from '@prisma/client';
+import { PromptTemplateRepository } from '../../src/repositories/prompttemplate.repository';
+
 /**
  * Prompts Seeder
  * Handles seeding of prompt templates
  */
 
-import { PrismaClient } from '@prisma/client';
-import { PromptRepository } from '../../src/repositories/prompt.repository';
-
 export class PromptsSeeder {
-  private promptRepo: PromptRepository;
+  private promptRepo: PromptTemplateRepository;
   private userMapping: Record<string, any>;
 
   constructor(prisma: PrismaClient, userMapping: Record<string, any>) {
-    this.promptRepo = new PromptRepository(prisma);
+    this.promptRepo = new PromptTemplateRepository(prisma.promptTemplate);
     this.userMapping = userMapping;
   }
 
@@ -69,23 +69,24 @@ export class PromptsSeeder {
    */
   private async filterDuplicatePrompts(prompts: any[]): Promise<any[]> {
     const checkPromises = prompts.map(prompt =>
-      this.promptRepo.findFirst({
+      this.promptRepo.search({
         where: {
           name: prompt.name,
           userId: prompt.userId,
         },
+        take: 1,
       })
     );
 
     const existingPrompts = await Promise.all(checkPromises);
-    return prompts.filter((_, index) => !existingPrompts[index]);
+    return prompts.filter((_, index) => !existingPrompts[index] || existingPrompts[index].length === 0);
   }
 
   /**
    * Get prompts by category
    */
   async getPromptsByCategory(category: string): Promise<any[]> {
-    return this.promptRepo.findMany({
+    return this.promptRepo.search({
       where: { category },
     });
   }
@@ -94,7 +95,7 @@ export class PromptsSeeder {
    * Get public prompts
    */
   async getPublicPrompts(): Promise<any[]> {
-    return this.promptRepo.findMany({
+    return this.promptRepo.search({
       where: { isPublic: true },
     });
   }

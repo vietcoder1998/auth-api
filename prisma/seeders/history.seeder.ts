@@ -1,11 +1,10 @@
+import { PrismaClient } from '@prisma/client';
+import { LoginHistoryRepository, LogicHistoryRepository } from '../../src/repositories';
+
 /**
  * History Seeder
  * Handles seeding of login history and logic history
  */
-
-import { PrismaClient } from '@prisma/client';
-import { LoginHistoryRepository } from '../../src/repositories/loginHistory.repository';
-import { LogicHistoryRepository } from '../../src/repositories/logicHistory.repository';
 
 export class HistorySeeder {
   private loginHistoryRepo: LoginHistoryRepository;
@@ -18,8 +17,8 @@ export class HistorySeeder {
     userMapping: Record<string, any>,
     agentMapping: Record<string, any[]>
   ) {
-    this.loginHistoryRepo = new LoginHistoryRepository(prisma);
-    this.logicHistoryRepo = new LogicHistoryRepository(prisma);
+    this.loginHistoryRepo = new LoginHistoryRepository(prisma.loginHistory);
+    this.logicHistoryRepo = new LogicHistoryRepository(prisma.logicHistory);
     this.userMapping = userMapping;
     this.agentMapping = agentMapping;
   }
@@ -81,18 +80,19 @@ export class HistorySeeder {
    */
   private async filterDuplicateLoginHistory(entries: any[]): Promise<any[]> {
     const checkPromises = entries.map(entry =>
-      this.loginHistoryRepo.findFirst({
+      this.loginHistoryRepo.search({
         where: {
           userId: entry.userId,
           action: entry.action,
           ipAddress: entry.ipAddress,
           createdAt: entry.createdAt,
         },
+        take: 1,
       })
     );
 
     const existingEntries = await Promise.all(checkPromises);
-    return entries.filter((_, index) => !existingEntries[index]);
+    return entries.filter((_, index) => !existingEntries[index] || existingEntries[index].length === 0);
   }
 
   /**
@@ -145,16 +145,17 @@ export class HistorySeeder {
    */
   private async filterDuplicateLogicHistory(entries: any[]): Promise<any[]> {
     const checkPromises = entries.map(entry =>
-      this.logicHistoryRepo.findFirst({
+      this.logicHistoryRepo.search({
         where: {
           userId: entry.userId,
           action: entry.action,
           createdAt: entry.createdAt,
         },
+        take: 1,
       })
     );
 
     const existingEntries = await Promise.all(checkPromises);
-    return entries.filter((_, index) => !existingEntries[index]);
+    return entries.filter((_, index) => !existingEntries[index] || existingEntries[index].length === 0);
   }
 }

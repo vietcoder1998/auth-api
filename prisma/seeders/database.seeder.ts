@@ -32,6 +32,15 @@ import { ConversationsSeeder } from './conversations.seeder';
 import { HistorySeeder } from './history.seeder';
 import { FaqsSeeder } from './faqs.seeder';
 import { PromptsSeeder } from './prompts.seeder';
+import { mockUsers } from '../../src/mock/users';
+import { mockTools } from '../mock/tools';
+import { mockAIKeys } from '../../src/mock/aiKey';
+import { mockBillings } from '../../src/mock/billing';
+import { mockBlogs, mockCategories } from '../../src/mock/blog';
+import { mockConfigs } from '../../src/mock/configs';
+import { mockLabels } from '../../src/mock/labels';
+import { mockPermissions } from '../../src/mock/permissions';
+import { mockAIPlatforms } from '../mock/aiPlatform.mock';
 
 /**
  * DatabaseSeeder - Main seeder class for database initialization
@@ -82,30 +91,30 @@ export class DatabaseSeeder {
   constructor(prisma?: PrismaClient) {
     this.prisma = prisma || new PrismaClient();
     
-    // Initialize all repositories
-    this.aiPlatformRepo = new AIPlatformRepository();
-    this.aiModelRepo = new AIModelRepository();
-    this.aiKeyRepo = new AIKeyRepository();
-    this.labelRepo = new LabelRepository();
-    this.entityLabelRepo = new EntityLabelRepository();
-    this.agentRepo = new AgentRepository();
-    this.categoryRepo = new CategoryRepository();
-    this.blogRepo = new BlogRepository();
-    this.billingRepo = new BillingRepository();
-    this.permissionRepo = new PermissionRepository();
-    this.roleRepo = new RoleRepository();
-    this.userRepo = new UserRepository();
-    this.configRepo = new ConfigRepository();
-    this.ssoRepo = new SSORepository();
-    this.loginHistoryRepo = new LoginHistoryRepository();
-    this.logicHistoryRepo = new LogicHistoryRepository();
-    this.conversationRepo = new ConversationRepository();
-    this.messageRepo = new MessageRepository();
-    this.agentMemoryRepo = new AgentMemoryRepository();
-    this.agentTaskRepo = new AgentTaskRepository();
-    this.toolRepo = new ToolRepository();
-    this.promptHistoryRepo = new PromptHistoryRepository();
-    this.faqRepo = new FaqRepository();
+    // Initialize all repositories with Prisma delegates
+    this.aiPlatformRepo = new AIPlatformRepository(this.prisma.aIPlatform);
+    this.aiModelRepo = new AIModelRepository(this.prisma.aIModel);
+    this.aiKeyRepo = new AIKeyRepository(this.prisma.aIKey);
+    this.labelRepo = new LabelRepository(this.prisma.label);
+    this.entityLabelRepo = new EntityLabelRepository(this.prisma.entityLabel);
+    this.agentRepo = new AgentRepository(this.prisma.agent);
+    this.categoryRepo = new CategoryRepository(this.prisma.category);
+    this.blogRepo = new BlogRepository(this.prisma.blog);
+    this.billingRepo = new BillingRepository(this.prisma.billing);
+    this.permissionRepo = new PermissionRepository(this.prisma.permission);
+    this.roleRepo = new RoleRepository(this.prisma.role);
+    this.userRepo = new UserRepository(this.prisma.user);
+    this.configRepo = new ConfigRepository(this.prisma.config);
+    this.ssoRepo = new SSORepository(this.prisma.sSO);
+    this.loginHistoryRepo = new LoginHistoryRepository(this.prisma.loginHistory);
+    this.logicHistoryRepo = new LogicHistoryRepository(this.prisma.logicHistory);
+    this.conversationRepo = new ConversationRepository(this.prisma.conversation);
+    this.messageRepo = new MessageRepository(this.prisma.message);
+    this.agentMemoryRepo = new AgentMemoryRepository(this.prisma.agentMemory);
+    this.agentTaskRepo = new AgentTaskRepository(this.prisma.agentTask);
+    this.toolRepo = new ToolRepository(this.prisma.tool);
+    this.promptHistoryRepo = new PromptHistoryRepository(this.prisma.promptHistory);
+    this.faqRepo = new FaqRepository(this.prisma.faq);
   }
 
   /**
@@ -216,9 +225,6 @@ export class DatabaseSeeder {
    */
   async seedAIKeys(): Promise<void> {
     console.log('🔑 Seeding AI Keys...');
-    const { mockAIKeys } = await import('../mock/aiKey.mock');
-    const { mockAIPlatforms } = await import('../mock/aiPlatform.mock');
-    
     const validKeys = mockAIKeys.filter(key => {
       if (key.platformId && !mockAIPlatforms.find((p) => p.id === key.platformId)) {
         console.warn(`⚠️ Skipping AI Key '${key.id}' (invalid platformId: ${key.platformId})`);
@@ -242,8 +248,6 @@ export class DatabaseSeeder {
    */
   async seedLabels(): Promise<void> {
     console.log('🏷️ Seeding Labels...');
-    const { mockLabels } = await import('../mock/labels.mock');
-    
     const createdLabels = await this.labelRepo.upsertMany(
       mockLabels.map(label => ({
         where: { name: label.name },
@@ -265,7 +269,6 @@ export class DatabaseSeeder {
    */
   async seedTools(): Promise<void> {
     console.log('🛠️ Seeding Tools...');
-    const { mockTools } = await import('../mock/tools.mock');
     
     await this.toolRepo.upsertMany(
       mockTools.map(tool => ({
@@ -275,7 +278,6 @@ export class DatabaseSeeder {
           description: tool.description,
           type: tool.type,
           config: tool.config,
-          enabled: tool.enabled,
         },
       }))
     );
@@ -287,8 +289,6 @@ export class DatabaseSeeder {
    */
   async seedCategories(): Promise<void> {
     console.log('📚 Seeding Categories...');
-    const { mockCategories } = await import('../mock/blog.mock');
-    
     await this.categoryRepo.upsertMany(
       mockCategories.map(category => ({
         where: { id: category.id },
@@ -304,8 +304,6 @@ export class DatabaseSeeder {
    */
   async seedBlogs(): Promise<void> {
     console.log('📝 Seeding Blogs...');
-    const { mockBlogs } = await import('../mock/blog.mock');
-    
     await this.blogRepo.upsertMany(
       mockBlogs.map(blog => ({
         where: { id: blog.id },
@@ -321,8 +319,6 @@ export class DatabaseSeeder {
    */
   async seedBillings(): Promise<void> {
     console.log('💳 Seeding Billings...');
-    const { mockBillings } = await import('../mock/billing.mock');
-    
     await this.billingRepo.upsertMany(
       mockBillings.map(billing => ({
         where: { id: billing.id },
@@ -338,8 +334,6 @@ export class DatabaseSeeder {
    */
   async seedPermissions(): Promise<void> {
     console.log('🔐 Seeding Permissions...');
-    const { mockPermissions } = await import('../mock/permissions.mock');
-    
     const uniquePermissions = Object.values(
       mockPermissions.reduce((acc: Record<string, any>, perm: any) => {
         acc[perm.name] = perm;
@@ -372,8 +366,6 @@ export class DatabaseSeeder {
    */
   async seedRoles(): Promise<void> {
     console.log('👑 Seeding Roles...');
-    const { mockPermissions } = await import('../mock/permissions.mock');
-    
     const permissionRecords = await this.permissionRepo.search<any>({});
     
     // Superadmin role
@@ -408,7 +400,6 @@ export class DatabaseSeeder {
    */
   async seedUsers(): Promise<void> {
     console.log('👥 Seeding Users...');
-    const { mockUsers } = await import('../mock/users.mock');
     
     const createdUsers = await this.userRepo.upsertMany(
       mockUsers.map(user => ({
@@ -446,8 +437,6 @@ export class DatabaseSeeder {
    */
   async seedConfigs(): Promise<void> {
     console.log('⚙️ Seeding Configuration...');
-    const { mockConfigs } = await import('../mock/configs.mock');
-    
     const createdConfigs = await this.configRepo.upsertMany(
       mockConfigs.map(config => ({
         where: { key: config.key },
@@ -596,9 +585,8 @@ export class DatabaseSeeder {
   async seedMailTemplates(): Promise<void> { /* TODO: Create mail-templates.seeder.ts */ }
   async seedNotificationTemplates(): Promise<void> { /* TODO: Create notification-templates.seeder.ts */ }
   async seedSSOEntries(): Promise<void> { /* TODO: Create sso.seeder.ts */ }
-  async seedPrompts(): Promise<void> { /* See prompts.seeder.ts */ }
-  async seedJobs(): Promise<void> { /* See jobs.seeder.ts */ }
-  async seedDatabaseConnections(): Promise<void> { /* See database-connections.seeder.ts */ }
-  async seedUIConfigs(): Promise<void> { /* See ui-configs.seeder.ts */ }
-  async seedSocketConfigs(): Promise<void> { /* See socket-configs.seeder.ts */ }
+  async seedJobs(): Promise<void> { /* TODO: Create jobs.seeder.ts */ }
+  async seedDatabaseConnections(): Promise<void> { /* TODO: Create database-connections.seeder.ts */ }
+  async seedUIConfigs(): Promise<void> { /* TODO: Create ui-configs.seeder.ts */ }
+  async seedSocketConfigs(): Promise<void> { /* TODO: Create socket-configs.seeder.ts */ }
 }

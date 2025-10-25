@@ -1,16 +1,18 @@
+import { PrismaClient } from '@prisma/client';
+import { FaqRepository } from '../../src/repositories/faq.repository';
+
 /**
  * FAQs Seeder
  * Handles seeding of FAQ entries
  */
 
-import { PrismaClient } from '@prisma/client';
-import { FaqRepository } from '../../src/repositories/faq.repository';
-
 export class FaqsSeeder {
   private faqRepo: FaqRepository;
+  private prisma: PrismaClient;
 
   constructor(prisma: PrismaClient) {
-    this.faqRepo = new FaqRepository(prisma);
+    this.prisma = prisma;
+    this.faqRepo = new FaqRepository(prisma.faq);
   }
 
   /**
@@ -28,19 +30,13 @@ export class FaqsSeeder {
   private async seedFAQs(): Promise<void> {
     const { mockFAQs } = await import('../mock/faqs.mock');
     
-    // Prepare FAQ data for batch upsert
-    const faqData = mockFAQs.map(faq => ({
-      where: { question: faq.question },
-      data: faq,
-    }));
-
     // Batch upsert for performance
-    const upsertPromises = faqData.map(({ where, data }) =>
-      this.faqRepo.upsert({
-        where,
-        create: data,
-        update: data,
-      })
+    const upsertPromises = mockFAQs.map(faq =>
+      this.faqRepo.upsert(
+        { question: faq.question },
+        faq,
+        faq
+      )
     );
 
     const results = await Promise.all(upsertPromises);
@@ -55,7 +51,7 @@ export class FaqsSeeder {
    * Get FAQs by category
    */
   async getFAQsByCategory(category: string): Promise<any[]> {
-    return this.faqRepo.findMany({
+    return this.faqRepo.search({
       where: { category },
       orderBy: { order: 'asc' },
     });
@@ -65,7 +61,7 @@ export class FaqsSeeder {
    * Get published FAQs
    */
   async getPublishedFAQs(): Promise<any[]> {
-    return this.faqRepo.findMany({
+    return this.faqRepo.search({
       where: { isPublished: true },
       orderBy: { order: 'asc' },
     });

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { AgentRepository, AgentMemoryRepository, AgentTaskRepository, ToolRepository } from '../../src/repositories';
+import { mockAgents, mockAgentMemories, mockAgentTools, mockAgentTasks } from '../../src/mock/agents';
 
 /**
  * AgentsSeeder - Handles all agent-related seeding operations
@@ -30,10 +31,10 @@ export class AgentsSeeder {
     this.userMapping = userMapping;
     this.mockLabelId = mockLabelId;
     
-    this.agentRepo = new AgentRepository();
-    this.agentMemoryRepo = new AgentMemoryRepository();
-    this.agentTaskRepo = new AgentTaskRepository();
-    this.toolRepo = new ToolRepository();
+    this.agentRepo = new AgentRepository(prisma.agent);
+    this.agentMemoryRepo = new AgentMemoryRepository(prisma.agentMemory);
+    this.agentTaskRepo = new AgentTaskRepository(prisma.agentTask);
+    this.toolRepo = new ToolRepository(prisma.tool);
   }
 
   /**
@@ -51,7 +52,6 @@ export class AgentsSeeder {
    */
   async seedAgents(): Promise<void> {
     console.log('🤖 Seeding AI Agents...');
-    const { mockAgents } = await import('../mock/agents.mock');
     
     const superadminUser = this.userMapping['superadmin@example.com'];
     const adminUser = this.userMapping['admin@example.com'];
@@ -131,8 +131,6 @@ export class AgentsSeeder {
    */
   async seedAgentMemories(): Promise<void> {
     console.log('🧠 Seeding Agent Memories...');
-    const { mockAgentMemories, mockAgents } = await import('../mock/agents.mock');
-    
     const agentMemories = mockAgentMemories.map((memory) => ({
       ...memory,
       agentId: this.createdAgents.find(
@@ -171,8 +169,6 @@ export class AgentsSeeder {
    */
   async seedAgentTools(): Promise<void> {
     console.log('🛠️ Seeding Agent Tools...');
-    const { mockAgentTools, mockAgents } = await import('../mock/agents.mock');
-    
     const agentTools = mockAgentTools.map((tool) => ({
       ...tool,
       agentId: this.createdAgents.find(
@@ -223,8 +219,6 @@ export class AgentsSeeder {
    */
   async seedAgentTasks(): Promise<void> {
     console.log('📋 Seeding Agent Tasks...');
-    const { mockAgentTasks, mockAgents } = await import('../mock/agents.mock');
-    
     const agentTasks = mockAgentTasks.map((task: any) => ({
       ...task,
       agentId: this.createdAgents.find(
