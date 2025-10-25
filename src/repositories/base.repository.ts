@@ -63,4 +63,33 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
     // @ts-ignore
     return (this.model as T | any).delete({ where: { id } });
   }
+
+  // Batch operations
+  public override async createMany<Dto, Dro>(data: Dto[]): Promise<Dro> {
+    // @ts-ignore
+    return (this.model as T | any).createMany({ data, skipDuplicates: true });
+  }
+
+  public override async updateMany<Dto, Dro>(where: any, data: Partial<Dto>): Promise<Dro> {
+    // @ts-ignore
+    return (this.model as T | any).updateMany({ where, data });
+  }
+
+  public override async deleteMany<Dro>(where: any): Promise<Dro> {
+    // @ts-ignore
+    return (this.model as T | any).deleteMany({ where });
+  }
+
+  public override async softDeleteMany<Dro>(ids: string[]): Promise<Dro> {
+    // @ts-ignore
+    return (this.model as T | any).updateMany({
+      where: { id: { in: ids } },
+      data: { deleted: true },
+    });
+  }
+
+  public override async findMany<Dro>(where?: any): Promise<Dro[]> {
+    // @ts-ignore
+    return (this.model as T | any).findMany({ where });
+  }
 }

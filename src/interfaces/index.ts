@@ -2,4 +2,16 @@ export * from './base.interface';
 export * from './search.interface';
 export * from './dto.interface';
 export * from './dro.interface';
-export * from './tool.interface'
+export * from './tool.interface';
+export * from './user.interface';
+export * from './agent.interface';
+export * from './label.interface';
+export * from './agentmemory.interface';
+export * from './agenttask.interface';
+export * from './message.interface';
+export * from './conversation.interface';
+export * from './role.interface';
+export * from './permission.interface';
+export * from './category.interface';
+export * from './blog.interface';
+export * from './billing.interface';
