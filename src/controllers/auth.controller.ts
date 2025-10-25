@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 // Update the path below to the correct location of your Redis client setup file
 import { client } from '../setup';
 import { generateToken, generateRefreshToken, validateToken, generateAccessTokenFromRefreshToken, getTokenExpiration } from '../services/auth.service';
-import { HistoryService } from '../services/history.service';
+import { HistoryService, historyService } from '../services/history.service';
 import { Request, Response } from 'express';
 const prisma = new PrismaClient();
 
@@ -20,7 +20,7 @@ export async function login(req: Request, res: Response) {
     if (!user || user.password !== password) {
       // Record failed login attempt
       if (user) {
-        await HistoryService.recordUserAction(user.id, 'login_failed', req, {
+        await historyService.recordUserAction(user.id, 'login_failed', req, {
           entityType: 'User',
           entityId: user.id,
           newValues: { reason: 'invalid_password', attempt_time: new Date() },
@@ -64,20 +64,18 @@ export async function login(req: Request, res: Response) {
       if (ttl > 0) {
         await cacheToken(refreshToken, user.id, ttl);
       }
-    }
-
-    // Record successful login using HistoryService
-    const loginHistory = await HistoryService.recordLogin(user.id, req);
+    }    // Record successful login using historyService
+    const loginHistory = await historyService.recordLogin(user.id, req);
 
     // Record login logic history
-    await HistoryService.recordUserAction(user.id, 'login_successful', req, {
+    await historyService.recordUserAction(user.id, 'login_successful', req, {
       entityType: 'Token',
       entityId: tokenRecord.id,
       newValues: {
         login_time: new Date(),
         token_expires_at: tokenRecord.expiresAt,
-        user_agent: HistoryService.getUserAgent(req),
-        ip_address: HistoryService.getClientIP(req),
+        user_agent: historyService.getUserAgent(req),
+        ip_address: historyService.getClientIP(req),
       },
       notificationTemplateName: 'user_login',
     });
@@ -121,10 +119,8 @@ export async function register(req: Request, res: Response) {
 
     const user = await prisma.user.create({
       data: { email, password, nickname },
-    });
-
-    // Record user registration
-    await HistoryService.recordUserAction(user.id, 'user_registered', req, {
+    });    // Record user registration
+    await historyService.recordUserAction(user.id, 'user_registered', req, {
       entityType: 'User',
       entityId: user.id,
       newValues: {
@@ -168,21 +164,19 @@ export async function logout(req: Request, res: Response) {
           expiresAt: new Date(), // Set to expired
         },
       });
-    }
-
-    // Update login history if provided
+    }    // Update login history if provided
     if (loginHistoryId) {
-      await HistoryService.logoutUser(loginHistoryId);
+      await historyService.logoutUser(loginHistoryId);
     } else {
       // Find and update the most recent active session
-      const activeSessions = await HistoryService.getActiveUserSessions(userId);
+      const activeSessions = await historyService.getActiveUserSessions(userId);
       if (activeSessions.length > 0) {
-        await HistoryService.logoutUser(activeSessions[0].id);
+        await historyService.logoutUser(activeSessions[0].id);
       }
     }
 
     // Record logout action
-    await HistoryService.recordUserAction(userId, 'logout', req, {
+    await historyService.recordUserAction(userId, 'logout', req, {
       entityType: 'Token',
       entityId: token,
       newValues: {
@@ -270,11 +264,9 @@ export async function getMe(req: Request, res: Response) {
         },
       },
       orderBy: { createdAt: 'desc' },
-    });
-
-    // Only log if no recent access recorded
+    });    // Only log if no recent access recorded
     if (!lastAccess) {
-      await HistoryService.recordUserAction(userId, 'profile_accessed', req, {
+      await historyService.recordUserAction(userId, 'profile_accessed', req, {
         entityType: 'User',
         entityId: userId,
         newValues: {
@@ -325,10 +317,8 @@ export async function handoverUserStatus(req: Request, res: Response) {
     const user = await prisma.user.update({
       where: { id: userId },
       data: { status: newStatus },
-    });
-
-    // Record status change in history
-    await HistoryService.recordUserAction(requesterId, 'user_status_changed', req, {
+    });    // Record status change in history
+    await historyService.recordUserAction(requesterId, 'user_status_changed', req, {
       entityType: 'User',
       entityId: userId,
       oldValues: {
@@ -352,10 +342,10 @@ export async function handoverUserStatus(req: Request, res: Response) {
 
     // If user is being suspended, force logout all their sessions
     if (newStatus === 'suspended' || newStatus === 'inactive') {
-      await HistoryService.forceLogoutAllSessions(userId);
+      await historyService.forceLogoutAllSessions(userId);
 
       // Record forced logout
-      await HistoryService.recordUserAction(requesterId, 'force_logout_all_sessions', req, {
+      await historyService.recordUserAction(requesterId, 'force_logout_all_sessions', req, {
         entityType: 'User',
         entityId: userId,
         newValues: {

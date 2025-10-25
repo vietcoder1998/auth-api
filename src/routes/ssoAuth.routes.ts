@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../middlewares/logger.middle';
 import { ssoKeyValidation, requireSSO } from '../middlewares/sso.middleware';
-import { HistoryService } from '../services/history.service';
+import { HistoryService, historyService } from '../services/history.service';
 import { SSOValidationUtils } from '../utils/ssoValidation';
 
 const router = Router();
@@ -45,10 +45,8 @@ router.post('/login', ssoKeyValidation, requireSSO, async (req: Request, res: Re
           },
         },
       },
-    });
-
-    // Log the SSO login action in logic history
-    await HistoryService.recordUserAction(sso.userId, 'sso_login', req, {
+    });    // Log the SSO login action in logic history
+    await historyService.recordUserAction(sso.userId, 'sso_login', req, {
       entityType: 'SSO',
       entityId: sso.id,
       newValues: {
@@ -121,10 +119,8 @@ router.post('/logout', ssoKeyValidation, requireSSO, async (req: Request, res: R
           logoutAt: new Date(),
         },
       });
-    }
-
-    // Log the SSO logout action in logic history
-    await HistoryService.recordUserAction(sso.userId, 'sso_logout', req, {
+    }    // Log the SSO logout action in logic history
+    await historyService.recordUserAction(sso.userId, 'sso_logout', req, {
       entityType: 'SSO',
       entityId: sso.id,
       newValues: {

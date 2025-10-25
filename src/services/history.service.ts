@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { LoginHistoryRepository, LogicHistoryRepository } from '../repositories';
+import { BaseService } from './base.service';
+import { LoginHistoryDto, LogicHistoryDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
@@ -23,16 +25,21 @@ interface LogicHistoryData {
   notificationTemplateId?: string;
 }
 
-export class HistoryService {
-  private static loginHistoryRepository = new LoginHistoryRepository();
-  private static logicHistoryRepository = new LogicHistoryRepository();
+export class HistoryService extends BaseService<any, LoginHistoryDto, LoginHistoryDto> {
+  protected logicHistoryRepository: LogicHistoryRepository;
+
+  constructor() {
+    const loginHistoryRepository = new LoginHistoryRepository();
+    super(loginHistoryRepository);
+    this.logicHistoryRepository = new LogicHistoryRepository();
+  }
 
   /**
    * Create a login history entry
    */
-  static async createLoginHistory(data: LoginHistoryData) {
+  async createLoginHistory(data: LoginHistoryData): Promise<any | null> {
     try {
-      return await this.loginHistoryRepository.create({
+      return await this.repository.create({
         userId: data.userId,
         ssoId: data.ssoId || null,
         deviceIP: data.deviceIP || null,
@@ -49,19 +56,18 @@ export class HistoryService {
   /**
    * Update login history entry on logout
    */
-  static async logoutUser(loginHistoryId: string) {
+  async logoutUser(loginHistoryId: string): Promise<any | null> {
     try {
-      return await this.loginHistoryRepository.logoutSession(loginHistoryId);
+      return await (this.repository as LoginHistoryRepository).logoutSession(loginHistoryId);
     } catch (error) {
       console.error('Failed to update logout:', error);
       return null;
     }
   }
-
   /**
    * Create a logic history entry for audit trail
    */
-  static async createLogicHistory(data: LogicHistoryData) {
+  async createLogicHistory(data: LogicHistoryData): Promise<any | null> {
     try {
       return await this.logicHistoryRepository.create({
         userId: data.userId,
@@ -84,7 +90,7 @@ export class HistoryService {
   /**
    * Helper to extract IP address from request
    */
-  static getClientIP(req: any): string | undefined {
+  getClientIP(req: any): string | undefined {
     return (
       req.ip ||
       req.connection?.remoteAddress ||
@@ -97,14 +103,13 @@ export class HistoryService {
   /**
    * Helper to get user agent from request
    */
-  static getUserAgent(req: any): string | undefined {
+  getUserAgent(req: any): string | undefined {
     return req.headers['user-agent'];
   }
-
   /**
    * Create login history and logic history for successful login
    */
-  static async recordLogin(userId: string, req: any, ssoId?: string) {
+  async recordLogin(userId: string, req: any, ssoId?: string): Promise<any | null> {
     const ip = this.getClientIP(req);
     const userAgent = this.getUserAgent(req);
 
@@ -127,11 +132,10 @@ export class HistoryService {
 
     return loginHistory;
   }
-
   /**
    * Record user action for audit trail
    */
-  static async recordUserAction(
+  async recordUserAction(
     userId: string,
     action: string,
     req: any,
@@ -142,7 +146,7 @@ export class HistoryService {
       newValues?: any;
       notificationTemplateName?: string;
     },
-  ) {
+  ): Promise<any | null> {
     const ip = this.getClientIP(req);
     const userAgent = this.getUserAgent(req);
 
@@ -169,7 +173,7 @@ export class HistoryService {
   /**
    * Get notification template ID by name
    */
-  private static async getNotificationTemplateId(
+  private async getNotificationTemplateId(
     templateName: string,
   ): Promise<string | undefined> {
     try {
@@ -182,13 +186,12 @@ export class HistoryService {
       console.error('Failed to get notification template:', error);
       return undefined;
     }
-  }
-  /**
+  }  /**
    * Get active login sessions for a user
    */
-  static async getActiveUserSessions(userId: string) {
+  async getActiveUserSessions(userId: string): Promise<any[]> {
     try {
-      return await this.loginHistoryRepository.findActiveByUserId(userId);
+      return await (this.repository as LoginHistoryRepository).findActiveByUserId(userId);
     } catch (error) {
       console.error('Failed to get active sessions:', error);
       return [];
@@ -198,9 +201,9 @@ export class HistoryService {
   /**
    * Force logout all sessions for a user
    */
-  static async forceLogoutAllSessions(userId: string) {
+  async forceLogoutAllSessions(userId: string): Promise<any | null> {
     try {
-      return await this.loginHistoryRepository.logoutAllUserSessions(userId);
+      return await (this.repository as LoginHistoryRepository).logoutAllUserSessions(userId);
     } catch (error) {
       console.error('Failed to force logout sessions:', error);
       return null;
@@ -210,12 +213,12 @@ export class HistoryService {
   /**
    * Clean up expired sessions
    */
-  static async cleanupExpiredSessions(maxAgeHours = 24) {
+  async cleanupExpiredSessions(maxAgeHours = 24): Promise<any | null> {
     try {
       const cutoffDate = new Date();
       cutoffDate.setHours(cutoffDate.getHours() - maxAgeHours);
 
-      return await this.loginHistoryRepository.expireOldSessions(cutoffDate);
+      return await (this.repository as LoginHistoryRepository).expireOldSessions(cutoffDate);
     } catch (error) {
       console.error('Failed to cleanup expired sessions:', error);
       return null;
