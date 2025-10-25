@@ -323,7 +323,7 @@ export class CommandService {
 
     switch (parameters?.action) {
       case 'enable':
-        await prisma.agentTool.updateMany({
+        await prisma.tool.updateMany({
           where: {
             agentId: context.agentId,
             name: parameters.name,
@@ -337,7 +337,7 @@ export class CommandService {
         };
 
       case 'disable':
-        await prisma.agentTool.updateMany({
+        await prisma.tool.updateMany({
           where: {
             agentId: context.agentId,
             name: parameters.name,
@@ -351,7 +351,7 @@ export class CommandService {
         };
 
       case 'list':
-        const tools = await prisma.agentTool.findMany({
+        const tools = await prisma.tool.findMany({
           where: { agentId: context.agentId },
         });
         return {

@@ -315,9 +315,9 @@ export class LabelController {
             await tx.agentTask.deleteMany({ where: { id: { in: entitiesByType.agentTask } } })
           ).count;
         }
-        if (entitiesByType.agentTool) {
-          results.agentTools = (
-            await tx.agentTool.deleteMany({ where: { id: { in: entitiesByType.agentTool } } })
+        if (entitiesByType.tool) {
+          results.tools = (
+            await tx.tool.deleteMany({ where: { id: { in: entitiesByType.tool } } })
           ).count;
         }
         if (entitiesByType.agentMemory) {

@@ -489,7 +489,7 @@ export class SeedService {
         prisma.message.deleteMany(),
         prisma.conversation.deleteMany(),
         prisma.agentMemory.deleteMany(),
-        prisma.agentTool.deleteMany(),
+        prisma.tool.deleteMany(), // Use tool, not agentTool
         prisma.agent.deleteMany(),
         prisma.apiKey.deleteMany(),
         prisma.loginHistory.deleteMany(),

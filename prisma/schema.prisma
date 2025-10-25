@@ -74,7 +74,7 @@ model AIKey {
   platform     AIPlatform?    @relation(fields: [platformId], references: [id])
   isActive     Boolean        @default(true)
   createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  updatedAt    DateTime       @default(now())
   billing      Billing[]
   agents       AIKeyAgent[]
   Conversation Conversation[]
@@ -118,7 +118,7 @@ model Category {
   name      String   @unique
   blogs     Blog[]
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@map("category")
 }
@@ -132,7 +132,7 @@ model Blog {
   category   Category @relation(fields: [categoryId], references: [id])
   author     String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime @default(now())
 
   @@map("blog")
 }
@@ -438,10 +438,10 @@ model Agent {
   // Relationships
   memories      AgentMemory[]
   conversations Conversation[]
-  tools         AgentTool[]
   tasks         AgentTask[]
   aiKeys        AIKeyAgent[]
   model         AIModel?       @relation(fields: [aIModelId], references: [id])
+  tools         Tool[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -449,6 +449,21 @@ model Agent {
   aIModelId String?
 
   @@map("agent")
+}
+
+model Tool {
+  id          String      @id @default(uuid())
+  agentId     String?
+  agent       Agent?      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name        String      @unique
+  description String?
+  type        String      // e.g. 'api', 'function', 'system', 'plugin'
+  config      String?     @db.Text // JSON configuration for the tool
+  enabled     Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now())
+
+  @@map("tool")
 }
 
 model AgentMemory {
@@ -514,21 +529,6 @@ model PromptHistory {
 
   @@index([conversationId])
   @@map("prompt_history")
-}
-
-model AgentTool {
-  id      String  @id @default(uuid())
-  agentId String
-  agent   Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  name    String // Tool name (e.g., "web_search", "calculator", "email_sender")
-  type    String // 'api', 'function', 'system', 'plugin'
-  config  String? @db.Text // JSON configuration for the tool
-  enabled Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-
-  @@map("agent_tool")
 }
 
 model AgentTask {

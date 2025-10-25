@@ -303,28 +303,28 @@ export class AgentService {
   }
 
   /**
-   * Add tool to agent
+   * Add tool to agent (create Tool with agentId)
    */
   async addTool(agentId: string, name: string, type: string, config?: any) {
-    return await prisma.agentTool.create({
+    return await prisma.tool.create({
       data: {
         agentId,
         name,
         type,
         config: config ? JSON.stringify(config) : null,
+        enabled: true,
       },
     });
   }
 
   /**
-   * Get agent tools
+   * Get agent tools (all tools with agentId)
    */
   async getAgentTools(agentId: string) {
-    const tools = await prisma.agentTool.findMany({
+    const tools = await prisma.tool.findMany({
       where: { agentId },
       orderBy: { createdAt: 'desc' },
     });
-
     return tools.map((tool) => ({
       ...tool,
       config: tool.config ? JSON.parse(tool.config) : null,
@@ -332,28 +332,20 @@ export class AgentService {
   }
 
   /**
-   * Update tool
+   * Update tool by id
    */
   async updateTool(toolId: string, config?: any, enabled?: boolean) {
     const updateData: any = {};
-
     if (config !== undefined) {
       updateData.config = JSON.stringify(config);
     }
-
     if (enabled !== undefined) {
       updateData.enabled = enabled;
     }
-
-    const tool = await prisma.agentTool.update({
+    return await prisma.tool.update({
       where: { id: toolId },
       data: updateData,
     });
-
-    return {
-      ...tool,
-      config: tool.config ? JSON.parse(tool.config) : null,
-    };
   }
 
   /**
@@ -435,8 +427,6 @@ export class AgentService {
       output: task.output ? JSON.parse(task.output) : null,
     };
   }
-
-  // ...existing code...
 
   /**
    * Update all Conversations for an Agent to use a selected AIKey and platform
