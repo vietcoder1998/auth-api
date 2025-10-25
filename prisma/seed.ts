@@ -21,87 +21,133 @@ import { mockUsers } from '../src/mock/users';
 import { mockTools } from './mock/tools';
 const { mockModels } = require('../src/mock/model');
 
+// Import all repositories
+import {
+  AIPlatformRepository,
+  AIModelRepository,
+  AIKeyRepository,
+  LabelRepository,
+  EntityLabelRepository,
+  AgentRepository,
+  CategoryRepository,
+  BlogRepository,
+  BillingRepository,
+  PermissionRepository,
+  RoleRepository,
+  UserRepository,
+  ConfigRepository,
+  SSORepository,
+  LoginHistoryRepository,
+  LogicHistoryRepository,
+  ConversationRepository,
+  MessageRepository,
+  AgentMemoryRepository,
+  AgentTaskRepository,
+  ToolRepository,  PromptHistoryRepository,
+  FaqRepository,
+} from '../src/repositories';
+
 const prisma = new PrismaClient();
 
-async function main() {
-  // 1. Seed AI Platforms first
-  console.log('🤖 Seeding AI Platforms...');
-  for (const platform of mockAIPlatforms) {
-    await prisma.aIPlatform.upsert({
-      where: { id: platform.id },
-      update: {},
-      create: platform,
-    });
-  }
+// Initialize repositories
+const aiPlatformRepo = new AIPlatformRepository();
+const aiModelRepo = new AIModelRepository();
+const aiKeyRepo = new AIKeyRepository();
+const labelRepo = new LabelRepository();
+const entityLabelRepo = new EntityLabelRepository();
+const agentRepo = new AgentRepository();
+const categoryRepo = new CategoryRepository();
+const blogRepo = new BlogRepository();
+const billingRepo = new BillingRepository();
+const permissionRepo = new PermissionRepository();
+const roleRepo = new RoleRepository();
+const userRepo = new UserRepository();
+const configRepo = new ConfigRepository();
+const ssoRepo = new SSORepository();
+const loginHistoryRepo = new LoginHistoryRepository();
+const logicHistoryRepo = new LogicHistoryRepository();
+const conversationRepo = new ConversationRepository();
+const messageRepo = new MessageRepository();
+const agentMemoryRepo = new AgentMemoryRepository();
+const agentTaskRepo = new AgentTaskRepository();
+const toolRepo = new ToolRepository();
+const promptHistoryRepo = new PromptHistoryRepository();
+const faqRepo = new FaqRepository();
 
-  // 1a. Seed AI Models (no agentId)
-  console.log('🧠 Seeding AI Models...');
-  const allPlatforms = await prisma.aIPlatform.findMany();
-  for (const model of mockModels) {
-    const platform = allPlatforms.find((p) => p.name === model.platform);
-    await prisma.aIModel.upsert({
-      where: { name: model.name },
+async function main() {
+  // 1. Seed AI Platforms - Use batch upsert
+  console.log('🤖 Seeding AI Platforms...');
+  await aiPlatformRepo.upsertMany(
+    mockAIPlatforms.map(platform => ({
+      where: { id: platform.id },
+      create: platform,
       update: {},
+    }))
+  );
+
+  // 1a. Seed AI Models - Use batch create with validation
+  console.log('🧠 Seeding AI Models...');
+  const allPlatforms = await aiPlatformRepo.search<any>({});
+  const modelData = mockModels.map((model: any) => {
+    const platform = allPlatforms.find((p: any) => p.name === model.platform);
+    return {
+      where: { name: model.name },
       create: {
         name: model.name,
         description: model.description,
         type: model.type,
         platformId: platform ? platform.id : undefined,
       },
-    });
-  }
+      update: {},
+    };
+  });
+  await aiModelRepo.upsertMany(modelData);
 
   // After models and agents are seeded, assign modelId to agents
-  const allModels = await prisma.aIModel.findMany();
-  const allAgents = await prisma.agent.findMany();
-  for (const agent of allAgents) {
-    // Assign the first AIModel's id to agent.model (relation)
+  const allModels = await aiModelRepo.search<any>({});
+  const allAgents = await agentRepo.search<any>({});
+  if (allModels.length > 0 && allAgents.length > 0) {
     const modelId = allModels[0]?.id;
-    if (modelId) {
-      await prisma.agent.update({
-        where: { id: agent.id },
-        data: { model: { connect: { id: modelId } } },
-      });
+    const agentsToUpdate = allAgents.filter((agent: any) => !agent.modelId);
+    if (modelId && agentsToUpdate.length > 0) {
+      await agentRepo.updateMany({ modelId: null }, { modelId });
     }
   }
 
-  // 2. Seed AI Keys next
+  // 2. Seed AI Keys - Use batch upsert
   console.log('🔑 Seeding AI Keys...');
-  for (const key of mockAIKeys) {
-    try {
-      // Validate platformId
-      if (key.platformId && !mockAIPlatforms.find((p) => p.id === key.platformId)) {
-        console.warn(`⚠️ Skipping AI Key '${key.id}' (invalid platformId: ${key.platformId})`);
-        continue;
-      }
-      // Optionally validate userId if needed (uncomment if required)
-      // if (key.userId && !mockUsers.find(u => u.id === key.userId)) {
-      //   console.warn(`⚠️ Skipping AI Key '${key.id}' (invalid userId: ${key.userId})`);
-      //   continue;
-      // }
-      await prisma.aIKey.upsert({
-        where: { id: key.id },
-        update: {},
-        create: key,
-      });
-      console.log(`✓ Seeded AI Key: ${key.id}`);
-    } catch (error) {
-      console.error(`❌ Error seeding AI Key '${key.id}':`, error);
+  const validKeys = mockAIKeys.filter(key => {
+    if (key.platformId && !mockAIPlatforms.find((p) => p.id === key.platformId)) {
+      console.warn(`⚠️ Skipping AI Key '${key.id}' (invalid platformId: ${key.platformId})`);
+      return false;
     }
-  }
+    return true;
+  });
+  
+  await aiKeyRepo.upsertMany(
+    validKeys.map(key => ({
+      where: { id: key.id },
+      create: key,
+      update: {},
+    }))
+  );
+  console.log(`✓ Seeded ${validKeys.length} AI Keys`);
 
-  // 3. Seed Labels (required for all other entities)
+  // 3. Seed Labels - Use batch upsert
   console.log('🏷️ Seeding Labels...');
-  const createdLabels: Record<string, any> = {};
-  for (const label of mockLabels) {
-    const createdLabel = await prisma.label.upsert({
+  const createdLabels = await labelRepo.upsertMany(
+    mockLabels.map(label => ({
       where: { name: label.name },
-      update: { color: label.color },
       create: { name: label.name, color: label.color },
-    });
-    createdLabels[label.name] = createdLabel;
-  }
-  const mockLabelId = createdLabels['mock']?.id;
+      update: { color: label.color },
+    }))
+  );
+  
+  const createdLabelsMap: Record<string, any> = {};
+  createdLabels.forEach((label: any) => {
+    createdLabelsMap[label.name] = label;
+  });
+  const mockLabelId = createdLabelsMap['mock']?.id;
 
   // Get users for seeding agents and other entities
   const superadminUser = await prisma.user.findUnique({
@@ -165,46 +211,50 @@ async function main() {
       }
     }
   }
-
-  // 4.1 Seed Tools (global tools, not agent-specific)
+  // 4.1 Seed Tools (global tools) - Use batch upsert
   console.log('🛠️ Seeding Tools...');
-  for (const tool of mockTools) {
-    await prisma.tool.upsert({
+  await toolRepo.upsertMany(
+    mockTools.map(tool => ({
       where: { name: tool.name },
-      update: { description: tool.description, type: tool.type, config: tool.config, enabled: tool.enabled },
       create: tool,
-    });
-  }
+      update: {
+        description: tool.description,
+        type: tool.type,
+        config: tool.config,
+        enabled: tool.enabled,
+      },
+    }))
+  );
 
-  // 5. Seed Categories
+  // 5. Seed Categories - Use batch upsert
   console.log('📚 Seeding Categories...');
-  for (const category of mockCategories) {
-    await prisma.category.upsert({
+  await categoryRepo.upsertMany(
+    mockCategories.map(category => ({
       where: { id: category.id },
-      update: {},
       create: category,
-    });
-  }
+      update: {},
+    }))
+  );
 
-  // 6. Seed Blogs
+  // 6. Seed Blogs - Use batch upsert
   console.log('📝 Seeding Blogs...');
-  for (const blog of mockBlogs) {
-    await prisma.blog.upsert({
+  await blogRepo.upsertMany(
+    mockBlogs.map(blog => ({
       where: { id: blog.id },
-      update: {},
       create: blog,
-    });
-  }
-
-  // 7. Seed Billings
-  console.log('💳 Seeding Billings...');
-  for (const billing of mockBillings) {
-    await prisma.billing.upsert({
-      where: { id: billing.id },
       update: {},
+    }))
+  );
+
+  // 7. Seed Billings - Use batch upsert
+  console.log('💳 Seeding Billings...');
+  await billingRepo.upsertMany(
+    mockBillings.map(billing => ({
+      where: { id: billing.id },
       create: billing,
-    });
-  }
+      update: {},
+    }))
+  );
   // ...existing code...
   // Seed FAQs and related messages (moved to end)
   console.log('❓ Seeding FAQs and FAQ Messages...');
@@ -290,33 +340,47 @@ async function main() {
       });
     }
   }
-
-  // Seed Prompts
+  // Seed Prompts - Batch operation
   console.log('💡 Seeding Prompts...');
-  for (const prompt of mockPrompts) {
-    try {
+  
+  // Validate and prepare prompt data in parallel
+  const promptValidationResults = await Promise.all(
+    mockPrompts.map(async (prompt) => {
       if (!prompt.conversationId) {
         console.warn(`⚠ Skipping prompt: '${prompt.prompt}' (missing conversationId)`);
-        continue;
+        return null;
       }
+      
       const convExists = await prisma.conversation.findUnique({
         where: { id: prompt.conversationId },
       });
+      
       if (!convExists) {
         console.warn(
           `⚠ Skipping prompt: '${prompt.prompt}' (invalid conversationId: ${prompt.conversationId})`,
         );
-        continue;
+        return null;
       }
-      await prisma.promptHistory.create({
-        data: {
-          conversationId: prompt.conversationId,
-          prompt: prompt.prompt,
-          createdAt: prompt.createdAt,
-        },
+      
+      return {
+        conversationId: prompt.conversationId,
+        prompt: prompt.prompt,
+        createdAt: prompt.createdAt,
+      };
+    })
+  );
+
+  // Filter out invalid prompts and batch create
+  const validPrompts = promptValidationResults.filter(p => p !== null);
+  if (validPrompts.length > 0) {
+    try {
+      await prisma.promptHistory.createMany({
+        data: validPrompts,
+        skipDuplicates: true,
       });
+      console.log(`✓ Created ${validPrompts.length} prompts`);
     } catch (error) {
-      console.log(`⚠ Error creating prompt:`, error);
+      console.log(`⚠ Error creating prompts:`, error);
     }
   }
 
@@ -338,8 +402,7 @@ async function main() {
     }
   }
   // ...existing code...
-
-  // Seed permissions from mock data
+  // Seed permissions from mock data - Use batch upsert
   console.log('🔐 Seeding Permissions...');
 
   // Deduplicate mockPermissions by name
@@ -350,43 +413,37 @@ async function main() {
     }, {}),
   );
 
-  const permissionRecords = await Promise.all(
-    uniquePermissions.map((permission: any) =>
-      prisma.permission.upsert({
-        where: { name: permission.name },
-        update: {},
-        create: permission,
-      }),
-    ),
+  const permissionRecords = await permissionRepo.upsertMany(
+    uniquePermissions.map((permission: any) => ({
+      where: { name: permission.name },
+      create: permission,
+      update: {},
+    }))
   );
 
-  // Add mock label to all permissions
+  // Add mock label to all permissions - Use batch create
   if (mockLabelId) {
-    const permissionLabels = permissionRecords.map((permission) => ({
+    const permissionLabels = permissionRecords.map((permission: any) => ({
       entityId: permission.id,
       entityType: 'permission',
       labelId: mockLabelId,
     }));
 
-    await prisma.entityLabel.createMany({
-      data: permissionLabels,
-      skipDuplicates: true,
-    });
+    await entityLabelRepo.createMany(permissionLabels);
   }
-
   // Create roles
   console.log('👑 Seeding Roles...');
   const superadminRole = await prisma.role.upsert({
     where: { name: 'superadmin' },
     update: {
       permissions: {
-        set: permissionRecords.map((p) => ({ id: p.id })), // Update to include all permissions
+        set: permissionRecords.map((p: any) => ({ id: p.id })), // Update to include all permissions
       },
     },
     create: {
       name: 'superadmin',
       permissions: {
-        connect: permissionRecords.map((p) => ({ id: p.id })),
+        connect: permissionRecords.map((p: any) => ({ id: p.id })),
       },
     },
   });
@@ -395,19 +452,19 @@ async function main() {
     update: {
       permissions: {
         set: permissionRecords
-          .filter((p) => {
+          .filter((p: any) => {
             // Dynamically fetch all permission names from mockPermissions
             const adminPermissionNames = mockPermissions.map((perm: any) => perm.name);
             return adminPermissionNames.includes(p.name);
           })
-          .map((p) => ({ id: p.id })),
+          .map((p: any) => ({ id: p.id })),
       },
     },
     create: {
       name: 'admin',
       permissions: {
         connect: permissionRecords
-          .filter((p) =>
+          .filter((p: any) =>
             [
               'manage_users',
               'view_reports',
@@ -465,7 +522,7 @@ async function main() {
               'create_logs',
             ].includes(p.name),
           )
-          .map((p) => ({ id: p.id })),
+          .map((p: any) => ({ id: p.id })),
       },
     },
   });
@@ -474,7 +531,7 @@ async function main() {
     update: {
       permissions: {
         set: permissionRecords
-          .filter((p) =>
+          .filter((p: any) =>
             [
               'view_self',
               'view_conversations',
@@ -485,14 +542,14 @@ async function main() {
               'chat_with_agents',
             ].includes(p.name),
           )
-          .map((p) => ({ id: p.id })),
+          .map((p: any) => ({ id: p.id })),
       },
     },
     create: {
       name: 'user',
       permissions: {
         connect: permissionRecords
-          .filter((p) =>
+          .filter((p: any) =>
             [
               'view_self',
               'view_conversations',
@@ -503,12 +560,11 @@ async function main() {
               'chat_with_agents',
             ].includes(p.name),
           )
-          .map((p) => ({ id: p.id })),
+          .map((p: any) => ({ id: p.id })),
       },
     },
   });
-
-  // Add mock label to all roles
+  // Add mock label to all roles - Use batch create
   if (mockLabelId) {
     const roleLabels = [
       { entityId: superadminRole.id, entityType: 'role', labelId: mockLabelId },
@@ -516,13 +572,10 @@ async function main() {
       { entityId: userRole.id, entityType: 'role', labelId: mockLabelId },
     ];
 
-    await prisma.entityLabel.createMany({
-      data: roleLabels,
-      skipDuplicates: true,
-    });
+    await entityLabelRepo.createMany(roleLabels);
   }
 
-  // Seed users from mock data
+  // Seed users from mock data - Use batch upsert
   console.log('👥 Seeding Users...');
   const roleMapping: Record<string, string> = {
     superadmin: superadminRole.id,
@@ -530,11 +583,9 @@ async function main() {
     user: userRole.id,
   };
 
-  const createdUsers: any[] = [];
-  for (const user of mockUsers) {
-    const createdUser = await prisma.user.upsert({
+  const createdUsers = await userRepo.upsertMany(
+    mockUsers.map(user => ({
       where: { email: user.email },
-      update: {},
       create: {
         email: user.email,
         password: user.password,
@@ -542,67 +593,60 @@ async function main() {
         roleId: roleMapping[user.roleName],
         status: user.status,
       },
-    });
-    createdUsers.push(createdUser);
-  }
+      update: {},
+    }))
+  );
 
-  // Add mock label to all users
+  // Add mock label to all users - Use batch create
   if (mockLabelId) {
-    const userLabels = createdUsers.map((user) => ({
+    const userLabels = createdUsers.map((user: any) => ({
       entityId: user.id,
       entityType: 'user',
       labelId: mockLabelId,
     }));
 
-    await prisma.entityLabel.createMany({
-      data: userLabels,
-      skipDuplicates: true,
-    });
+    await entityLabelRepo.createMany(userLabels);
   }
 
-  // Seed configuration settings from mock data
+  // Seed configuration settings from mock data - Use batch upsert
   console.log('⚙️ Seeding Configuration...');
-  const createdConfigs: any[] = [];
-  for (const config of mockConfigs) {
-    const createdConfig = await prisma.config.upsert({
+  const createdConfigs = await configRepo.upsertMany(
+    mockConfigs.map(config => ({
       where: { key: config.key },
-      update: { value: config.value },
       create: config,
-    });
-    createdConfigs.push(createdConfig);
-  }
+      update: { value: config.value },
+    }))
+  );
 
-  // Add mock label to all configs
+  // Add mock label to all configs - Use batch create
   if (mockLabelId) {
-    const configLabels = createdConfigs.map((config) => ({
+    const configLabels = createdConfigs.map((config: any) => ({
       entityId: config.id,
       entityType: 'config',
       labelId: mockLabelId,
     }));
 
-    await prisma.entityLabel.createMany({
-      data: configLabels,
-      skipDuplicates: true,
-    });
+    await entityLabelRepo.createMany(configLabels);
   }
-
-  // Seed mail templates from mock data
+  // Seed mail templates from mock data - Use batch upsert
   console.log('📧 Seeding Mail Templates...');
-  const createdMailTemplates: any[] = [];
-  for (const template of mockMailTemplates) {
-    const createdTemplate = await prisma.mailTemplate.upsert({
-      where: { name: template.name },
-      update: {
-        subject: template.subject,
-        body: template.body,
-        active: template.active,
-      },
-      create: template,
-    });
-    createdMailTemplates.push(createdTemplate);
-  }
+  const createdMailTemplates = await prisma.mailTemplate.findMany().then(() =>
+    Promise.all(
+      mockMailTemplates.map(template =>
+        prisma.mailTemplate.upsert({
+          where: { name: template.name },
+          create: template,
+          update: {
+            subject: template.subject,
+            body: template.body,
+            active: template.active,
+          },
+        })
+      )
+    )
+  );
 
-  // Add mock label to all mail templates
+  // Add mock label to all mail templates - Use batch create
   if (mockLabelId) {
     const mailTemplateLabels = createdMailTemplates.map((template) => ({
       entityId: template.id,
@@ -610,29 +654,26 @@ async function main() {
       labelId: mockLabelId,
     }));
 
-    await prisma.entityLabel.createMany({
-      data: mailTemplateLabels,
-      skipDuplicates: true,
-    });
+    await entityLabelRepo.createMany(mailTemplateLabels);
   }
 
-  // Seed notification templates from mock data
+  // Seed notification templates from mock data - Use batch upsert
   console.log('🔔 Seeding Notification Templates...');
-  const createdNotificationTemplates: any[] = [];
-  for (const template of mockNotificationTemplates) {
-    const createdTemplate = await prisma.notificationTemplate.upsert({
-      where: { name: template.name },
-      update: {
-        title: template.title,
-        body: template.body,
-        active: template.active,
-      },
-      create: template,
-    });
-    createdNotificationTemplates.push(createdTemplate);
-  }
+  const createdNotificationTemplates = await Promise.all(
+    mockNotificationTemplates.map(template =>
+      prisma.notificationTemplate.upsert({
+        where: { name: template.name },
+        create: template,
+        update: {
+          title: template.title,
+          body: template.body,
+          active: template.active,
+        },
+      })
+    )
+  );
 
-  // Add mock label to all notification templates
+  // Add mock label to all notification templates - Use batch create
   if (mockLabelId) {
     const notificationTemplateLabels = createdNotificationTemplates.map((template) => ({
       entityId: template.id,
@@ -663,30 +704,24 @@ async function main() {
       ...sso,
       userId: userEmailToIdMapping[sso.userEmail] || '',
       userEmail: undefined, // Remove the userEmail field as it's not part of the schema
-    }));
-
-    const createdSSOEntries: any[] = [];
-    for (const sso of ssoEntries) {
-      if (sso.userId) {
-        const createdSSO = await prisma.sSO.upsert({
-          where: { key: sso.key },
-          update: {
-            url: sso.url,
-            userId: sso.userId,
-            deviceIP: sso.deviceIP,
-            isActive: sso.isActive,
-            expiresAt: sso.expiresAt,
-            ...(sso.ssoKey && { ssoKey: sso.ssoKey }), // Add ssoKey if present
-          },
-          create: sso,
-        });
-        createdSSOEntries.push(createdSSO);
-      }
-    }
-
-    // Add mock label to all SSO entries
+    }));    // Batch upsert SSO entries using repository pattern
+    const validSSOEntries = ssoEntries.filter(sso => sso.userId);
+    const createdSSOEntries = await ssoRepo.upsertMany(
+      validSSOEntries.map(sso => ({
+        where: { key: sso.key },
+        create: sso,
+        update: {
+          url: sso.url,
+          userId: sso.userId,
+          deviceIP: sso.deviceIP,
+          isActive: sso.isActive,
+          expiresAt: sso.expiresAt,
+          ...(sso.ssoKey && { ssoKey: sso.ssoKey }),
+        },
+      }))
+    );    // Add mock label to all SSO entries
     if (mockLabelId && createdSSOEntries.length > 0) {
-      const ssoLabels = createdSSOEntries.map((sso) => ({
+      const ssoLabels = createdSSOEntries.map((sso: any) => ({
         entityId: sso.id,
         entityType: 'sso',
         labelId: mockLabelId,
@@ -718,32 +753,49 @@ async function main() {
       status: entry.status,
       loginAt: entry.loginAt,
       logoutAt: entry.logoutAt || null,
-    }));
-
+    }));    // Batch create login history entries - check for duplicates first
     const createdLoginHistories: any[] = [];
-    for (const loginHistory of loginHistoryEntries) {
-      if (loginHistory.userId) {
-        // Since LoginHistory might not have unique constraints, we can use create
-        // But first check if a similar entry exists to avoid duplicates
-        const existingEntry = await prisma.loginHistory.findFirst({
-          where: {
-            userId: loginHistory.userId,
-            ssoId: loginHistory.ssoId || null,
-            deviceIP: loginHistory.deviceIP,
-            loginAt: loginHistory.loginAt,
-          },
-        });
-
-        if (!existingEntry) {
-          const createdHistory = await prisma.loginHistory.create({
-            data: loginHistory,
+    
+    // Check for existing entries in batch
+    const existingLoginHistoryChecks = await Promise.all(
+      loginHistoryEntries
+        .filter(entry => entry.userId)
+        .map(async (loginHistory) => {
+          const existingEntry = await prisma.loginHistory.findFirst({
+            where: {
+              userId: loginHistory.userId,
+              ssoId: loginHistory.ssoId || null,
+              deviceIP: loginHistory.deviceIP,
+              loginAt: loginHistory.loginAt,
+            },
           });
-          createdLoginHistories.push(createdHistory);
-        } else {
-          createdLoginHistories.push(existingEntry);
-        }
-      }
+          return { loginHistory, exists: !!existingEntry, existingEntry };
+        })
+    );
+
+    // Batch create new entries
+    const newEntries = existingLoginHistoryChecks.filter(check => !check.exists);
+    if (newEntries.length > 0) {
+      await prisma.loginHistory.createMany({
+        data: newEntries.map(check => check.loginHistory),
+        skipDuplicates: true,
+      });
+      
+      // Fetch created entries
+      const created = await prisma.loginHistory.findMany({
+        where: {
+          OR: newEntries.map(check => ({
+            userId: check.loginHistory.userId,
+            deviceIP: check.loginHistory.deviceIP,
+            loginAt: check.loginHistory.loginAt,
+          })),
+        },
+      });
+      createdLoginHistories.push(...created);
     }
+    
+    // Add existing entries to the list
+    createdLoginHistories.push(...existingLoginHistoryChecks.filter(check => check.exists).map(check => check.existingEntry));
 
     // Add mock label to all login histories
     if (mockLabelId && createdLoginHistories.length > 0) {
@@ -767,50 +819,75 @@ async function main() {
       description: entry.description,
       metadata: entry.metadata,
       createdAt: entry.createdAt,
-    }));
-
+    }));    // Batch create logic history entries - check for duplicates first
     const createdLogicHistories: any[] = [];
-    for (const logicHistory of logicHistoryEntries) {
-      // Only create logic history for users that exist (skip null userId entries)
-      if (logicHistory.userId) {
+    
+    // Process valid entries with userId
+    const validLogicEntries = logicHistoryEntries.filter(entry => entry.userId);
+    
+    // Check for existing entries and prepare data in parallel
+    const logicHistoryChecks = await Promise.all(
+      validLogicEntries.map(async (logicHistory) => {
         try {
-          // Check if a similar logic history entry exists to avoid duplicates
           const existingEntry = await prisma.logicHistory.findFirst({
             where: {
-              userId: logicHistory.userId,
+              userId: logicHistory.userId!,
               action: logicHistory.action,
               createdAt: {
-                gte: new Date(logicHistory.createdAt.getTime() - 5 * 60 * 1000), // Within 5 minutes of the mock timestamp
+                gte: new Date(logicHistory.createdAt.getTime() - 5 * 60 * 1000),
                 lte: new Date(logicHistory.createdAt.getTime() + 5 * 60 * 1000),
               },
             },
           });
 
-          if (!existingEntry) {
-            const createdHistory = await prisma.logicHistory.create({
-              data: {
-                userId: logicHistory.userId,
-                action: logicHistory.action,
-                entityType: 'System', // Default entity type
-                entityId: null, // No specific entity
-                oldValues: null,
-                newValues: JSON.stringify(logicHistory.metadata),
-                ipAddress: logicHistory.metadata?.ipAddress || '127.0.0.1',
-                userAgent: logicHistory.metadata?.userAgent || 'System',
-                notificationTemplateId: null,
-                notificationSent: false,
-                createdAt: logicHistory.createdAt,
-              },
-            });
-            createdLogicHistories.push(createdHistory);
-          } else {
-            createdLogicHistories.push(existingEntry);
-          }
+          const data = {
+            userId: logicHistory.userId!,
+            action: logicHistory.action,
+            entityType: 'System',
+            entityId: null,
+            oldValues: null,
+            newValues: JSON.stringify(logicHistory.metadata),
+            ipAddress: logicHistory.metadata?.ipAddress || '127.0.0.1',
+            userAgent: logicHistory.metadata?.userAgent || 'System',
+            notificationTemplateId: null,
+            notificationSent: false,
+            createdAt: logicHistory.createdAt,
+          };
+
+          return { data, exists: !!existingEntry, existingEntry };
         } catch (error) {
-          console.log(`⚠ Error creating logic history entry:`, error);
+          console.log(`⚠ Error processing logic history entry:`, error);
+          return null;
         }
-      }
+      })
+    );
+
+    // Filter out failed checks
+    const validChecks = logicHistoryChecks.filter(check => check !== null);
+    
+    // Batch create new entries
+    const newLogicEntries = validChecks.filter(check => !check!.exists);
+    if (newLogicEntries.length > 0) {
+      await prisma.logicHistory.createMany({
+        data: newLogicEntries.map(check => check!.data),
+        skipDuplicates: true,
+      });
+      
+      // Fetch created entries
+      const created = await prisma.logicHistory.findMany({
+        where: {
+          OR: newLogicEntries.map(check => ({
+            userId: check!.data.userId,
+            action: check!.data.action,
+            createdAt: check!.data.createdAt,
+          })),
+        },
+      });
+      createdLogicHistories.push(...created);
     }
+    
+    // Add existing entries
+    createdLogicHistories.push(...validChecks.filter(check => check!.exists).map(check => check!.existingEntry));
 
     // Add mock label to all logic histories
     if (mockLabelId && createdLogicHistories.length > 0) {

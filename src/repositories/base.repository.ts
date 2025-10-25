@@ -258,4 +258,76 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
     // @ts-ignore
     return (this.model as T | any).findMany({ where });
   }
+
+  // ==================== UPSERT OPERATIONS ====================
+
+  /**
+   * Create or update a single record based on a unique field
+   * @param where - Unique field(s) to search for existing record
+   * @param create - Data to use if creating a new record
+   * @param update - Data to use if updating an existing record
+   * @returns The created or updated record
+   * @example
+   * ```typescript
+   * const user = await userRepo.upsert(
+   *   { email: 'user@example.com' },
+   *   { email: 'user@example.com', name: 'John Doe', status: 'active' },
+   *   { name: 'John Doe Updated' }
+   * );
+   * ```
+   */
+  public async upsert<Dto, Dro>(
+    where: Record<string, any>,
+    create: Dto,
+    update: Partial<Dto>
+  ): Promise<Dro> {
+    // @ts-ignore
+    return (this.model as T | any).upsert({
+      where,
+      create,
+      update,
+    });
+  }
+
+  /**
+   * Create or update multiple records in batch
+   * For each item, searches by unique field and creates/updates accordingly
+   * Note: This executes multiple upsert operations, not a single batch operation
+   * @param items - Array of upsert configurations
+   * @returns Array of created or updated records
+   * @example
+   * ```typescript
+   * const users = await userRepo.upsertMany([
+   *   {
+   *     where: { email: 'user1@example.com' },
+   *     create: { email: 'user1@example.com', name: 'User 1' },
+   *     update: { name: 'User 1 Updated' }
+   *   },
+   *   {
+   *     where: { email: 'user2@example.com' },
+   *     create: { email: 'user2@example.com', name: 'User 2' },
+   *     update: { name: 'User 2 Updated' }
+   *   }
+   * ]);
+   * ```
+   */
+  public async upsertMany<Dto, Dro>(
+    items: Array<{
+      where: Record<string, any>;
+      create: Dto;
+      update: Partial<Dto>;
+    }>
+  ): Promise<Dro[]> {
+    const results: Dro[] = [];
+    for (const item of items) {
+      // @ts-ignore
+      const result = await (this.model as T | any).upsert({
+        where: item.where,
+        create: item.create,
+        update: item.update,
+      });
+      results.push(result);
+    }
+    return results;
+  }
 }
