@@ -1,4 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import { BaseService } from './base.service';
+import { RoleRepository } from '../repositories/role.repository';
+import { RoleDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
@@ -14,7 +17,15 @@ export interface UpdateRoleData {
   permissionIds?: string[];
 }
 
-export class RoleService {
+export class RoleService extends BaseService<any, RoleDto, RoleDto> {
+  private roleRepository: RoleRepository;
+
+  constructor() {
+    const roleRepository = new RoleRepository();
+    super(roleRepository);
+    this.roleRepository = roleRepository;
+  }
+
   /**
    * Create a new role
    */
@@ -22,48 +33,30 @@ export class RoleService {
     const { name, description, permissionIds } = data;
 
     // Check if role already exists
-    const existingRole = await prisma.role.findUnique({
-      where: { name },
-    });
+    const existingRole = await this.roleRepository.findByName(name);
 
     if (existingRole) {
       throw new Error('Role with this name already exists');
     }
 
-    const role = await prisma.role.create({
-      data: {
-        name,
-        description,
-        permissions: permissionIds
-          ? {
-              connect: permissionIds.map((id) => ({ id })),
-            }
-          : undefined,
-      },
-      include: {
-        permissions: true,
-        _count: {
-          select: { users: true },
-        },
-      },
-    });
+    const role: any = await this.roleRepository.create({
+      name,
+      description,
+      permissions: permissionIds
+        ? {
+            connect: permissionIds.map((id) => ({ id })),
+          }
+        : undefined,
+    } as any);
 
-    return role;
+    // Get full role with relations
+    return this.roleRepository.findWithPermissions(role.id);
   }
-
   /**
    * Get role by ID
    */
   async getRoleById(id: string) {
-    const role = await prisma.role.findUnique({
-      where: { id },
-      include: {
-        permissions: true,
-        _count: {
-          select: { users: true },
-        },
-      },
-    });
+    const role = await this.roleRepository.findWithPermissions(id);
 
     if (!role) {
       throw new Error('Role not found');
@@ -71,32 +64,22 @@ export class RoleService {
 
     return role;
   }
-
   /**
    * Update role
    */
   async updateRole(id: string, data: UpdateRoleData) {
     const { permissionIds, ...updateData } = data;
 
-    const role = await prisma.role.update({
-      where: { id },
-      data: {
-        ...updateData,
-        permissions: permissionIds
-          ? {
-              set: permissionIds.map((id) => ({ id })),
-            }
-          : undefined,
-      },
-      include: {
-        permissions: true,
-        _count: {
-          select: { users: true },
-        },
-      },
-    });
+    await this.roleRepository.update(id, {
+      ...updateData,
+      permissions: permissionIds
+        ? {
+            set: permissionIds.map((id) => ({ id })),
+          }
+        : undefined,
+    } as any);
 
-    return role;
+    return this.roleRepository.findWithPermissions(id);
   }
 
   /**
@@ -116,7 +99,6 @@ export class RoleService {
       where: { id },
     });
   }
-
   /**
    * Get all roles with pagination
    */
@@ -130,7 +112,7 @@ export class RoleService {
       : {};
 
     const [roles, total] = await Promise.all([
-      prisma.role.findMany({
+      this.roleRepository.search({
         where,
         skip,
         take: limit,
@@ -153,39 +135,30 @@ export class RoleService {
       totalPages: Math.ceil(total / limit),
     };
   }
-
   /**
    * Add permission to role
    */
   async addPermissionToRole(roleId: string, permissionId: string) {
-    return await prisma.role.update({
-      where: { id: roleId },
-      data: {
-        permissions: {
-          connect: { id: permissionId },
-        },
+    await this.roleRepository.update(roleId, {
+      permissions: {
+        connect: { id: permissionId },
       },
-      include: {
-        permissions: true,
-      },
-    });
+    } as any);
+
+    return this.roleRepository.findWithPermissions(roleId);
   }
 
   /**
    * Remove permission from role
    */
   async removePermissionFromRole(roleId: string, permissionId: string) {
-    return await prisma.role.update({
-      where: { id: roleId },
-      data: {
-        permissions: {
-          disconnect: { id: permissionId },
-        },
+    await this.roleRepository.update(roleId, {
+      permissions: {
+        disconnect: { id: permissionId },
       },
-      include: {
-        permissions: true,
-      },
-    });
+    } as any);
+
+    return this.roleRepository.findWithPermissions(roleId);
   }
 
   /**

@@ -1,5 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { BaseService } from './base.service';
+import { UserRepository } from '../repositories/user.repository';
+import { AgentRepository } from '../repositories/agent.repository';
+import { ConversationRepository } from '../repositories/conversation.repository';
+import { UserDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
@@ -18,17 +23,25 @@ export interface UpdateUserData {
   status?: string;
 }
 
-export class UserService {
-  /**
+export class UserService extends BaseService<any, UserDto, UserDto> {
+  private userRepository: UserRepository;
+  private agentRepository: AgentRepository;
+  private conversationRepository: ConversationRepository;
+
+  constructor() {
+    const userRepository = new UserRepository();
+    super(userRepository);
+    this.userRepository = userRepository;
+    this.agentRepository = new AgentRepository();
+    this.conversationRepository = new ConversationRepository();
+  }  /**
    * Create a new user
    */
   async createUser(data: CreateUserData) {
     const { email, password, nickname, roleId } = data;
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const existingUser = await this.userRepository.findByEmail(email);
 
     if (existingUser) {
       throw new Error('User with this email already exists');
@@ -37,41 +50,22 @@ export class UserService {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        nickname,
-        roleId,
-      },
-      include: {
-        role: {
-          include: {
-            permissions: true,
-          },
-        },
-      },
+    const user = await this.userRepository.createWithRole({
+      email,
+      password: hashedPassword,
+      nickname,
+      roleId,
     });
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
-
   /**
    * Get user by ID
    */
   async getUserById(id: string) {
-    const user = await prisma.user.findUnique({
-      where: { id },
-      include: {
-        role: {
-          include: {
-            permissions: true,
-          },
-        },
-      },
-    });
+    const user = await this.userRepository.findWithRole(id);
 
     if (!user) {
       throw new Error('User not found');
@@ -80,23 +74,12 @@ export class UserService {
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
-
   /**
    * Get user by email
    */
   async getUserByEmail(email: string) {
-    return await prisma.user.findUnique({
-      where: { email },
-      include: {
-        role: {
-          include: {
-            permissions: true,
-          },
-        },
-      },
-    });
+    return await this.userRepository.findByEmail(email);
   }
-
   /**
    * Update user
    */
@@ -108,31 +91,17 @@ export class UserService {
       updateData.password = await bcrypt.hash(data.password, 12);
     }
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      include: {
-        role: {
-          include: {
-            permissions: true,
-          },
-        },
-      },
-    });
+    const user = await this.userRepository.updateWithRole(id, updateData);
 
     const { password: _, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
-
   /**
    * Delete user
    */
   async deleteUser(id: string) {
-    return await prisma.user.delete({
-      where: { id },
-    });
+    return await this.repository.delete(id);
   }
-
   /**
    * Get all users with pagination
    */
@@ -146,7 +115,7 @@ export class UserService {
       : {};
 
     const [users, total] = await Promise.all([
-      prisma.user.findMany({
+      this.userRepository.search({
         where,
         skip,
         take: limit,
@@ -163,7 +132,7 @@ export class UserService {
     ]);
 
     // Remove passwords from response
-    const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+    const usersWithoutPasswords = users.map(({ password, ...user }: any) => user);
 
     return {
       data: usersWithoutPasswords,
@@ -173,14 +142,11 @@ export class UserService {
       totalPages: Math.ceil(total / limit),
     };
   }
-
   /**
    * Verify user password
    */
   async verifyPassword(id: string, password: string) {
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+    const user: any = await this.repository.findById(id);
 
     if (!user) {
       throw new Error('User not found');
@@ -188,14 +154,11 @@ export class UserService {
 
     return await bcrypt.compare(password, user.password);
   }
-
   /**
    * Change user password
    */
   async changePassword(id: string, oldPassword: string, newPassword: string) {
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
+    const user: any = await this.repository.findById(id);
 
     if (!user) {
       throw new Error('User not found');
@@ -208,17 +171,13 @@ export class UserService {
 
     const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-    return await prisma.user.update({
-      where: { id },
-      data: { password: hashedPassword },
-    });
+    return await this.repository.update(id, { password: hashedPassword });
   }
-
   /**
    * Get user's agents
    */
   async getUserAgents(userId: string) {
-    return await prisma.agent.findMany({
+    return await this.agentRepository.search({
       where: { userId },
       include: {
         _count: {
@@ -232,7 +191,6 @@ export class UserService {
       orderBy: { createdAt: 'desc' },
     });
   }
-
   /**
    * Get user's conversations
    */
@@ -240,7 +198,7 @@ export class UserService {
     const skip = (page - 1) * limit;
 
     const [conversations, total] = await Promise.all([
-      prisma.conversation.findMany({
+      this.conversationRepository.search({
         where: { userId },
         skip,
         take: limit,
