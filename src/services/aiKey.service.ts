@@ -1,34 +1,72 @@
 import { PrismaClient } from '@prisma/client';
+import { BaseService } from './base.service';
+import { AIKeyRepository } from '../repositories/aikey.repository';
+import { AIKeyDto } from '../interfaces';
+
 const prisma = new PrismaClient();
 
-export const createAIKey = async (data: any) => {
-  return prisma.aIKey.create({ data });
-};
+class AIKeyService extends BaseService<any, AIKeyDto, AIKeyDto> {
+  private aiKeyRepository: AIKeyRepository;
 
-export const getAIKeys = async () => {
-  return prisma.aIKey.findMany({
-    include: {
-      platform: true,
-      billing: true,
-      agents: {
-        include: {
-          agent: true,
+  constructor() {
+    const aiKeyRepository = new AIKeyRepository();
+    super(aiKeyRepository);
+    this.aiKeyRepository = aiKeyRepository;
+  }
+
+  async createAIKey(data: any) {
+    return this.aiKeyRepository.create(data);
+  }
+
+  async getAIKeys() {
+    return this.aiKeyRepository.search({
+      include: {
+        platform: true,
+        billing: true,
+        agents: {
+          include: {
+            agent: true,
+          },
         },
+        Conversation: true,
+        user: true,
       },
-      Conversation: true,
-      user: true,
-    },
-  });
-};
+    });
+  }
 
-export const getAIKeyById = async (id: string) => {
-  return prisma.aIKey.findUnique({ where: { id }, include: { platform: true, billing: true } });
-};
+  async getAIKeyById(id: string) {
+    return this.aiKeyRepository.search({
+      where: { id },
+      include: { platform: true, billing: true },
+    }).then(results => results[0] || null);
+  }
 
-export const updateAIKey = async (id: string, data: any) => {
-  return prisma.aIKey.update({ where: { id }, data });
-};
+  async updateAIKey(id: string, data: any) {
+    return this.aiKeyRepository.update(id, data);
+  }
 
-export const deleteAIKey = async (id: string) => {
-  return prisma.aIKey.delete({ where: { id } });
-};
+  async deleteAIKey(id: string) {
+    return this.aiKeyRepository.delete(id);
+  }
+
+  async getAIKeysByUserId(userId: string) {
+    return this.aiKeyRepository.findByUserId(userId);
+  }
+
+  async getActiveAIKeys() {
+    return this.aiKeyRepository.findActive();
+  }
+
+  async findByKey(key: string) {
+    return this.aiKeyRepository.findByKey(key);
+  }
+}
+
+export const aiKeyService = new AIKeyService();
+
+// Export individual functions for backward compatibility
+export const createAIKey = (data: any) => aiKeyService.createAIKey(data);
+export const getAIKeys = () => aiKeyService.getAIKeys();
+export const getAIKeyById = (id: string) => aiKeyService.getAIKeyById(id);
+export const updateAIKey = (id: string, data: any) => aiKeyService.updateAIKey(id, data);
+export const deleteAIKey = (id: string) => aiKeyService.deleteAIKey(id);
