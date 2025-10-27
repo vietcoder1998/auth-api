@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { BaseService } from './base.service';
+import { TokenRepository } from '../repositories/token.repository';
+import { TokenDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
@@ -14,12 +17,16 @@ export interface TokenPayload {
   roleId?: string;
 }
 
-export class TokenService {
+export class TokenService extends BaseService<any, TokenDto, TokenDto> {
   private jwtSecret: string;
   private accessTokenExpiry: string;
   private refreshTokenExpiry: string;
+  private tokenRepository: TokenRepository;
 
   constructor() {
+    const tokenRepository = new TokenRepository();
+    super(tokenRepository);
+    this.tokenRepository = tokenRepository;
     this.jwtSecret = process.env.JWT_SECRET || 'default-secret';
     this.accessTokenExpiry = process.env.ACCESS_TOKEN_EXPIRY || '1h';
     this.refreshTokenExpiry = process.env.REFRESH_TOKEN_EXPIRY || '7d';
@@ -49,7 +56,6 @@ export class TokenService {
       return null;
     }
   }
-
   /**
    * Create token record in database
    */
@@ -71,29 +77,33 @@ export class TokenService {
 
     const { accessToken, refreshToken } = this.generateTokens(payload);
 
-    const token = await prisma.token.create({
-      data: {
-        userId: data.userId,
-        accessToken,
-        refreshToken,
-        expiresAt: data.expiresAt,
-      },
+    const token: any = await this.tokenRepository.create({
+      userId: data.userId,
+      accessToken,
+      refreshToken,
+      expiresAt: data.expiresAt,
+      refreshExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    } as any);
+
+    // Get with user relation
+    return prisma.token.findUnique({
+      where: { id: token.id },
       include: {
         user: {
           select: { id: true, email: true, nickname: true, status: true },
         },
       },
     });
-
-    return token;
   }
-
   /**
    * Get token by access token
    */
   async getTokenByAccessToken(accessToken: string) {
-    return await prisma.token.findUnique({
-      where: { accessToken },
+    const token = await this.tokenRepository.findByAccessToken(accessToken);
+    if (!token) return null;
+    
+    return prisma.token.findUnique({
+      where: { id: (token as any).id },
       include: {
         user: {
           select: { id: true, email: true, nickname: true, status: true, roleId: true },
@@ -106,8 +116,11 @@ export class TokenService {
    * Get token by refresh token
    */
   async getTokenByRefreshToken(refreshToken: string) {
-    return await prisma.token.findUnique({
-      where: { refreshToken },
+    const token = await this.tokenRepository.findByRefreshToken(refreshToken);
+    if (!token) return null;
+    
+    return prisma.token.findUnique({
+      where: { id: (token as any).id },
       include: {
         user: {
           select: { id: true, email: true, nickname: true, status: true, roleId: true },

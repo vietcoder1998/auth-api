@@ -1,4 +1,11 @@
 import { PrismaClient } from '@prisma/client';
+import { BaseService } from './base.service';
+import { AgentRepository } from '../repositories/agent.repository';
+import { AgentDto } from '../interfaces';
+import { AgentMemoryRepository } from '../repositories/agentmemory.repository';
+import { AgentTaskRepository } from '../repositories/agenttask.repository';
+import { ToolRepository } from '../repositories/tool.repository';
+import { ConversationRepository } from '../repositories/conversation.repository';
 
 const prisma = new PrismaClient();
 
@@ -24,42 +31,40 @@ export interface UpdateAgentData {
   isActive?: boolean;
 }
 
-export class AgentService {
-  /**
+export class AgentService extends BaseService<any, AgentDto, AgentDto> {
+  private agentRepository: AgentRepository;
+  private memoryRepository: AgentMemoryRepository;
+  private taskRepository: AgentTaskRepository;
+  private toolRepository: ToolRepository;
+  private conversationRepository: ConversationRepository;
+
+  constructor() {
+    const agentRepository = new AgentRepository();
+    super(agentRepository);
+    this.agentRepository = agentRepository;
+    this.memoryRepository = new AgentMemoryRepository();
+    this.taskRepository = new AgentTaskRepository();
+    this.toolRepository = new ToolRepository();
+    this.conversationRepository = new ConversationRepository();
+  }  /**
    * Create a new agent
    */
   async createAgent(data: CreateAgentData) {
     const { userId, name, description, model, aiModelId, personality, systemPrompt, config } = data;
 
-    const agent = await prisma.agent.create({
-      data: {
-        userId,
-        name,
-        description,
-        aIModelId: aiModelId,
-        personality: personality ? JSON.stringify(personality) : null,
-        systemPrompt,
-        config: config
-          ? JSON.stringify(config)
-          : JSON.stringify({
-              temperature: 0.7,
-              maxTokens: 1000,
-            }),
-      },
-      include: {
-        user: {
-          select: { id: true, email: true, nickname: true },
-        },
-        model: true,
-        _count: {
-          select: {
-            conversations: true,
-            memories: true,
-            tools: true,
-            tasks: true,
-          },
-        },
-      },
+    const agent = await this.agentRepository.createWithRelations({
+      userId,
+      name,
+      description,
+      aIModelId: aiModelId,
+      personality: personality ? JSON.stringify(personality) : null,
+      systemPrompt,
+      config: config
+        ? JSON.stringify(config)
+        : JSON.stringify({
+            temperature: 0.7,
+            maxTokens: 1000,
+          }),
     });
 
     // Parse JSON fields and always include model
@@ -70,33 +75,11 @@ export class AgentService {
       model: agent.model || null,
     };
   }
-
   /**
    * Get agent by ID
    */
   async getAgentById(id: string) {
-    const agent = await prisma.agent.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: { id: true, email: true, nickname: true },
-        },
-        model: true,
-        memories: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-        tools: true,
-        _count: {
-          select: {
-            conversations: true,
-            memories: true,
-            tools: true,
-            tasks: true,
-          },
-        },
-      },
-    });
+    const agent = await this.agentRepository.findByIdWithRelations(id);
 
     if (!agent) {
       throw new Error('Agent not found');
@@ -112,7 +95,6 @@ export class AgentService {
 
     return parsedAgent;
   }
-
   /**
    * Update agent
    */
@@ -132,24 +114,7 @@ export class AgentService {
       delete updateData.aiModelId;
     }
 
-    const agent = await prisma.agent.update({
-      where: { id },
-      data: updateData,
-      include: {
-        user: {
-          select: { id: true, email: true, nickname: true },
-        },
-        model: true,
-        _count: {
-          select: {
-            conversations: true,
-            memories: true,
-            tools: true,
-            tasks: true,
-          },
-        },
-      },
-    });
+    const agent = await this.agentRepository.updateWithRelations(id, updateData);
 
     // Parse JSON fields
     const parsedAgent = {
@@ -161,50 +126,21 @@ export class AgentService {
 
     return parsedAgent;
   }
-
   /**
    * Delete agent
    */
   async deleteAgent(id: string) {
-    return await prisma.agent.delete({
-      where: { id },
-    });
+    return await this.repository.delete(id);
   }
-
   /**
    * Get agents for user
    */
   async getUserAgents(userId: string, page: number = 1, limit: number = 20, search?: string) {
     const skip = (page - 1) * limit;
 
-    // Build search filter
-    const where: any = { userId };
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
     const [agents, total] = await Promise.all([
-      prisma.agent.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          model: true,
-          _count: {
-            select: {
-              conversations: true,
-              memories: true,
-              tools: true,
-              tasks: true,
-            },
-          },
-        },
-        orderBy: { updatedAt: 'desc' },
-      }),
-      prisma.agent.count({ where }),
+      this.agentRepository.findByUserId(userId, skip, limit, search),
+      this.agentRepository.countByUserId(userId, search),
     ]);
 
     // Parse JSON fields
@@ -223,7 +159,6 @@ export class AgentService {
       totalPages: Math.ceil(total / limit),
     };
   }
-
   /**
    * Add memory to agent
    */
@@ -234,17 +169,14 @@ export class AgentService {
     importance: number = 5,
     metadata?: any,
   ) {
-    return await prisma.agentMemory.create({
-      data: {
-        agentId,
-        content,
-        type,
-        importance,
-        metadata: metadata ? JSON.stringify(metadata) : null,
-      },
-    });
+    return await this.memoryRepository.create({
+      agentId,
+      content,
+      type,
+      importance,
+      metadata: metadata ? JSON.stringify(metadata) : null,
+    } as any);
   }
-
   /**
    * Get agent memories
    */
@@ -257,7 +189,7 @@ export class AgentService {
     }
 
     const [memories, total] = await Promise.all([
-      prisma.agentMemory.findMany({
+      this.memoryRepository.search({
         where,
         skip,
         take: limit,
@@ -267,7 +199,7 @@ export class AgentService {
     ]);
 
     // Parse metadata
-    const parsedMemories = memories.map((memory) => ({
+    const parsedMemories = memories.map((memory: any) => ({
       ...memory,
       metadata: memory.metadata ? JSON.parse(memory.metadata) : null,
     }));
@@ -280,12 +212,11 @@ export class AgentService {
       totalPages: Math.ceil(total / limit),
     };
   }
-
   /**
    * Search agent memories
    */
   async searchMemories(agentId: string, query: string, limit: number = 10) {
-    const memories = await prisma.agentMemory.findMany({
+    const memories = await this.memoryRepository.search({
       where: {
         agentId,
         content: {
@@ -296,79 +227,56 @@ export class AgentService {
       take: limit,
     });
 
-    return memories.map((memory) => ({
+    return memories.map((memory: any) => ({
       ...memory,
       metadata: memory.metadata ? JSON.parse(memory.metadata) : null,
     }));
   }
-
   /**
-   * Add tool to agent
+   * Add tool to agent (create Tool with agentId)
    */
   async addTool(agentId: string, name: string, type: string, config?: any) {
-    return await prisma.agentTool.create({
-      data: {
-        agentId,
-        name,
-        type,
-        config: config ? JSON.stringify(config) : null,
-      },
-    });
+    return await this.toolRepository.create({
+      agentId,
+      name,
+      type,
+      config: config ? JSON.stringify(config) : null,
+      enabled: true,
+    } as any);
   }
-
   /**
-   * Get agent tools
+   * Get agent tools (all tools with agentId)
    */
   async getAgentTools(agentId: string) {
-    const tools = await prisma.agentTool.findMany({
-      where: { agentId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return tools.map((tool) => ({
+    const tools = await this.toolRepository.listAgentTools(agentId);
+    return tools.map((tool: any) => ({
       ...tool,
       config: tool.config ? JSON.parse(tool.config) : null,
     }));
   }
-
   /**
-   * Update tool
+   * Update tool by id
    */
   async updateTool(toolId: string, config?: any, enabled?: boolean) {
     const updateData: any = {};
-
     if (config !== undefined) {
       updateData.config = JSON.stringify(config);
     }
-
     if (enabled !== undefined) {
       updateData.enabled = enabled;
     }
-
-    const tool = await prisma.agentTool.update({
-      where: { id: toolId },
-      data: updateData,
-    });
-
-    return {
-      ...tool,
-      config: tool.config ? JSON.parse(tool.config) : null,
-    };
+    return await this.toolRepository.update(toolId, updateData);
   }
-
   /**
    * Create task for agent
    */
   async createTask(agentId: string, name: string, input?: any) {
-    return await prisma.agentTask.create({
-      data: {
-        agentId,
-        name,
-        input: input ? JSON.stringify(input) : null,
-      },
-    });
+    return await this.taskRepository.create({
+      agentId,
+      name,
+      input: input ? JSON.stringify(input) : null,
+    } as any);
   }
-
   /**
    * Get agent tasks
    */
@@ -381,7 +289,7 @@ export class AgentService {
     }
 
     const [tasks, total] = await Promise.all([
-      prisma.agentTask.findMany({
+      this.taskRepository.search({
         where,
         skip,
         take: limit,
@@ -391,7 +299,7 @@ export class AgentService {
     ]);
 
     // Parse JSON fields
-    const parsedTasks = tasks.map((task) => ({
+    const parsedTasks = tasks.map((task: any) => ({
       ...task,
       input: task.input ? JSON.parse(task.input) : null,
       output: task.output ? JSON.parse(task.output) : null,
@@ -404,9 +312,7 @@ export class AgentService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
-  }
-
-  /**
+  }  /**
    * Update task status
    */
   async updateTaskStatus(taskId: string, status: string, output?: any, error?: string) {
@@ -424,10 +330,7 @@ export class AgentService {
       updateData.startedAt = new Date();
     }
 
-    const task = await prisma.agentTask.update({
-      where: { id: taskId },
-      data: updateData,
-    });
+    const task: any = await this.taskRepository.update(taskId, updateData);
 
     return {
       ...task,
@@ -435,21 +338,18 @@ export class AgentService {
       output: task.output ? JSON.parse(task.output) : null,
     };
   }
-
-  // ...existing code...
-
   /**
    * Update all Conversations for an Agent to use a selected AIKey and platform
    */
   async updateAgentConversationsKeyPlatform(agentId: string, aiKeyId: string, platformId: string) {
     // Bulk update all conversations for this agent
-    return await prisma.conversation.updateMany({
-      where: { agentId },
-      data: {
+    return await this.conversationRepository.updateMany(
+      { agentId },
+      {
         aiKeyId,
         platformId,
       },
-    });
+    );
   }
 }
 

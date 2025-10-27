@@ -1,3 +1,20 @@
+// Prompt Template Model
+model PromptTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.Text
+  content     String   @db.Text // The actual prompt template text
+  type        String? // e.g. 'system', 'user', 'agent', 'instruction'
+  metadata    String?  @db.Text // JSON metadata (tags, source, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  promptHistories PromptHistory[]
+
+  @@map("prompt_template")
+}
+
 // AI Model table
 model AIModel {
   id          String      @id @default(uuid())
@@ -57,7 +74,7 @@ model AIKey {
   platform     AIPlatform?    @relation(fields: [platformId], references: [id])
   isActive     Boolean        @default(true)
   createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  updatedAt    DateTime       @default(now())
   billing      Billing[]
   agents       AIKeyAgent[]
   Conversation Conversation[]
@@ -101,7 +118,7 @@ model Category {
   name      String   @unique
   blogs     Blog[]
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@map("category")
 }
@@ -115,7 +132,7 @@ model Blog {
   category   Category @relation(fields: [categoryId], references: [id])
   author     String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime @default(now())
 
   @@map("blog")
 }
@@ -421,10 +438,10 @@ model Agent {
   // Relationships
   memories      AgentMemory[]
   conversations Conversation[]
-  tools         AgentTool[]
   tasks         AgentTask[]
   aiKeys        AIKeyAgent[]
   model         AIModel?       @relation(fields: [aIModelId], references: [id])
+  tools         Tool[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -432,6 +449,74 @@ model Agent {
   aIModelId String?
 
   @@map("agent")
+}
+
+model Tool {
+  id          String      @id @default(uuid())
+  agentId     String?
+  agent       Agent?      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name        String      @unique
+  description String?
+  type        String      // e.g. 'api', 'function', 'system', 'plugin'
+  config      String?     @db.Text // JSON configuration for the tool
+  enabled     Boolean     @default(true)
+  commands    Command[]   @relation("ToolCommands") // 1:N Tool-Command, restrict on delete
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now())
+
+  @@map("tool")
+}
+
+model Command {
+  id          String   @id @default(uuid())
+  toolId      String
+  tool        Tool     @relation("ToolCommands", fields: [toolId], references: [id], onDelete: Restrict)
+  name        String   // Command name (e.g., 'git_commit', 'deploy', 'test')
+  action      String   // Action type (e.g., 'execute', 'query', 'update')
+  repository  String?  // Repository identifier or path
+  script      String?  @db.Text // Script or command to execute
+  params         String?  @db.Text // JSON parameters schema
+  exampleParams  String?  @db.Text // Example parameters as JSON string
+  // Example params:
+  // {
+  //   "name": "Create permission",
+  //   "route": "/api/permission",
+  //   "method": "POST"
+  // }
+  description String?  @db.Text
+  enabled     Boolean  @default(true)
+  timeout     Int?     @default(30000) // Timeout in milliseconds
+  retries     Int?     @default(0) // Number of retry attempts
+  metadata    String?  @db.Text // JSON metadata for additional configuration
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  executions CommandExecution[]
+
+  @@unique([toolId, name])
+  @@index([toolId])
+  @@index([action])
+  @@map("command")
+}
+
+model CommandExecution {
+  id          String    @id @default(uuid())
+  commandId   String
+  command     Command   @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  status      String    @default("pending") // pending, running, completed, failed
+  input       String?   @db.Text // JSON input parameters
+  output      String?   @db.Text // JSON output/result
+  error       String?   @db.Text // Error message if failed
+  executedBy  String?   // User or agent ID who executed
+  duration    Int?      // Execution duration in milliseconds
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([commandId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("command_execution")
 }
 
 model AgentMemory {
@@ -446,7 +531,7 @@ model AgentMemory {
   message        Message?       @relation(fields: [messageId], references: [id])
   type           String // 'short_term', 'long_term', 'knowledge_base'
   content        String         @db.Text
-  vectorId       String?        // <-- NEW: stores Redis vector key
+  vectorId       String? // <-- NEW: stores Redis vector key
   tokens         Int? // Token count for embedded message
   metadata       String?        @db.Text // JSON metadata (tags, source, date, etc.)
   importance     Int            @default(1) // 1-10 importance score
@@ -488,28 +573,15 @@ model PromptHistory {
   prompt         String   @db.Text // The prompt text
   createdAt      DateTime @default(now())
 
-  messages     Message[] // <-- Messages generated from this prompt
-  Conversation Conversation  @relation(fields: [conversationId], references: [id])
-  Faq          Faq[]
-  AgentMemory  AgentMemory[]
+  messages         Message[] // <-- Messages generated from this prompt
+  Conversation     Conversation    @relation(fields: [conversationId], references: [id])
+  Faq              Faq[]
+  AgentMemory      AgentMemory[]
+  PromptTemplate   PromptTemplate? @relation(fields: [promptTemplateId], references: [id])
+  promptTemplateId String?
 
   @@index([conversationId])
   @@map("prompt_history")
-}
-
-model AgentTool {
-  id      String  @id @default(uuid())
-  agentId String
-  agent   Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  name    String // Tool name (e.g., "web_search", "calculator", "email_sender")
-  type    String // 'api', 'function', 'system', 'plugin'
-  config  String? @db.Text // JSON configuration for the tool
-  enabled Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-
-  @@map("agent_tool")
 }
 
 model AgentTask {

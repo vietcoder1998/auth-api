@@ -383,3 +383,24 @@ export async function addPermissionToSuperadmin(req: Request, res: Response) {
     });
   }
 }
+
+export async function batchUpdatePermissions(req: Request, res: Response) {
+  try {
+    const { ids, ...data } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids array required' });
+    }
+    let upserted = 0;
+    for (const id of ids) {
+      await prisma.permission.upsert({
+        where: { id },
+        update: data,
+        create: { id, ...data },
+      });
+      upserted++;
+    }
+    res.json({ count: upserted });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to batch upsert permissions' });
+  }
+}

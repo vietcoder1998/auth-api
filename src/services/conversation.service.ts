@@ -1,123 +1,39 @@
 import { PrismaClient } from '@prisma/client';
-
-
+import { BaseService } from './base.service';
+import { ConversationRepository } from '../repositories/conversation.repository';
+import { MessageRepository } from '../repositories/message.repository';
+import { ConversationDto } from '../interfaces';
 import { llmService } from './llm.service';
 import { MemoryService } from './memory.service';
-import { invalidateCacheByUrlPattern } from '../middlewares/cache.middleware';
+import { CacheMiddleware } from '../middlewares/cache.middleware';
+import { prisma } from '../setup';
+import {
+  ConversationPromptHistory,
+  ConversationPromptHistoryList,
+  ConversationListItem,
+  ConversationListResponse,
+  ConversationDetail,
+  ConversationStats,
+  CreateConversationData,
+  UpdateConversationData,
+  DeleteResponse,
+} from '../dto/conversation.dto';
+import {
+  MessageResponse,
+  MessageListResponse,
+  CreateMessageData,
+} from '../dto/message.dto';
 
-// Response types
-export interface ConversationPromptHistory {
-  id: string;
-  conversationId: string;
-  prompt: string;
-  createdAt: Date;
-}
+export class ConversationService extends BaseService<any, ConversationDto, ConversationDto> {
+  private conversationRepository: ConversationRepository;
+  private messageRepository: MessageRepository;
 
-export interface ConversationPromptHistoryList {
-  data: ConversationPromptHistory[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface ConversationListItem {
-  id: string;
-  userId: string;
-  agentId: string;
-  title: string | null;
-  summary?: string | null;
-  isActive?: boolean | null;
-  lastMessage?: any;
-  _count?: { messages: number };
-  agent?: any;
-  user?: any;
-}
-
-export interface ConversationListResponse {
-  data: ConversationListItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface ConversationDetail {
-  id: string;
-  userId: string;
-  agentId: string;
-  title: string | null;
-  summary?: string | null;
-  isActive?: boolean | null;
-  user?: any;
-  agent?: any;
-  messages: {
-    data: any[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
-
-export interface MessageResponse {
-  id: string;
-  conversationId: string;
-  sender: 'user' | 'agent' | 'system';
-  content: string;
-  metadata?: any;
-  tokens?: number;
-  position?: number;
-  createdAt?: Date;
-  memory?: any;
-  llmMessage?: any;
-  answerMemory?: any;
-}
-
-export interface MessageListResponse {
-  data: any[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface DeleteResponse {
-  message: string;
-}
-
-export interface ConversationStats {
-  totalMessages: number;
-  totalTokens: number;
-  messagesBySender: Record<string, number>;
-  tokensBySender: Record<string, number>;
-  firstMessage: Date | null;
-  lastMessage: Date | null;
-}
-
-const prisma = new PrismaClient();
-
-export interface CreateConversationData {
-  userId: string;
-  agentId: string;
-  title?: string;
-}
-
-export interface UpdateConversationData {
-  title?: string;
-  summary?: string;
-  isActive?: boolean;
-}
-
-export interface CreateMessageData {
-  conversationId: string;
-  sender: 'user' | 'agent' | 'system';
-  content: string;
-  metadata?: any;
-  tokens?: number;
-}
-
-export class ConversationService {
+  constructor() {
+    const conversationRepository = new ConversationRepository();
+    super(conversationRepository);
+    this.conversationRepository = conversationRepository;
+    this.messageRepository = new MessageRepository();
+  }
   /**
    * Create a new prompt history for a conversation
    */
@@ -131,8 +47,7 @@ export class ConversationService {
     });
     // Invalidate cache for conversations after prompt
     try {
-      const { invalidateCacheByUrlPattern } = await import('../middlewares/cache.middleware');
-      await invalidateCacheByUrlPattern('/api/admin/conversations');
+      await CacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
     } catch (err) {
       console.error('Failed to invalidate cache after prompt:', err);
     }
@@ -258,9 +173,7 @@ export class ConversationService {
       limit: currentLimit,
       totalPages: Math.ceil(total / currentLimit),
     };
-  }
-
-  async createConversation(userId: string, agentId: string, title?: string): Promise<ConversationListItem> {
+  }  async createConversation(userId: string, agentId: string, title?: string): Promise<ConversationListItem> {
     const agent = await prisma.agent.findFirst({
       where: { id: agentId, userId },
     });
@@ -522,7 +435,7 @@ export class ConversationService {
 
     // Invalidate cache for conversations after message
     try {
-      await invalidateCacheByUrlPattern('/api/admin/conversations');
+      await CacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
     } catch (err) {
       console.error('Failed to invalidate cache after message:', err);
     }

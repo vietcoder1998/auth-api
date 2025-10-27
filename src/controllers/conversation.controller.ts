@@ -2,7 +2,9 @@
 import { Request, Response } from 'express';
 import { conversationService } from '../services/conversation.service';
 import { llmService } from '../services/llm.service';
-import { commandService } from '../services/command.service';
+import { CommandService } from '../services/command.service';
+
+const commandService = new CommandService();
 
 // LLM full process: generate, embed, save, link
 export async function processAndSaveConversation(req: Request, res: Response) {

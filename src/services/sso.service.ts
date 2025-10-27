@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { BaseService } from './base.service';
+import { SSORepository } from '../repositories/sso.repository';
+import { SSODto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
@@ -17,17 +20,19 @@ export interface UpdateSSOData {
   expiresAt?: Date;
 }
 
-export class SSOService {
-  /**
-   * Generate SSO key
-   */
+export class SSOService extends BaseService<any, SSODto, SSODto> {
+  private ssoRepository: SSORepository;
+
+  constructor() {
+    const ssoRepository = new SSORepository();
+    super(ssoRepository);
+    this.ssoRepository = ssoRepository;
+  }
+
   private generateSSOKey(): string {
     return crypto.randomBytes(32).toString('hex');
   }
 
-  /**
-   * Generate SSO key for identification
-   */
   private generateSSOKeyIdentifier(): string {
     return crypto.randomBytes(16).toString('hex');
   }

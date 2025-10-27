@@ -61,7 +61,7 @@ export class LLMService {
   private readonly cloudConfig = {
     apiUrl: LLM_CLOUD_API_URL || 'https://api.llmcloud.example.com/v1/chat',
     apiKey: LLM_CLOUD_API_KEY || '',
-    timeout: 10000, // ms
+    timeout: 20000, // ms
     headers: {
       'Content-Type': 'application/json',
       // You can add Authorization or other headers here
@@ -71,7 +71,7 @@ export class LLMService {
   private readonly geminiConfig = {
     apiUrl: GEMINI_API_URL || 'https://api.gemini.example.com/v1/chat',
     apiKey: GEMINI_API_KEY || '',
-    timeout: 10000, // ms
+    timeout:20000, // ms
     headers: {
       'Content-Type': 'application/json',
       // You can add Authorization or other headers here

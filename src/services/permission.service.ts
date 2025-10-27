@@ -1,4 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import { BaseService } from './base.service';
+import { PermissionRepository } from '../repositories/permission.repository';
+import { PermissionDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
@@ -18,7 +21,15 @@ export interface UpdatePermissionData {
   method?: string;
 }
 
-export class PermissionService {
+export class PermissionService extends BaseService<any, PermissionDto, PermissionDto> {
+  private permissionRepository: PermissionRepository;
+
+  constructor() {
+    const permissionRepository = new PermissionRepository();
+    super(permissionRepository);
+    this.permissionRepository = permissionRepository;
+  }
+
   /**
    * Create a new permission
    */
@@ -26,51 +37,25 @@ export class PermissionService {
     const { name, description, category, route, method } = data;
 
     // Check if permission already exists
-    const existingPermission = await prisma.permission.findUnique({
-      where: { name },
-    });
+    const existingPermission = await this.permissionRepository.findByName(name);
 
     if (existingPermission) {
       throw new Error('Permission with this name already exists');
     }
 
-    const permission = await prisma.permission.create({
-      data: {
-        name,
-        description,
-        category: category || 'other',
-        route,
-        method,
-      },
-      include: {
-        _count: {
-          select: { roles: true },
-        },
-      },
-    });
-
-    return permission;
+    return await this.permissionRepository.create({
+      name,
+      description,
+      category: category || 'other',
+      route,
+      method,
+    } as any);
   }
-
   /**
    * Get permission by ID
    */
   async getPermissionById(id: string) {
-    const permission = await prisma.permission.findUnique({
-      where: { id },
-      include: {
-        roles: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-          },
-        },
-        _count: {
-          select: { roles: true },
-        },
-      },
-    });
+    const permission = await this.permissionRepository.findById(id);
 
     if (!permission) {
       throw new Error('Permission not found');
@@ -83,17 +68,7 @@ export class PermissionService {
    * Update permission
    */
   async updatePermission(id: string, data: UpdatePermissionData) {
-    const permission = await prisma.permission.update({
-      where: { id },
-      data,
-      include: {
-        _count: {
-          select: { roles: true },
-        },
-      },
-    });
-
-    return permission;
+    return await this.permissionRepository.update(id, data);
   }
 
   /**
@@ -113,12 +88,8 @@ export class PermissionService {
       throw new Error('Cannot delete permission that is assigned to roles');
     }
 
-    return await prisma.permission.delete({
-      where: { id },
-    });
-  }
-
-  /**
+    return await this.permissionRepository.delete(id);
+  }  /**
    * Get all permissions with pagination
    */
   async getPermissions(page: number = 1, limit: number = 20, search?: string, category?: string) {
@@ -139,7 +110,7 @@ export class PermissionService {
     }
 
     const [permissions, total] = await Promise.all([
-      prisma.permission.findMany({
+      this.permissionRepository.search({
         where,
         skip,
         take: limit,
@@ -166,13 +137,13 @@ export class PermissionService {
    * Get permissions by category
    */
   async getPermissionsByCategory() {
-    const permissions = await prisma.permission.findMany({
+    const permissions: any = await this.permissionRepository.search({
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
 
     // Group by category
     const groupedPermissions = permissions.reduce(
-      (acc, permission) => {
+      (acc: any, permission: any) => {
         const category = permission.category || 'other';
         if (!acc[category]) {
           acc[category] = [];

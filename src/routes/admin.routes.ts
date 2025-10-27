@@ -29,6 +29,8 @@ import promptHistoryRouter from './promptHistory.routes';
 import uiConfigRouter from './uiconfig.routes';
 import jobRouter from './job.routes';
 import memoryRouter from './memory.routes';
+import toolRouter from './tool.routes';
+import commandRouter from './command.routes';
 import { searchAllEntities } from '../controllers/search.controller';
 import {
   upload,
@@ -70,9 +72,13 @@ router.use('/faqs', faqRouter);
 router.use('/ui-config', uiConfigRouter);
 router.use('/jobs', jobRouter);
 router.use('/memories', memoryRouter);
+router.use('/tools', toolRouter);
 router.get('/search', searchAllEntities);
 router.use('/system', systemRouter);
+router.use('/tool-commands', commandRouter);
+
 router.post('/files/upload', upload.single('file'), uploadFile);
+// File control
 router.get('/files/:filename', getFile);
 router.get('/files/download/:filename', downloadDocument);
 router.delete('/files/:filename', deleteFile);
