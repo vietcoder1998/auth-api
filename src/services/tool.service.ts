@@ -54,7 +54,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    */
   async listTools(name?: string, agentId?: string): Promise<any[]> {
     if (agentId) {
-      const agentTools = await this.toolRepository.listAgentTools(agentId);
+      const agentTools = await this._toolRepository.listAgentTools(agentId);
       return agentTools.map((at: any) => ({
         ...at.tool,
         config: at.tool.config ? JSON.parse(at.tool.config as string) : null,
@@ -68,7 +68,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
       }));
     } else {
       // List all tools with their agents
-      const tools = await this.toolRepository.findAllWithAgents();
+      const tools = await this._toolRepository.findAllWithAgents(name);
       return tools.map((tool: any) => ({
         ...tool,
         config: tool.config ? JSON.parse(tool.config as string) : null,
@@ -95,7 +95,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async enableTool(agentId: string, name: string): Promise<{ count: number }> {
-    return this.toolRepository.enableTool(agentId, name);
+    return this._toolRepository.enableTool(agentId, name);
   }
 
   /**
@@ -110,7 +110,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async disableTool(agentId: string, name: string): Promise<{ count: number }> {
-    return this.toolRepository.disableTool(agentId, name);
+    return this._toolRepository.disableTool(agentId, name);
   }
 
   /**
@@ -128,7 +128,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async listAgentTools(agentId: string): Promise<any[]> {
-    const agentTools = await this.toolRepository.listAgentTools(agentId);
+    const agentTools = await this._toolRepository.listAgentTools(agentId);
     return agentTools.map((at: any) => ({
       ...at.tool,
       config: at.tool.config ? JSON.parse(at.tool.config as string) : null,
