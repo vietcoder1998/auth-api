@@ -13,6 +13,35 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
   }
 
   /**
+   * Override create to transform payload for Prisma compatibility
+   */
+  async create(req: Request, res: Response): Promise<void> {
+    try {
+      let data = req.body;
+
+      // Stringify config if it's an object
+      if (data.config && typeof data.config === 'object') {
+        data.config = JSON.stringify(data.config);
+      }
+
+      // Map agent relations if present (many-to-many via AgentTool)
+      if (data.relatedAgentIds && Array.isArray(data.relatedAgentIds)) {
+        data.agents = {
+          create: data.relatedAgentIds.map((agentId: string) => ({
+            agent: { connect: { id: agentId } }
+          }))
+        };
+        delete data.relatedAgentIds;
+      }
+
+      const result = await this.service.create(data);
+      this.sendSuccess(res, result, 'Tool created successfully', 201);
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
    * Override update to transform payload for Prisma compatibility
    */
   async update(req: Request, res: Response): Promise<void> {
@@ -25,10 +54,15 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
         data.config = JSON.stringify(data.config);
       }
 
-      // Map agent relation if present (single agent only)
-      if (data.relatedAgentIds && Array.isArray(data.relatedAgentIds) && data.relatedAgentIds.length > 0) {
-        data.agent = {
-          connect: { id: data.relatedAgentIds[0] }
+      // Map agent relations if present (many-to-many via AgentTool)
+      if (data.relatedAgentIds && Array.isArray(data.relatedAgentIds)) {
+        // For many-to-many relationship, we need to use agents (not agent)
+        // and create/connect through the AgentTool junction table
+        data.agents = {
+          deleteMany: {}, // First remove all existing relations
+          create: data.relatedAgentIds.map((agentId: string) => ({
+            agent: { connect: { id: agentId } }
+          }))
         };
         delete data.relatedAgentIds;
       }

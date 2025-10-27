@@ -50,9 +50,43 @@ Each tool now includes an `agents` array with:
 ```
 
 ### 3. Controller Layer (`tool.controller.ts`)
-Added new controller method:
+Added new controller method and updated create/update methods:
 
+- **`create()`** - Override to handle many-to-many agent relations via `relatedAgentIds`
+- **`update()`** - Override to handle many-to-many agent relations via `relatedAgentIds`
 - **`getToolWithAgents(req, res)`** - NEW: GET endpoint to fetch tool with agents
+
+The controller now properly transforms the `relatedAgentIds` array from the frontend into the correct Prisma nested write format:
+
+```typescript
+// Frontend sends:
+{
+  name: "Web Search",
+  type: "api",
+  relatedAgentIds: ["agent-1", "agent-2"]
+}
+
+// Controller transforms to:
+{
+  name: "Web Search",
+  type: "api",
+  agents: {
+    create: [
+      { agent: { connect: { id: "agent-1" } } },
+      { agent: { connect: { id: "agent-2" } } }
+    ]
+  }
+}
+```
+
+For updates, the controller first deletes all existing agent relations, then creates new ones:
+
+```typescript
+agents: {
+  deleteMany: {},  // Remove all existing relations
+  create: [...]    // Create new relations
+}
+```
 
 ### 4. Routes Layer (`tool.routes.ts`)
 Added new route:
@@ -64,6 +98,34 @@ GET /api/tools/:id/with-agents
 **Note:** This route must be defined BEFORE the `/:id` route to avoid routing conflicts.
 
 ## API Endpoints
+
+### Create Tool with Agents
+```http
+POST /api/tools
+Content-Type: application/json
+
+{
+  "name": "Web Search",
+  "description": "Search the web",
+  "type": "api",
+  "config": {
+    "endpoint": "https://api.search.com"
+  },
+  "enabled": true,
+  "relatedAgentIds": ["agent-456", "agent-789"]
+}
+```
+
+### Update Tool with Agents
+```http
+PUT /api/tools/:id
+Content-Type: application/json
+
+{
+  "name": "Web Search Updated",
+  "relatedAgentIds": ["agent-456"]  // Replaces all existing agent relations
+}
+```
 
 ### Get All Tools with Agents
 ```http
