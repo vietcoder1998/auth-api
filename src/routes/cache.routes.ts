@@ -1,15 +1,13 @@
 import { Router } from 'express';
-import {
-  CacheController
-} from '../controllers/cache.controller';
+import { CacheController } from '../controllers/cache.controller';
 
 const router = Router();
 
-// GET /api/admin/cache - Get all cache keys with pagination
-router.get('/', CacheController.getCacheKeys);
-
-// GET /api/admin/cache/stats - Get cache statistics
+// GET /api/admin/cache/stats - Get cache statistics (must be before /:key)
 router.get('/stats', CacheController.getCacheStats);
+
+// GET /api/admin/cache - Get all cache keys with pagination and search
+router.get('/', CacheController.getCacheKeys);
 
 // GET /api/admin/cache/:key - Get specific cache value
 router.get('/:key', CacheController.getCacheValue);
