@@ -3,6 +3,7 @@ export * from './search.interface';
 export * from './dto.interface';
 export * from './dro.interface';
 export * from './tool.interface';
+export * from './command.interface';
 export * from './user.interface';
 export * from './agent.interface';
 export * from './label.interface';

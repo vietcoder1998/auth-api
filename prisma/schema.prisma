@@ -460,10 +460,56 @@ model Tool {
   type        String      // e.g. 'api', 'function', 'system', 'plugin'
   config      String?     @db.Text // JSON configuration for the tool
   enabled     Boolean     @default(true)
+  commands    Command[]   // Commands that this tool can execute
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @default(now())
 
   @@map("tool")
+}
+
+model Command {
+  id          String   @id @default(uuid())
+  toolId      String
+  tool        Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  name        String   // Command name (e.g., 'git_commit', 'deploy', 'test')
+  action      String   // Action type (e.g., 'execute', 'query', 'update')
+  repository  String?  // Repository identifier or path
+  script      String?  @db.Text // Script or command to execute
+  params      String?  @db.Text // JSON parameters schema
+  description String?  @db.Text
+  enabled     Boolean  @default(true)
+  timeout     Int?     @default(30000) // Timeout in milliseconds
+  retries     Int?     @default(0) // Number of retry attempts
+  metadata    String?  @db.Text // JSON metadata for additional configuration
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  executions CommandExecution[]
+
+  @@unique([toolId, name])
+  @@index([toolId])
+  @@index([action])
+  @@map("command")
+}
+
+model CommandExecution {
+  id          String    @id @default(uuid())
+  commandId   String
+  command     Command   @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  status      String    @default("pending") // pending, running, completed, failed
+  input       String?   @db.Text // JSON input parameters
+  output      String?   @db.Text // JSON output/result
+  error       String?   @db.Text // Error message if failed
+  executedBy  String?   // User or agent ID who executed
+  duration    Int?      // Execution duration in milliseconds
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([commandId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("command_execution")
 }
 
 model AgentMemory {
