@@ -86,9 +86,26 @@ export class BaseController<T, Dto, Dro> {
    * GET / - List all records
    * @example GET /api/users
    */
+  /**
+   * Generate query params for filtering, supporting query.middleware.ts (_parsedQuery)
+   * @param req Express request
+   */
+  protected generateQueryParams(req: Request): Record<string, any> {
+    let where: Record<string, any> = { ...req.query };
+    delete where["0"];
+    if ((req as any)._parsedQuery) {
+      where = { ...where, ...(req as any)._parsedQuery };
+    }
+    Object.keys(where).forEach(key => {
+      if (where[key] === "" || where[key] === undefined) delete where[key];
+    });
+    return where;
+  }
+
   async findAll(req: Request, res: Response): Promise<void> {
     try {
-      const data = await this.service.findAll();
+      const where = this.generateQueryParams(req);
+      const data = await this.service.findAll(Object.keys(where).length ? where : undefined);
       this.sendSuccess(res, data);
     } catch (error) {
       this.handleError(res, error);

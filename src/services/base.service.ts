@@ -44,8 +44,8 @@ export class BaseService<T, Dto, Dro> {
      * const allUsers = await userService.findAll();
      * ```
      */
-    async findAll(): Promise<Dro[]> {
-        return this.repository.search<Dro>({});
+    async findAll(where?: Record<string, any>): Promise<Dro[]> {
+        return this.repository.search<Dro>(where || {});
     }
 
     /**

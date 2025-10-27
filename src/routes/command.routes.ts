@@ -9,6 +9,7 @@ const commandController = new CommandController();
 
 
 // CRUD routes for Command
+router.get('/', commandController.findAll.bind(commandController));
 router.get('/:id', commandController.findOne.bind(commandController));
 router.post('/', commandController.create.bind(commandController));
 router.put('/:id', commandController.update.bind(commandController));
