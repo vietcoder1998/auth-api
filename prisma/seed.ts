@@ -50,6 +50,7 @@ import {
   UserRepository,
 } from '../src/repositories';
 import { RoleSeeder, ToolCommandSeeder } from './seeders';
+import { AgentSeeder } from './seeders/agent.seeder';
 
 interface MockModel {
   id: string;
@@ -95,62 +96,24 @@ const socketConfigRepo = new SocketConfigRepository();
 const socketEventRepo = new SocketEventRepository();
 
 async function main() {
-  // Seed core entities using repository seed methods
-  console.log('🌐 Seeding AI Platforms...');
-  await aiPlatformRepo.seed(
-    mockAIPlatforms.map((platform) => ({
-      where: { id: platform.id },
-      create: platform,
-      update: {},
-    })),
-  );
-
-  console.log('🤖 Seeding AI Models...');
-
-  await aiModelRepo.seed(
-    mockModels.map(
-      (model: MockModel): SeedInput<MockModel> => ({
-        where: { name: model.name },
-        create: model,
-        update: {
-          description: model.description,
-          type: model.type,
-          platformId: model.platformId,
-        },
-      }),
-    ),
-  );
-
-  console.log('🔑 Seeding AI Keys...');
-  const validKeys = mockAIKeys.filter((key) => {
-    if (key.platformId && !mockAIPlatforms.find((p) => p.id === key.platformId)) {
-      console.warn(`⚠️ Skipping AI Key '${key.id}' (invalid platformId: ${key.platformId})`);
-      return false;
-    }
-    return true;
+  // Import seeders
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { CoreEntitiesSeeder } = require('./seeders/core-entities.seeder');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { LabelUtilitySeeder } = require('./seeders/label-utility.seeder');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { BasicEntitiesSeeder } = require('./seeders/basic-entities.seeder');
+  
+  // Seed core entities (labels first, then AI platforms, models, keys)
+  const { createdLabels } = await CoreEntitiesSeeder.instance.run({
+    mockAIPlatforms,
+    mockModels,
+    mockAIKeys,
+    mockLabels,
   });
-  await aiKeyRepo.seed(
-    validKeys.map((key) => ({
-      where: { id: key.id },
-      create: key,
-      update: {},
-    })),
-  );
 
-  console.log('🏷️ Seeding Labels...');
-  const createdLabels = await labelRepo.seed(
-    mockLabels.map((label) => ({
-      where: { name: label.name },
-      create: { name: label.name, color: label.color },
-      update: { color: label.color },
-    })),
-  );
-
-  const createdLabelsMap: Record<string, any> = {};
-  createdLabels.forEach((label: any) => {
-    createdLabelsMap[label.name] = label;
-  });
-  const mockLabelId = createdLabelsMap['mock']?.id;
+  // Generate labels mapping and get mockLabelId
+  const { createdLabelsMap, mockLabelId } = LabelUtilitySeeder.instance.generateLabelsMapping(createdLabels);
 
   // Get users for relationships
   const [superadminUser, adminUser, regularUser] = await Promise.all([
@@ -159,50 +122,13 @@ async function main() {
     prisma.user.findUnique({ where: { email: 'user@example.com' } }),
   ]);
 
-  // 4.1 Seed Tools (global tools) - Use repository seed
-  console.log('🛠️ Seeding Tools...');
-  await toolRepo.seed(
-    mockTools.map((tool: any) => ({
-      where: { name: tool.name },
-      create: tool,
-      update: {
-        description: tool.description,
-        type: tool.type,
-        config: tool.config,
-        enabled: tool.enabled,
-      },
-    })),
-  );
-
-  // 5. Seed Categories - Use repository seed
-  console.log('📚 Seeding Categories...');
-  await categoryRepo.seed(
-    mockCategories.map((category: any) => ({
-      where: { id: category.id },
-      create: category,
-      update: {},
-    })),
-  );
-
-  // 6. Seed Blogs - Use repository seed
-  console.log('📝 Seeding Blogs...');
-  await blogRepo.seed(
-    mockBlogs.map((blog: any) => ({
-      where: { id: blog.id },
-      create: blog,
-      update: {},
-    })),
-  );
-
-  // 7. Seed Billings - Use repository seed
-  console.log('💳 Seeding Billings...');
-  await billingRepo.seed(
-    mockBillings.map((billing: any) => ({
-      where: { id: billing.id },
-      create: billing,
-      update: {},
-    })),
-  );
+  // Seed basic entities (tools, categories, blogs, billings)
+  await BasicEntitiesSeeder.instance.run({
+    mockTools,
+    mockCategories,
+    mockBlogs,
+    mockBillings,
+  });
   // Seed FAQs and related messages (moved before agents are needed)
   console.log('❓ Seeding FAQs and FAQ Messages...');
 
@@ -643,63 +569,19 @@ async function main() {
   // Seed AI Agents
   console.log('🤖 Seeding AI Agents...');
 
-  // Map mock agent IDs to actual user IDs
-  const agentUserMapping: Record<string, string> = {
-    'super-admin-id': superadminUser?.id || '',
-    'admin-id': adminUser?.id || '',
-    'user-id': regularUser?.id || '',
-  };
-
-  // Explicitly type aiAgents as Prisma.AgentCreateInput[]
-  const aiAgents: Parameters<typeof prisma.agent.create>[0]['data'][] = [];
-  for (const agent of mockAgents) {
-    let modelConnect: any = undefined;
-    if (agent.model) {
-      const model = await prisma.aIModel.findUnique({ where: { name: agent.model } });
-      if (model) modelConnect = { connect: { id: model.id } };
-    }
-    const { model, ownerId, id, ...agentData } = agent;
-    aiAgents.push({
-      ...agentData,
-      user: { connect: { id: agentUserMapping[ownerId] || '' } },
-      ...(modelConnect ? { model: modelConnect } : {}),
-    });
-  }
-
-  const createdAgents: any[] = [];
-  for (const agent of aiAgents) {
-    if (agent.user && agent.user.connect && agent.user.connect.id) {
-      try {
-        const existingAgent = await prisma.agent.findFirst({
-          where: { userId: agent.user.connect.id, name: agent.name },
-          include: {
-            user: {
-              select: { id: true, email: true, nickname: true, status: true },
-            },
-          },
-        });
-
-        if (!existingAgent) {
-          const createdAgent = await prisma.agent.create({ data: agent });
-          createdAgents.push(createdAgent);
-          console.log(
-            `✓ Created AI agent: ${agent.name} (Status: ${agent.isActive ? 'Active' : 'Inactive'})`,
-          );
-        } else {
-          createdAgents.push(existingAgent);
-          console.log(
-            `⚠ Agent already exists: ${agent.name} (Owner: ${existingAgent.user?.nickname}, Status: ${existingAgent.isActive ? 'Active' : 'Inactive'})`,
-          );
-        }
-      } catch (error) {
-        console.log(`⚠ Error creating agent ${agent.name}:`, error);
-      }
-    }
-  }
+ 
+  const createdAgents: any[] = await AgentSeeder.run({
+    prisma,
+    mockAgents,
+    superadminUser,
+    adminUser,
+    regularUser,
+    mockLabelId,
+  });
 
   // Add mock label to all agents
   if (mockLabelId && createdAgents.length > 0) {
-    const agentLabels = createdAgents.map((agent) => ({
+    const agentLabels = createdAgents.map((agent: any) => ({
       entityId: agent.id,
       entityType: 'agent',
       labelId: mockLabelId,
@@ -718,7 +600,7 @@ async function main() {
     ...memory,
     agentId:
       createdAgents.find(
-        (agent) => agent.name === mockAgents.find((a) => a.id === memory.agentId)?.name,
+  (agent: any) => agent.name === mockAgents.find((a: any) => a.id === memory.agentId)?.name,
       )?.id || '',
   }));
 
@@ -765,11 +647,11 @@ async function main() {
 
   // Map mock IDs to actual created agent and user IDs
   const mockToRealMapping: Record<string, string> = {
-    'agent-001': createdAgents.find((a) => a.name === 'General Assistant')?.id || '',
-    'agent-002': createdAgents.find((a) => a.name === 'Code Assistant')?.id || '',
-    'agent-003': createdAgents.find((a) => a.name === 'Business Analyst')?.id || '',
-    'agent-004': createdAgents.find((a) => a.name === 'Creative Writer')?.id || '',
-    'agent-005': createdAgents.find((a) => a.name === 'Learning Companion')?.id || '',
+  'agent-001': createdAgents.find((a: any) => a.name === 'General Assistant')?.id || '',
+  'agent-002': createdAgents.find((a: any) => a.name === 'Code Assistant')?.id || '',
+  'agent-003': createdAgents.find((a: any) => a.name === 'Business Analyst')?.id || '',
+  'agent-004': createdAgents.find((a: any) => a.name === 'Creative Writer')?.id || '',
+  'agent-005': createdAgents.find((a: any) => a.name === 'Learning Companion')?.id || '',
     'super-admin-id': superadminUser?.id || '',
     'admin-id': adminUser?.id || '',
     'user-id': regularUser?.id || '',
@@ -887,7 +769,7 @@ async function main() {
     ...tool,
     agentId:
       createdAgents.find(
-        (agent) => agent.name === mockAgents.find((a) => a.id === tool.agentId)?.name,
+  (agent: any) => agent.name === mockAgents.find((a: any) => a.id === tool.agentId)?.name,
       )?.id || '',
   }));
 
