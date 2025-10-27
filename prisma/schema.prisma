@@ -460,7 +460,7 @@ model Tool {
   type        String      // e.g. 'api', 'function', 'system', 'plugin'
   config      String?     @db.Text // JSON configuration for the tool
   enabled     Boolean     @default(true)
-  commands    Command[]   // Commands that this tool can execute
+  commands    Command[]   @relation("ToolCommands") // 1:N Tool-Command, restrict on delete
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @default(now())
 
@@ -470,12 +470,19 @@ model Tool {
 model Command {
   id          String   @id @default(uuid())
   toolId      String
-  tool        Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  tool        Tool     @relation("ToolCommands", fields: [toolId], references: [id], onDelete: Restrict)
   name        String   // Command name (e.g., 'git_commit', 'deploy', 'test')
   action      String   // Action type (e.g., 'execute', 'query', 'update')
   repository  String?  // Repository identifier or path
   script      String?  @db.Text // Script or command to execute
-  params      String?  @db.Text // JSON parameters schema
+  params         String?  @db.Text // JSON parameters schema
+  exampleParams  String?  @db.Text // Example parameters as JSON string
+  // Example params:
+  // {
+  //   "name": "Create permission",
+  //   "route": "/api/permission",
+  //   "method": "POST"
+  // }
   description String?  @db.Text
   enabled     Boolean  @default(true)
   timeout     Int?     @default(30000) // Timeout in milliseconds

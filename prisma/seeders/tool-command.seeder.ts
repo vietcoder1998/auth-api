@@ -18,16 +18,21 @@ export class ToolCommandSeeder {
       const now = new Date();
       return {
         id: '',
-        name: 'CREATE MISSING PERMISSION',
+        name: 'CREATE_MISSING_PERMISSION',
         action: 'POST',
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: `{
-        name: 'Create permission',
-        route: '/api/permission',
-        method: 'POST'
-    }`,
+        params: JSON.stringify({
+          name: 'Create permission',
+          route: '/api/permission',
+          method: 'POST',
+          example: {
+            permission: 'user.create',
+            description: 'Create a new user permission',
+            category: 'user',
+          },
+        }),
         createdAt: now,
         updatedAt: now,
       };

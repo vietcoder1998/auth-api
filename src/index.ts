@@ -5,7 +5,7 @@ import swaggerUi from 'swagger-ui-express';
 import * as env from './env';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
 import { jwtTokenValidation } from './middlewares/auth.middleware';
-import { cacheMiddleware } from './middlewares/cache.middleware';
+import { CacheMiddleware } from './middlewares/cache.middleware';
 import { logError, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
 import { boundaryResponse } from './middlewares/response.middleware';
@@ -111,47 +111,49 @@ app.use(apiKeyValidation); // Check for API key authentication
 app.use(jwtTokenValidation); // Fallback to JWT if no API key
 app.use(rbac);
 app.use('/api/config', configRouter);
+const cacheMiddlewareInstance = new CacheMiddleware({
+  ttl: 600, // 10 minutes cache
+  skipCache: (req) => {
+    // Skip caching for specific admin routes that shouldn't be cached
+    const skipPaths = [
+      '/api/admin/cache', // Don't cache the cache management endpoints
+      '/api/admin/login-history', // Don't cache login history (real-time data)
+      '/api/admin/logic-history', // Don't cache logic history (real-time data)
+      '/api/admin/logs', // Don't cache logs (real-time data)
+    ];
+
+    // Skip caching for POST, PUT, DELETE, PATCH requests (only cache GET requests)
+    if (req.method !== 'GET') {
+      console.log(`[CACHE] Skipping cache for ${req.method} ${req.originalUrl}`);
+      return true;
+    }
+
+    // Skip caching for specific paths
+    const shouldSkip = skipPaths.some((path) => req.originalUrl.startsWith(path));
+
+    // Debug logging
+    logInfo(`[CACHE] Cache check for ${req.originalUrl}:`, {
+      method: req.method,
+      shouldSkip,
+      matchedPath: skipPaths.find((path) => req.originalUrl.startsWith(path)) || 'none',
+    });
+
+    logInfo('Cache middleware check:', {
+      file: 'index.ts',
+      line: '108',
+      url: req.originalUrl,
+      method: req.method,
+      shouldSkip,
+      skipPaths,
+    });
+
+    return shouldSkip;
+  },
+});
+
 app.use(
   '/api/admin',
-  cacheMiddleware({
-    ttl: 600, // 10 minutes cache
-    skipCache: (req) => {
-      // Skip caching for specific admin routes that shouldn't be cached
-      const skipPaths = [
-        '/api/admin/cache', // Don't cache the cache management endpoints
-        '/api/admin/login-history', // Don't cache login history (real-time data)
-        '/api/admin/logic-history', // Don't cache logic history (real-time data)
-        '/api/admin/logs', // Don't cache logs (real-time data)
-      ];
-
-      // Skip caching for POST, PUT, DELETE, PATCH requests (only cache GET requests)
-      if (req.method !== 'GET') {
-        console.log(`[CACHE] Skipping cache for ${req.method} ${req.originalUrl}`);
-        return true;
-      }
-
-      // Skip caching for specific paths
-      const shouldSkip = skipPaths.some((path) => req.originalUrl.startsWith(path));
-
-      // Debug logging
-      logInfo(`[CACHE] Cache check for ${req.originalUrl}:`, {
-        method: req.method,
-        shouldSkip,
-        matchedPath: skipPaths.find((path) => req.originalUrl.startsWith(path)) || 'none',
-      });
-
-      logInfo('Cache middleware check:', {
-        file: 'index.ts',
-        line: '108',
-        url: req.originalUrl,
-        method: req.method,
-        shouldSkip,
-        skipPaths,
-      });
-
-      return shouldSkip;
-    },
-  }),
+  cacheMiddlewareInstance.getMiddleware(),
   adminRouter,
 );
 // Serve admin GUI at /admin
