@@ -26,3 +26,6 @@ export * from './entitylabel.repository';
 export * from './document.repository';
 export * from './loginhistory.repository';
 export * from './logichistory.repository';
+export * from './uiConfig.repository';
+export * from './socketConfig.repository';
+export * from './socketEvent.repository';
