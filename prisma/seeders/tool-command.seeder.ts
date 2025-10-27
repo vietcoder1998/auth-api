@@ -3,7 +3,7 @@ import { CommandRepository } from '../../src/repositories/command.repository';
 import { ToolRepository } from '../../src/repositories/tool.repository';
 import { prisma } from '../../src/setup';
 
-class ToolCommandSeeder {
+export class ToolCommandSeeder {
   private toolRepository = new ToolRepository(prisma.tool);
   private commandRepository = new CommandRepository(prisma.command);
   public instance = new ToolCommandSeeder();
@@ -39,5 +39,3 @@ class ToolCommandSeeder {
     return toolSeeds
   }
 }
-
-export default ToolCommandSeeder;

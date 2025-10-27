@@ -7,7 +7,6 @@ import { mockBillings } from '../src/mock/billing';
 import { mockBlogs, mockCategories } from '../src/mock/blog';
 import { mockConfigs } from '../src/mock/configs';
 import { mockConversations } from '../src/mock/conversations';
-import { mockFaqs } from '../src/mock/faq';
 import { mockJobs } from '../src/mock/jobs';
 import { mockLabels } from '../src/mock/labels';
 import { mockLogicHistoryEntries } from '../src/mock/logic-history';
@@ -50,6 +49,20 @@ import {
   UIConfigRepository,
   UserRepository,
 } from '../src/repositories';
+import { RoleSeeder } from './seeders';
+
+interface MockModel {
+  id: string;
+  name: string;
+  description?: string;
+  [key: string]: any;
+}
+
+interface SeedInput<T> {
+  where: Record<string, any>;
+  create: T;
+  update: Partial<T>;
+}
 
 const prisma = new PrismaClient();
 
@@ -93,18 +106,6 @@ async function main() {
   );
 
   console.log('🤖 Seeding AI Models...');
-  interface MockModel {
-    id: string;
-    name: string;
-    description?: string;
-    [key: string]: any;
-  }
-
-  interface SeedInput<T> {
-    where: Record<string, any>;
-    create: T;
-    update: Partial<T>;
-  }
 
   await aiModelRepo.seed(
     mockModels.map(
@@ -204,7 +205,7 @@ async function main() {
   );
   // Seed FAQs and related messages (moved before agents are needed)
   console.log('❓ Seeding FAQs and FAQ Messages...');
-  
+
   // We'll seed FAQs after agents are created, so skip for now
   // This section will be moved to after agent creation
   // Seed Prompts - Batch operation
@@ -298,139 +299,8 @@ async function main() {
 
     await entityLabelRepo.createMany(permissionLabels);
   }
-  // Create roles
-  console.log('👑 Seeding Roles...');
-  const superadminRole = await prisma.role.upsert({
-    where: { name: 'superadmin' },
-    update: {
-      permissions: {
-        set: permissionRecords.map((p: any) => ({ id: p.id })), // Update to include all permissions
-      },
-    },
-    create: {
-      name: 'superadmin',
-      permissions: {
-        connect: permissionRecords.map((p: any) => ({ id: p.id })),
-      },
-    },
-  });
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'admin' },
-    update: {
-      permissions: {
-        set: permissionRecords
-          .filter((p: any) => {
-            // Dynamically fetch all permission names from mockPermissions
-            const adminPermissionNames = mockPermissions.map((perm: any) => perm.name);
-            return adminPermissionNames.includes(p.name);
-          })
-          .map((p: any) => ({ id: p.id })),
-      },
-    },
-    create: {
-      name: 'admin',
-      permissions: {
-        connect: permissionRecords
-          .filter((p: any) =>
-            [
-              'manage_users',
-              'view_reports',
-              'admin_login_history_get',
-              'admin_logic_history_get',
-              'admin_cache_get',
-              'admin_cache_post',
-              'admin_cache_delete',
-              'admin_conversations_get',
-              'admin_conversations_get_single',
-              'admin_conversations_post',
-              'admin_conversations_put',
-              'admin_conversations_delete',
-              'admin_conversations_messages_get',
-              'admin_conversations_messages_post',
-              'admin_messages_get',
-              'admin_messages_post',
-              'admin_agents_get',
-              'admin_agents_get_single',
-              'admin_agents_post',
-              'admin_agents_put',
-              'admin_agents_delete',
-              'admin_agents_memories_get',
-              'admin_agents_memories_post',
-              'view_conversations',
-              'create_conversations',
-              'view_messages',
-              'send_messages',
-              'view_ai_agents',
-              'chat_with_agents',
-              // Database connection permissions
-              'admin_database_connections_get',
-              'admin_database_connections_post',
-              'admin_database_connections_put',
-              'admin_database_connections_delete',
-              'admin_database_connections_test',
-              'admin_database_connections_check',
-              'admin_database_connections_backup',
-              'admin_database_connections_stats',
-              'view_database_connections',
-              'manage_database_connections',
-              'create_database_connections',
-              'update_database_connections',
-              'delete_database_connections',
-              'test_database_connections',
-              'backup_databases',
-              // Log management permissions
-              'admin_logs_get',
-              'admin_logs_post',
-              'admin_logs_stats',
-              'admin_logs_export',
-              'admin_logs_clear',
-              'view_logs',
-              'manage_logs',
-              'create_logs',
-            ].includes(p.name),
-          )
-          .map((p: any) => ({ id: p.id })),
-      },
-    },
-  });
-  const userRole = await prisma.role.upsert({
-    where: { name: 'user' },
-    update: {
-      permissions: {
-        set: permissionRecords
-          .filter((p: any) =>
-            [
-              'view_self',
-              'view_conversations',
-              'create_conversations',
-              'view_messages',
-              'send_messages',
-              'view_ai_agents',
-              'chat_with_agents',
-            ].includes(p.name),
-          )
-          .map((p: any) => ({ id: p.id })),
-      },
-    },
-    create: {
-      name: 'user',
-      permissions: {
-        connect: permissionRecords
-          .filter((p: any) =>
-            [
-              'view_self',
-              'view_conversations',
-              'create_conversations',
-              'view_messages',
-              'send_messages',
-              'view_ai_agents',
-              'chat_with_agents',
-            ].includes(p.name),
-          )
-          .map((p: any) => ({ id: p.id })),
-      },
-    },
-  });
+  const { superadminRole, adminRole, userRole } = await RoleSeeder.instance.run(permissionRecords);
+
   // Add mock label to all roles - Use batch create
   if (mockLabelId) {
     const roleLabels = [
@@ -565,7 +435,7 @@ async function main() {
     userId: userEmailToIdMapping[sso.userEmail] || '',
     userEmail: undefined, // Remove the userEmail field as it's not part of the schema
   }));
-  
+
   const validSSOEntries = ssoEntries.filter((sso: any) => sso.userId);
   const createdSSOEntries = await ssoRepo.seed(
     validSSOEntries.map((sso: any) => ({
