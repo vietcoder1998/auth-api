@@ -1,61 +1,263 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { toolService } from '../services/tool.service';
+import { BaseController } from './base.controller';
+import { ToolModel, ToolDto, ToolDro } from '../interfaces';
 
-// List all tools (optionally by agent)
-export async function listTools(req: Request, res: Response) {
-  try {
-    const { agentId } = req.query;
-    const tools = await prisma.tool.findMany({
-      where: agentId ? { agentId: String(agentId) } : {},
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json({ success: true, data: tools });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
+/**
+ * ToolController - HTTP request handlers for Tool operations
+ * Extends BaseController to inherit common CRUD operations
+ */
+class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
+  constructor() {
+    super(toolService);
+  }
+
+  /**
+   * List all tools (optionally filtered by agentId)
+   * GET /api/tools?agentId=xxx
+   */
+  async listTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.query;
+      const tools = await toolService.listTools(agentId as string | undefined);
+      this.sendSuccess(res, tools);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * Enable a specific tool for an agent
+   * PUT /api/tools/agent/:agentId/enable/:name
+   */
+  async enableTool(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId, name } = req.params;
+      const result = await toolService.enableTool(agentId, name);
+      this.sendSuccess(res, result, `Enabled ${result.count} tool(s)`);
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
+   * Disable a specific tool for an agent
+   * PUT /api/tools/agent/:agentId/disable/:name
+   */
+  async disableTool(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId, name } = req.params;
+      const result = await toolService.disableTool(agentId, name);
+      this.sendSuccess(res, result, `Disabled ${result.count} tool(s)`);
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
+   * Toggle tool enabled status
+   * PUT /api/tools/agent/:agentId/toggle/:name
+   */
+  async toggleTool(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId, name } = req.params;
+      const tool = await toolService.toggleTool(agentId, name);
+      if (!tool) {
+        res.status(404).json({ success: false, error: 'Tool not found' });
+        return;
+      }
+      this.sendSuccess(
+        res,
+        tool,
+        `Tool is now ${tool.enabled ? 'enabled' : 'disabled'}`
+      );
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
+   * List all tools for a specific agent
+   * GET /api/tools/agent/:agentId
+   */
+  async listAgentTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.params;
+      const tools = await toolService.listAgentTools(agentId);
+      this.sendSuccess(res, tools);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * Get enabled tools for an agent
+   * GET /api/tools/agent/:agentId/enabled
+   */
+  async getEnabledTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.params;
+      const tools = await toolService.findEnabledTools(agentId);
+      this.sendSuccess(res, tools);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * Get disabled tools for an agent
+   * GET /api/tools/agent/:agentId/disabled
+   */
+  async getDisabledTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.params;
+      const tools = await toolService.findDisabledTools(agentId);
+      this.sendSuccess(res, tools);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * Count tools for an agent
+   * GET /api/tools/agent/:agentId/count?enabledOnly=true
+   */
+  async countAgentTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.params;
+      const enabledOnly = req.query.enabledOnly === 'true';
+      const count = await toolService.countAgentTools(agentId, enabledOnly);
+      this.sendSuccess(res, { count });
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * Enable all tools for an agent
+   * PUT /api/tools/agent/:agentId/enable-all
+   */
+  async enableAllTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.params;
+      const result = await toolService.enableAllTools(agentId);
+      this.sendSuccess(res, result, `Enabled ${result.count} tool(s)`);
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
+   * Disable all tools for an agent
+   * PUT /api/tools/agent/:agentId/disable-all
+   */
+  async disableAllTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.params;
+      const result = await toolService.disableAllTools(agentId);
+      this.sendSuccess(res, result, `Disabled ${result.count} tool(s)`);
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
+   * Find tools by name (partial matching)
+   * GET /api/tools/search?name=xxx
+   */
+  async searchToolsByName(req: Request, res: Response): Promise<void> {
+    try {
+      const { name } = req.query;
+      if (!name) {
+        res.status(400).json({ success: false, error: 'Name query parameter is required' });
+        return;
+      }
+      const tools = await toolService.findByName(name as string);
+      this.sendSuccess(res, tools);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * Find tools by type
+   * GET /api/tools/type/:type
+   */
+  async getToolsByType(req: Request, res: Response): Promise<void> {
+    try {
+      const { type } = req.params;
+      const tools = await toolService.findByType(type);
+      this.sendSuccess(res, tools);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * Get global tools (not associated with any agent)
+   * GET /api/tools/global
+   */
+  async getGlobalTools(req: Request, res: Response): Promise<void> {
+    try {
+      const tools = await toolService.findGlobalTools();
+      this.sendSuccess(res, tools);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * Delete all tools for a specific agent
+   * DELETE /api/tools/agent/:agentId
+   */
+  async deleteAgentTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.params;
+      const result = await toolService.deleteAgentTools(agentId);
+      this.sendSuccess(res, result, `Deleted ${result.count} tool(s)`);
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
+   * Check if a tool exists for an agent
+   * GET /api/tools/agent/:agentId/has/:name
+   */
+  async hasToolForAgent(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId, name } = req.params;
+      const exists = await toolService.hasTool(agentId, name);
+      this.sendSuccess(res, { exists });
+    } catch (error) {
+      this.handleError(res, error);
+    }
   }
 }
 
-// Get tool by id
-export async function getTool(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const tool = await prisma.tool.findUnique({ where: { id } });
-    if (!tool) return res.status(404).json({ success: false, error: 'Not found' });
-    res.json({ success: true, data: tool });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
-  }
-}
+// Create instance and export individual methods for route binding
+const toolController = new ToolController();
 
-// Create tool
-export async function createTool(req: Request, res: Response) {
-  try {
-    const tool = await prisma.tool.create({ data: req.body });
-    res.status(201).json({ success: true, data: tool });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
-  }
-}
+// Export base CRUD methods from BaseController
+export const getTool = toolController.findOne.bind(toolController);
+export const createTool = toolController.create.bind(toolController);
+export const updateTool = toolController.update.bind(toolController);
+export const deleteTool = toolController.delete.bind(toolController);
 
-// Update tool
-export async function updateTool(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    const tool = await prisma.tool.update({ where: { id }, data: req.body });
-    res.json({ success: true, data: tool });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
-  }
-}
+// Export custom methods
+export const listTools = toolController.listTools.bind(toolController);
+export const enableTool = toolController.enableTool.bind(toolController);
+export const disableTool = toolController.disableTool.bind(toolController);
+export const toggleTool = toolController.toggleTool.bind(toolController);
+export const listAgentTools = toolController.listAgentTools.bind(toolController);
+export const getEnabledTools = toolController.getEnabledTools.bind(toolController);
+export const getDisabledTools = toolController.getDisabledTools.bind(toolController);
+export const countAgentTools = toolController.countAgentTools.bind(toolController);
+export const enableAllTools = toolController.enableAllTools.bind(toolController);
+export const disableAllTools = toolController.disableAllTools.bind(toolController);
+export const searchToolsByName = toolController.searchToolsByName.bind(toolController);
+export const getToolsByType = toolController.getToolsByType.bind(toolController);
+export const getGlobalTools = toolController.getGlobalTools.bind(toolController);
+export const deleteAgentTools = toolController.deleteAgentTools.bind(toolController);
+export const hasToolForAgent = toolController.hasToolForAgent.bind(toolController);
 
-// Delete tool
-export async function deleteTool(req: Request, res: Response) {
-  try {
-    const { id } = req.params;
-    await prisma.tool.delete({ where: { id } });
-    res.json({ success: true });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error instanceof Error ? error.message : String(error) });
-  }
-}

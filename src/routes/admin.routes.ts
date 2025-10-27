@@ -29,6 +29,7 @@ import promptHistoryRouter from './promptHistory.routes';
 import uiConfigRouter from './uiconfig.routes';
 import jobRouter from './job.routes';
 import memoryRouter from './memory.routes';
+import toolRouter from './tool.routes';
 import { searchAllEntities } from '../controllers/search.controller';
 import {
   upload,
@@ -70,6 +71,7 @@ router.use('/faqs', faqRouter);
 router.use('/ui-config', uiConfigRouter);
 router.use('/jobs', jobRouter);
 router.use('/memories', memoryRouter);
+router.use('/tools', toolRouter);
 router.get('/search', searchAllEntities);
 router.use('/system', systemRouter);
 router.post('/files/upload', upload.single('file'), uploadFile);
