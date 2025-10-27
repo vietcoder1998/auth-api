@@ -3,11 +3,15 @@ import { llmService } from './llm.service';
 import { ToolRepository } from '../repositories/tool.repository';
 import { AgentMemoryRepository } from '../repositories/agentmemory.repository';
 import { AgentTaskRepository } from '../repositories/agenttask.repository';
+import { BaseService } from './base.service';
+import { CommandDro, CommandDto, CommandModel } from '../interfaces';
+import { CommandRepository } from '../repositories/command.repository';
 
 const prisma = new PrismaClient();
 const toolRepository = new ToolRepository();
 const agentMemoryRepository = new AgentMemoryRepository();
 const agentTaskRepository = new AgentTaskRepository();
+const commandRepository = new CommandRepository();
 
 export interface CommandResult {
   success: boolean;
@@ -24,7 +28,10 @@ export interface CommandContext {
   parameters?: any;
 }
 
-export class CommandService {
+export class CommandService extends BaseService<CommandModel, CommandDto, CommandDro> {
+  constructor() {
+    super(commandRepository);
+  }
   /**
    * Process command from conversation
    */
@@ -374,5 +381,3 @@ export class CommandService {
     };
   }
 }
-
-export const commandService = new CommandService();
