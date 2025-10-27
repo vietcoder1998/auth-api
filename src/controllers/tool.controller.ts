@@ -231,12 +231,9 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
    */
   async searchToolsByName(req: Request, res: Response): Promise<void> {
     try {
-      const { name } = req.query;
-      if (!name) {
-        res.status(400).json({ success: false, error: 'Name query parameter is required' });
-        return;
-      }
-      const tools = await toolService.findByName(name as string);
+      const { name, agentId } = req.query;
+
+      const tools = await toolService.listTools(name as string, agentId as string);
       this.sendSuccess(res, tools);
     } catch (error) {
       this.handleError(res, error);
@@ -305,7 +302,7 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
   async getToolWithAgents(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const tool = await toolService.getToolWithAgents(id);
+      const tool = await toolService.listAgentTools(id);
       if (!tool) {
         res.status(404).json({ success: false, error: 'Tool not found' });
         return;

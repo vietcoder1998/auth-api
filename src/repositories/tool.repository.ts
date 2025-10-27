@@ -45,9 +45,14 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> 
         });
     }
 
-    async findAllWithAgents() {
+    async findAllWithAgents(name?: string) {
         // List all tools with their related agents
         return prisma.tool.findMany({
+            where: name ? {
+                name: {
+                    contains: name,
+                }
+            } : undefined,
             include: {
                 agents: {
                     include: {
@@ -65,8 +70,12 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> 
 
     async findByIdWithAgents(id: string) {
         // Find a specific tool with its related agents
+        if (!id) {
+            throw new Error('Tool ID is required');
+        }
+        
         return prisma.tool.findUnique({
-            where: { id },
+            where: { id: id },
             include: {
                 agents: {
                     include: {

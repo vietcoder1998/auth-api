@@ -31,7 +31,7 @@ const router = Router();
  * List all tools (optionally filtered by agentId query param)
  * Query params: ?agentId=xxx
  */
-router.get('/', getToolWithAgents);
+router.get('/', searchToolsByName);
 
 /**
  * POST /api/tools

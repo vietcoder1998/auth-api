@@ -23,7 +23,7 @@ import { BaseService } from './base.service';
  * ```
  */
 export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
-  private toolRepository: ToolRepository;
+  private _toolRepository: ToolRepository;
 
   /**
    * Creates a new ToolService instance
@@ -32,9 +32,12 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
   constructor() {
     const toolRepository = new ToolRepository();
     super(toolRepository);
-    this.toolRepository = toolRepository;
+    this._toolRepository = toolRepository;
   }
 
+  get toolRepository(): ToolRepository {
+    return this._toolRepository;
+  }
   /**
    * List tools with optional filtering by agentId
    * Automatically parses JSON config field and includes agent relations
@@ -49,7 +52,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * const agentTools = await toolService.listTools('agent-123');
    * ```
    */
-  async listTools(agentId?: string): Promise<any[]> {
+  async listTools(name?: string, agentId?: string): Promise<any[]> {
     if (agentId) {
       const agentTools = await this.toolRepository.listAgentTools(agentId);
       return agentTools.map((at: any) => ({
@@ -140,36 +143,6 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
   }
 
   /**
-   * Get a single tool by ID with all related agents
-   * @param id - The ID of the tool
-   * @returns Tool with parsed config and all related agents, or null if not found
-   * @example
-   * ```typescript
-   * const tool = await toolService.getToolWithAgents('tool-123');
-   * if (tool) {
-   *   console.log(`Tool: ${tool.name}`);
-   *   console.log(`Used by ${tool.agents.length} agent(s)`);
-   * }
-   * ```
-   */
-  async getToolWithAgents(id: string): Promise<any | null> {
-    const tool = await this.toolRepository.findByIdWithAgents(id);
-    if (!tool) return null;
-    
-    return {
-      ...tool,
-      config: tool.config ? JSON.parse(tool.config as string) : null,
-      agents: (tool.agents || []).map((at: any) => ({
-        id: at.agent.id,
-        name: at.agent.name,
-        description: at.agent.description,
-        model: at.agent.model,
-        createdAt: at.createdAt,
-      }))
-    };
-  }
-
-  /**
    * Find tools by name (supports partial matching)
    * @param name - The tool name or partial name to search for
    * @returns Array of matching tools
@@ -180,7 +153,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async findByName(name: string): Promise<ToolDro[]> {
-    return this.repository.findMany<ToolDro>({
+    return this.toolRepository.findMany<ToolDro>({
       name: { contains: name },
     });
   }
@@ -195,7 +168,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async findEnabledTools(agentId: string): Promise<ToolDro[]> {
-    return this.repository.findMany<ToolDro>({
+    return this.toolRepository.findMany<ToolDro>({
       agentId,
       enabled: true,
     });
@@ -211,7 +184,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async findDisabledTools(agentId: string): Promise<ToolDro[]> {
-    return this.repository.findMany<ToolDro>({
+    return this.toolRepository.findMany<ToolDro>({
       agentId,
       enabled: false,
     });
@@ -272,7 +245,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
     if (enabledOnly) {
       where.enabled = true;
     }
-    return this.repository.count(where);
+    return this.toolRepository.count(where);
   }
 
   /**
@@ -286,7 +259,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async enableAllTools(agentId: string): Promise<{ count: number }> {
-    return this.repository.updateMany<ToolDto, { count: number }>(
+    return this.toolRepository.updateMany<ToolDto, { count: number }>(
       { agentId },
       { enabled: true } as Partial<ToolDto>
     );
@@ -303,7 +276,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async disableAllTools(agentId: string): Promise<{ count: number }> {
-    return this.repository.updateMany<ToolDto, { count: number }>(
+    return this.toolRepository.updateMany<ToolDto, { count: number }>(
       { agentId },
       { enabled: false } as Partial<ToolDto>
     );
@@ -319,7 +292,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async findByType(type: string): Promise<ToolDro[]> {
-    return this.repository.findMany<ToolDro>({ type });
+    return this.toolRepository.findMany<ToolDro>({ type });
   }
 
   /**
@@ -333,7 +306,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async deleteAgentTools(agentId: string): Promise<{ count: number }> {
-    return this.repository.deleteMany<{ count: number }>({ agentId });
+    return this.toolRepository.deleteMany<{ count: number }>({ agentId });
   }
 
   /**
@@ -345,7 +318,7 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async findGlobalTools(): Promise<ToolDro[]> {
-    return this.repository.findMany<ToolDro>({
+    return this.toolRepository.findMany<ToolDro>({
       agentId: null,
     });
   }
@@ -361,7 +334,11 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
    * ```
    */
   async hasTool(agentId: string, name: string): Promise<boolean> {
-    return this.repository.exists({ agentId, name });
+    return this.toolRepository.exists({ agentId, name });
+  }
+
+  async findOne(toolId: string): Promise<ToolDro | null> {
+    return this.toolRepository.findByIdWithAgents(toolId)
   }
 }
 
