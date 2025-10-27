@@ -1,16 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 import { BaseInterface, SearchParams } from '../interfaces';
+import prisma from '../prisma';
 
 /**
  * BaseRepository - Generic repository pattern implementation for data access layer
- * 
+ *
  * Provides common CRUD operations and batch processing for all entity repositories.
  * All entity-specific repositories should extend this class.
- * 
+ *
  * @template T - The Prisma model delegate type
  * @template Dto - Data Transfer Object type for input operations
  * @template Dro - Data Response Object type for output operations
- * 
+ *
  * @example
  * ```typescript
  * export class UserRepository extends BaseRepository<UserModel, UserDto, UserDto> {
@@ -430,7 +431,7 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
   public override async paginate<Dro>(
     params: SearchParams,
     page: number,
-    limit: number
+    limit: number,
   ): Promise<{
     data: Dro[];
     total: number;
@@ -440,7 +441,7 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
   }> {
     const skip = (page - 1) * limit;
     const query = this.buildQueryFromParams({ ...params, skip, take: limit });
-    
+
     // @ts-ignore
     const [data, total] = await Promise.all([
       (this.model as T | any).findMany(query),
@@ -464,7 +465,7 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
    * ```typescript
    * // Find all active users
    * const activeUsers = await userRepo.findMany({ status: 'active' });
-   * 
+   *
    * // Find all records
    * const allUsers = await userRepo.findMany();
    * ```
@@ -494,7 +495,7 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
   public override async upsert<Dto, Dro>(
     where: Record<string, any>,
     create: Dto,
-    update: Partial<Dto>
+    update: Partial<Dto>,
   ): Promise<Dro> {
     // @ts-ignore
     return (this.model as T | any).upsert({
@@ -531,7 +532,7 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
       where: Record<string, any>;
       create: Dto;
       update: Partial<Dto>;
-    }>
+    }>,
   ): Promise<Dro[]> {
     const results: Dro[] = [];
     for (const item of items) {
@@ -585,10 +586,10 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
     // @ts-ignore
     const original = await (this.model as T | any).findUnique({ where: { id } });
     if (!original) throw new Error('Record not found');
-    
+
     const { id: _, createdAt, updatedAt, ...cloneData } = original;
     const newData = { ...cloneData, ...overrides };
-    
+
     // @ts-ignore
     return (this.model as T | any).create({ data: newData });
   }
@@ -615,7 +616,9 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
    * @param data - Array of update operations with id and updates
    * @returns Array of updated records
    */
-  public async bulkUpdate<TData, Dro>(data: { id: string; updates: Partial<TData> }[]): Promise<Dro[]> {
+  public async bulkUpdate<TData, Dro>(
+    data: { id: string; updates: Partial<TData> }[],
+  ): Promise<Dro[]> {
     const results: Dro[] = [];
     for (const item of data) {
       // @ts-ignore
@@ -690,7 +693,7 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
     // @ts-ignore
     const existing = await (this.model as T | any).findFirst({ where });
     if (existing) return existing;
-    
+
     // @ts-ignore
     return (this.model as T | any).create({ data: createData });
   }
@@ -734,8 +737,21 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
     return results;
   }
 
-  public async findByLabel<R>(label: string): Promise<R | null> {
-    const record = await (this.model as T | any).findAll({ where: { label } });
-    return record || null;
+  public async findByLabel<R>(label: string, type: string): Promise<R | null> {
+    const entityLabel = await prisma.entityLabel.findFirst({
+      where: {
+        entityType: type,
+        label: {
+          name: label, // 👈 match theo label.name
+        },
+      },
+    });
+    if (!entityLabel) return null;
+
+    const foundRecord = await (this.model as T | any).findMany({
+      where: { id: entityLabel.entityId },
+    });
+
+    return foundRecord || null;
   }
 }

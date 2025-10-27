@@ -49,7 +49,7 @@ import {
   UIConfigRepository,
   UserRepository,
 } from '../src/repositories';
-import { RoleSeeder } from './seeders';
+import { RoleSeeder, ToolCommandSeeder } from './seeders';
 
 interface MockModel {
   id: string;
@@ -1145,6 +1145,8 @@ async function main() {
       console.log(`  - ${item.entityType}: ${item._count.entityType}`);
     });
   }
+
+  await ToolCommandSeeder.instance.run();
 
   console.log('✅ Seeding completed successfully!');
 }

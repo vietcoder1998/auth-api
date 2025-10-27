@@ -61,5 +61,5 @@ export abstract class BaseInterface {
     public abstract findOrCreate<T, R>(where: any, createData: T): Promise<R>;
     public abstract countDistinct<R>(field: string, where?: any): Promise<number>;  
     public abstract seed<R>(data: any[]): Promise<R[]>;
-    public abstract findByLabel<R>(label: string): Promise<R | null>;
+    public abstract findByLabel<R>(label: string, type: string): Promise<R | null>;
 }
