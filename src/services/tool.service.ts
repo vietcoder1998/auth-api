@@ -37,32 +37,46 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
 
   /**
    * List tools with optional filtering by agentId
-   * Automatically parses JSON config field
+   * Automatically parses JSON config field and includes agent relations
    * @param agentId - Optional agent ID to filter tools
-   * @returns Array of tools with parsed config
+   * @returns Array of tools with parsed config and agent relations
    * @example
    * ```typescript
-   * // List all tools
+   * // List all tools with their agents
    * const allTools = await toolService.listTools();
    * 
    * // List tools for specific agent
    * const agentTools = await toolService.listTools('agent-123');
    * ```
    */
-  async listTools(agentId?: string): Promise<ToolDro[]> {
+  async listTools(agentId?: string): Promise<any[]> {
     if (agentId) {
-      const tools = await this.toolRepository.listAgentTools(agentId);
-      return (tools as ToolDro[]).map((tool: ToolDro) => ({
-        ...tool,
-        config: tool.config ? JSON.parse(tool.config as string) : null,
-      })) as ToolDro[];
+      const agentTools = await this.toolRepository.listAgentTools(agentId);
+      return agentTools.map((at: any) => ({
+        ...at.tool,
+        config: at.tool.config ? JSON.parse(at.tool.config as string) : null,
+        agents: [{
+          id: at.agent.id,
+          name: at.agent.name,
+          description: at.agent.description,
+          model: at.agent.model,
+          createdAt: at.createdAt,
+        }]
+      }));
     } else {
-      // fallback: list all tools
-      const tools = await this.toolRepository.findMany();
-      return (tools as ToolDro[]).map((tool: ToolDro) => ({
+      // List all tools with their agents
+      const tools = await this.toolRepository.findAllWithAgents();
+      return tools.map((tool: any) => ({
         ...tool,
         config: tool.config ? JSON.parse(tool.config as string) : null,
-      })) as ToolDro[];
+        agents: tool.agents.map((at: any) => ({
+          id: at.agent.id,
+          name: at.agent.name,
+          description: at.agent.description,
+          model: at.agent.model,
+          createdAt: at.createdAt,
+        }))
+      }));
     }
   }
 
@@ -99,18 +113,60 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
   /**
    * List all tools associated with a specific agent
    * Ordered by creation date (newest first)
+   * Includes agent and model information
    * @param agentId - The ID of the agent
-   * @returns Array of tools belonging to the agent
+   * @returns Array of tools belonging to the agent with agent details
    * @example
    * ```typescript
    * const tools = await toolService.listAgentTools('agent-123');
    * tools.forEach(tool => {
-   *   console.log(`${tool.name}: ${tool.enabled ? 'Enabled' : 'Disabled'}`);
+   *   console.log(`${tool.name}: Agent ${tool.agents[0].name}`);
    * });
    * ```
    */
-  async listAgentTools(agentId: string): Promise<ToolDro[]> {
-    return this.toolRepository.listAgentTools(agentId);
+  async listAgentTools(agentId: string): Promise<any[]> {
+    const agentTools = await this.toolRepository.listAgentTools(agentId);
+    return agentTools.map((at: any) => ({
+      ...at.tool,
+      config: at.tool.config ? JSON.parse(at.tool.config as string) : null,
+      agents: [{
+        id: at.agent.id,
+        name: at.agent.name,
+        description: at.agent.description,
+        model: at.agent.model,
+        createdAt: at.createdAt,
+      }]
+    }));
+  }
+
+  /**
+   * Get a single tool by ID with all related agents
+   * @param id - The ID of the tool
+   * @returns Tool with parsed config and all related agents, or null if not found
+   * @example
+   * ```typescript
+   * const tool = await toolService.getToolWithAgents('tool-123');
+   * if (tool) {
+   *   console.log(`Tool: ${tool.name}`);
+   *   console.log(`Used by ${tool.agents.length} agent(s)`);
+   * }
+   * ```
+   */
+  async getToolWithAgents(id: string): Promise<any | null> {
+    const tool = await this.toolRepository.findByIdWithAgents(id);
+    if (!tool) return null;
+    
+    return {
+      ...tool,
+      config: tool.config ? JSON.parse(tool.config as string) : null,
+      agents: (tool.agents || []).map((at: any) => ({
+        id: at.agent.id,
+        name: at.agent.name,
+        description: at.agent.description,
+        model: at.agent.model,
+        createdAt: at.createdAt,
+      }))
+    };
   }
 
   /**

@@ -33,8 +33,51 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> 
         // List all tools for a specific agent (many-to-many)
         return prisma.agentTool.findMany({
             where: { agentId },
-            include: { tool: true },
+            include: { 
+                tool: true,
+                agent: {
+                    include: {
+                        model: true
+                    }
+                }
+            },
             orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async findAllWithAgents() {
+        // List all tools with their related agents
+        return prisma.tool.findMany({
+            include: {
+                agents: {
+                    include: {
+                        agent: {
+                            include: {
+                                model: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async findByIdWithAgents(id: string) {
+        // Find a specific tool with its related agents
+        return prisma.tool.findUnique({
+            where: { id },
+            include: {
+                agents: {
+                    include: {
+                        agent: {
+                            include: {
+                                model: true
+                            }
+                        }
+                    }
+                }
+            },
         });
     }
 }

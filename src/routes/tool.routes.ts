@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   listTools,
   getTool,
+  getToolWithAgents,
   createTool,
   updateTool,
   deleteTool,
@@ -56,6 +57,12 @@ router.get('/global', getGlobalTools);
  * Get tools by type
  */
 router.get('/type/:type', getToolsByType);
+
+/**
+ * GET /api/tools/:id/with-agents
+ * Get a single tool by ID with all related agents
+ */
+router.get('/:id/with-agents', getToolWithAgents);
 
 /**
  * GET /api/tools/:id

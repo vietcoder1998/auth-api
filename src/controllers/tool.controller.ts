@@ -263,6 +263,24 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
       this.handleError(res, error);
     }
   }
+
+  /**
+   * Get a single tool by ID with all related agents
+   * GET /api/tools/:id/with-agents
+   */
+  async getToolWithAgents(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const tool = await toolService.getToolWithAgents(id);
+      if (!tool) {
+        res.status(404).json({ success: false, error: 'Tool not found' });
+        return;
+      }
+      this.sendSuccess(res, tool);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
 }
 
 // Create instance and export individual methods for route binding
@@ -270,6 +288,7 @@ const toolController = new ToolController();
 
 export const listTools = toolController.listTools.bind(toolController);
 export const getTool = toolController.findOne.bind(toolController);
+export const getToolWithAgents = toolController.getToolWithAgents.bind(toolController);
 export const createTool = toolController.create.bind(toolController);
 export const updateTool = toolController.update.bind(toolController);
 export const deleteTool = toolController.delete.bind(toolController);
