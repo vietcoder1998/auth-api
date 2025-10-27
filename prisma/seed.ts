@@ -195,7 +195,6 @@ async function main() {
       console.log(`⚠ Error creating job:`, error);
     }
   }
-  // ...existing code...
   // Seed permissions from mock data - Use repository seed
   console.log('🔐 Seeding Permissions...');
 
@@ -781,7 +780,7 @@ async function main() {
     )?.id;
     const toolId = toolNameToId[at.name];
     return agentId && toolId ? { agentId, toolId } : null;
-  }).filter(Boolean);
+  }).filter(Boolean) as { agentId: string; toolId: string }[];
 
   const createdAgentTools: any[] = [];
   for (const at of agentTools) {
@@ -791,10 +790,10 @@ async function main() {
       });
       if (!existing) {
         const created = await prisma.agentTool.create({ data: at });
-        createdAgentTools.push(created);
-        console.log(`✓ Linked agent ${at.agentId} to tool ${at.toolId}`);
+        createdAgentTools.push(created)
+        console.log(`✓ Linked agent ${at.agentId} to tool ${at.toolId}`)
       } else {
-        createdAgentTools.push(existing);
+        createdAgentTools.push(existing)
       }
     } catch (error) {
       console.log(`⚠ Error linking agent-tool:`, error);
