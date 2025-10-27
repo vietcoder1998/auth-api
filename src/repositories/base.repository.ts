@@ -733,4 +733,9 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
     }
     return results;
   }
+
+  public async findByLabel<R>(label: string): Promise<R | null> {
+    const record = await (this.model as T | any).findAll({ where: { label } });
+    return record || null;
+  }
 }
