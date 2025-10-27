@@ -37,6 +37,116 @@ export class BaseService<T, Dto, Dro> {
     }
 
     /**
+     * Execute a text command as a function with access to class context
+     * Transforms text data into executable code using eval
+     * 
+     * @param command - Text command to execute (JavaScript code as string)
+     * @param context - Additional context object to merge with class context
+     * @returns Result of the executed command
+     * 
+     * @private
+     * @example
+     * ```typescript
+     * // Simple expression
+     * const result = this.execute('1 + 1'); // Returns 2
+     * 
+     * // Using class context
+     * const result = this.execute('this.repository.findAll()');
+     * 
+     * // Using provided context
+     * const result = this.execute('data.name.toUpperCase()', { data: { name: 'john' } });
+     * // Returns 'JOHN'
+     * 
+     * // Complex operations
+     * const result = this.execute(`
+     *   const users = await this.findMany({ status: 'active' });
+     *   return users.filter(u => u.age > 18);
+     * `);
+     * ```
+     */
+    private execute<R = any>(command: string, context?: Record<string, any>): R {
+        try {
+            // Create a function with access to 'this' and provided context
+            // Merge class context with provided context
+            const contextKeys = context ? Object.keys(context) : [];
+            const contextValues = context ? Object.values(context) : [];
+            
+            // Create function parameters: this, ...contextKeys
+            const params = ['thisArg', ...contextKeys];
+            
+            // Wrap command in async function to support await
+            const functionBody = `
+                const self = thisArg;
+                const repository = thisArg.repository;
+                ${command.includes('return') ? command : `return (${command})`}
+            `;
+            
+            // Create the function
+            const fn = new Function(...params, functionBody);
+            
+            // Execute with 'this' as first argument
+            const result = fn(this, ...contextValues);
+            
+            // Handle promises
+            if (result && typeof result.then === 'function') {
+                return result as R;
+            }
+            
+            return result;
+        } catch (error: any) {
+            throw new Error(`Command execution failed: ${error.message}\nCommand: ${command}`);
+        }
+    }
+
+    /**
+     * Execute an async text command with class context
+     * Similar to execute() but ensures async/await support
+     * 
+     * @param command - Text command to execute (JavaScript code as string)
+     * @param context - Additional context object to merge with class context
+     * @returns Promise with result of the executed command
+     * 
+     * @private
+     * @example
+     * ```typescript
+     * // Async operations
+     * const users = await this.executeAsync(`
+     *   const data = await this.findMany({ status: 'active' });
+     *   return data.filter(u => u.role === 'admin');
+     * `);
+     * 
+     * // With context
+     * const result = await this.executeAsync(`
+     *   const user = await this.findOne(userId);
+     *   return user ? user.email : null;
+     * `, { userId: '123' });
+     * ```
+     */
+    private async executeAsync<R = any>(command: string, context?: Record<string, any>): Promise<R> {
+        try {
+            const contextKeys = context ? Object.keys(context) : [];
+            const contextValues = context ? Object.values(context) : [];
+            
+            const params = ['thisArg', ...contextKeys];
+            
+            // Wrap in async function
+            const functionBody = `
+                const self = thisArg;
+                const repository = thisArg.repository;
+                ${command.includes('return') ? command : `return (${command})`}
+            `;
+            
+            // Create async function
+            const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+            const fn = new AsyncFunction(...params, functionBody);
+            
+            return await fn(this, ...contextValues);
+        } catch (error: any) {
+            throw new Error(`Async command execution failed: ${error.message}\nCommand: ${command}`);
+        }
+    }
+
+    /**
      * Find all records
      * @returns Array of all records
      * @example
