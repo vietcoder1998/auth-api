@@ -1,8 +1,8 @@
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
-import { ToolDto, ToolModel } from '../interfaces'
+import { ToolModel, ToolDto, ToolDro } from '../interfaces/tool.interface';
 
-export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDto> {
+export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> {
     constructor(toolDelegate = prisma.tool) {
         super(toolDelegate);
     }
@@ -22,6 +22,9 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDto> 
     }
 
     async listAgentTools(agentId: string) {
-        return this.model.findMany({ where: { agentId } });
+        return this.model.findMany({
+            where: { agentId },
+            orderBy: { createdAt: 'desc' },
+        });
     }
 }
