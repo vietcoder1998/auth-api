@@ -1,6 +1,24 @@
 import axios from 'axios';
+import { GEMINI_API_KEY, GEMINI_API_URL } from '../env';
 
 export class GeminiService {
+  availableModels: string[] = [];
+  geminiConfig: any;
+
+  /**
+   * Constructor: fetch available Gemini models and store them
+   */
+  constructor(geminiConfig: any) {
+    this.geminiConfig = geminiConfig;
+    GeminiService.pingEnabledGeminiModels(geminiConfig)
+      .then((models) => {
+        console.log('Available Gemini models:', models);
+        this.availableModels = models;
+      })
+      .catch(() => {
+        this.availableModels = [];
+      });
+  }
   /**
    * Convert Gemini API response to plain string content
    * @param responseArr Gemini response array
@@ -143,5 +161,10 @@ export class GeminiService {
     return payload;
   }
 }
+
+new GeminiService({
+  apiUrl: GEMINI_API_URL,
+  apiKey: GEMINI_API_KEY,
+});
 
 export default GeminiService;
