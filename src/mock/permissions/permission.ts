@@ -14,10 +14,24 @@ export const permissionPermissions = [
     method: 'GET',
   },
   {
+    name: 'get_permissions',
+    description: 'Get all permissions',
+    category: 'permission',
+    route: '/api/admin/permissions',
+    method: 'GET',
+  },
+  {
     name: 'update_permission',
     description: 'Update permission information',
     category: 'permission',
     route: '/api/admin/permissions/:id',
+    method: 'PUT',
+  },
+  {
+    name: 'update_permissions',
+    description: 'Update multiple permissions',
+    category: 'permission',
+    route: '/api/admin/permissions',
     method: 'PUT',
   },
   {

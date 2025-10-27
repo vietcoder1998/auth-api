@@ -103,7 +103,7 @@ async function main() {
   const { LabelUtilitySeeder } = require('./seeders/label-utility.seeder');
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { BasicEntitiesSeeder } = require('./seeders/basic-entities.seeder');
-  
+
   // Seed core entities (labels first, then AI platforms, models, keys)
   const { createdLabels } = await CoreEntitiesSeeder.instance.run({
     mockAIPlatforms,
@@ -569,7 +569,7 @@ async function main() {
   // Seed AI Agents
   console.log('🤖 Seeding AI Agents...');
 
- 
+
   const createdAgents: any[] = await AgentSeeder.run({
     prisma,
     mockAgents,
@@ -600,7 +600,7 @@ async function main() {
     ...memory,
     agentId:
       createdAgents.find(
-  (agent: any) => agent.name === mockAgents.find((a: any) => a.id === memory.agentId)?.name,
+        (agent: any) => agent.name === mockAgents.find((a: any) => a.id === memory.agentId)?.name,
       )?.id || '',
   }));
 
@@ -647,11 +647,11 @@ async function main() {
 
   // Map mock IDs to actual created agent and user IDs
   const mockToRealMapping: Record<string, string> = {
-  'agent-001': createdAgents.find((a: any) => a.name === 'General Assistant')?.id || '',
-  'agent-002': createdAgents.find((a: any) => a.name === 'Code Assistant')?.id || '',
-  'agent-003': createdAgents.find((a: any) => a.name === 'Business Analyst')?.id || '',
-  'agent-004': createdAgents.find((a: any) => a.name === 'Creative Writer')?.id || '',
-  'agent-005': createdAgents.find((a: any) => a.name === 'Learning Companion')?.id || '',
+    'agent-001': createdAgents.find((a: any) => a.name === 'General Assistant')?.id || '',
+    'agent-002': createdAgents.find((a: any) => a.name === 'Code Assistant')?.id || '',
+    'agent-003': createdAgents.find((a: any) => a.name === 'Business Analyst')?.id || '',
+    'agent-004': createdAgents.find((a: any) => a.name === 'Creative Writer')?.id || '',
+    'agent-005': createdAgents.find((a: any) => a.name === 'Learning Companion')?.id || '',
     'super-admin-id': superadminUser?.id || '',
     'admin-id': adminUser?.id || '',
     'user-id': regularUser?.id || '',
@@ -769,7 +769,7 @@ async function main() {
     ...tool,
     agentId:
       createdAgents.find(
-  (agent: any) => agent.name === mockAgents.find((a: any) => a.id === tool.agentId)?.name,
+        (agent: any) => agent.name === mockAgents.find((a: any) => a.id === tool.agentId)?.name,
       )?.id || '',
   }));
 
@@ -1039,4 +1039,5 @@ main()
   })
   .finally(() => {
     prisma.$disconnect();
+    process.exit(1);
   });
