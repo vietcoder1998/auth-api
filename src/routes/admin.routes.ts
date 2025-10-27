@@ -32,13 +32,7 @@ import memoryRouter from './memory.routes';
 import toolRouter from './tool.routes';
 import commandRouter from './command.routes';
 import { searchAllEntities } from '../controllers/search.controller';
-import {
-  upload,
-  uploadFile,
-  getFile,
-  deleteFile,
-  downloadDocument,
-} from '../controllers/file.controller';
+import fileRouter from './file.routes';
 import systemRouter from './system.routes';
 
 const router = Router();
@@ -77,11 +71,7 @@ router.get('/search', searchAllEntities);
 router.use('/system', systemRouter);
 router.use('/tool-commands', commandRouter);
 
-router.post('/files/upload', upload.single('file'), uploadFile);
-// File control
-router.get('/files/:filename', getFile);
-router.get('/files/download/:filename', downloadDocument);
-router.delete('/files/:filename', deleteFile);
+router.use('/files', fileRouter);
 router.use('/prompts', promptHistoryRouter);
 
 export default router;

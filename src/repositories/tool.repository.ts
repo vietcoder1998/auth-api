@@ -8,22 +8,32 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> 
     }
 
     async enableTool(agentId: string, name: string) {
-        return this.model.updateMany({
-            where: { agentId, name },
-            data: { enabled: true },
+        // Enable tool for a specific agent (many-to-many)
+        return prisma.agentTool.updateMany({
+            where: {
+                agentId,
+                tool: { name },
+            },
+            data: { /* add any agent-tool specific fields if needed */ },
         });
     }
 
     async disableTool(agentId: string, name: string) {
-        return this.model.updateMany({
-            where: { agentId, name },
-            data: { enabled: false },
+        // Disable tool for a specific agent (many-to-many)
+        return prisma.agentTool.updateMany({
+            where: {
+                agentId,
+                tool: { name },
+            },
+            data: { /* add any agent-tool specific fields if needed */ },
         });
     }
 
     async listAgentTools(agentId: string) {
-        return this.model.findMany({
+        // List all tools for a specific agent (many-to-many)
+        return prisma.agentTool.findMany({
             where: { agentId },
+            include: { tool: true },
             orderBy: { createdAt: 'desc' },
         });
     }

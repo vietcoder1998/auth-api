@@ -13,6 +13,36 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
   }
 
   /**
+   * Override update to transform payload for Prisma compatibility
+   */
+  async update(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      let data = req.body;
+
+      // Stringify config if it's an object
+      if (data.config && typeof data.config === 'object') {
+        data.config = JSON.stringify(data.config);
+      }
+
+      // Map agent relation if present (single agent only)
+      if (data.relatedAgentIds && Array.isArray(data.relatedAgentIds) && data.relatedAgentIds.length > 0) {
+        data.agent = {
+          connect: { id: data.relatedAgentIds[0] }
+        };
+        delete data.relatedAgentIds;
+      }
+
+      // Remove any fields not in ToolUpdateInput if needed
+
+      const result = await this.service.update(id, data);
+      this.sendSuccess(res, result);
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
    * List all tools (optionally filtered by agentId)
    * GET /api/tools?agentId=xxx
    */
@@ -238,14 +268,11 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
 // Create instance and export individual methods for route binding
 const toolController = new ToolController();
 
-// Export base CRUD methods from BaseController
+export const listTools = toolController.listTools.bind(toolController);
 export const getTool = toolController.findOne.bind(toolController);
 export const createTool = toolController.create.bind(toolController);
 export const updateTool = toolController.update.bind(toolController);
 export const deleteTool = toolController.delete.bind(toolController);
-
-// Export custom methods
-export const listTools = toolController.listTools.bind(toolController);
 export const enableTool = toolController.enableTool.bind(toolController);
 export const disableTool = toolController.disableTool.bind(toolController);
 export const toggleTool = toolController.toggleTool.bind(toolController);
@@ -260,4 +287,3 @@ export const getToolsByType = toolController.getToolsByType.bind(toolController)
 export const getGlobalTools = toolController.getGlobalTools.bind(toolController);
 export const deleteAgentTools = toolController.deleteAgentTools.bind(toolController);
 export const hasToolForAgent = toolController.hasToolForAgent.bind(toolController);
-

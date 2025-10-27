@@ -155,8 +155,9 @@ export class BaseController<T, Dto, Dro> {
   async update(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const data = await this.service.update(id, req.body);
-      
+      let payload = req.body;
+
+      const data = await this.service.update(id, payload);
       if (!data) {
         res.status(404).json({
           success: false,
@@ -164,17 +165,12 @@ export class BaseController<T, Dto, Dro> {
         });
         return;
       }
-      
-      this.sendSuccess(res, data, 'Record updated successfully');
+      this.sendSuccess(res, data);
     } catch (error) {
       this.handleError(res, error, 400);
     }
   }
 
-  /**
-   * DELETE /:id - Delete a record by ID
-   * @example DELETE /api/users/123
-   */
   async delete(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;

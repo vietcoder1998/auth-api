@@ -761,49 +761,53 @@ async function main() {
     await entityLabelRepo.createMany(messageLabels);
   }
 
-  // Seed Agent Tools
-  // Note: Agent Tools kept as direct Prisma due to complex agent-tool relationship tracking
+  // Seed Agent Tools (many-to-many)
   console.log('🛠️ Seeding Agent Tools...');
 
-  const agentTools = mockAgentTools.map((tool) => ({
-    ...tool,
-    agentId:
-      createdAgents.find(
-        (agent: any) => agent.name === mockAgents.find((a: any) => a.id === tool.agentId)?.name,
-      )?.id || '',
-  }));
+  // First, ensure all tools exist
+  const toolNameToId: Record<string, string> = {};
+  for (const tool of mockTools) {
+    let dbTool = await prisma.tool.findUnique({ where: { name: tool.name } });
+    if (!dbTool) {
+      dbTool = await prisma.tool.create({ data: tool });
+    }
+    toolNameToId[tool.name] = dbTool.id;
+  }
+
+  // Now, create AgentTool join records
+  const agentTools = mockAgentTools.map((at) => {
+    const agentId = createdAgents.find(
+      (agent: any) => agent.name === mockAgents.find((a: any) => a.id === at.agentId)?.name,
+    )?.id;
+    const toolId = toolNameToId[at.name];
+    return agentId && toolId ? { agentId, toolId } : null;
+  }).filter(Boolean);
 
   const createdAgentTools: any[] = [];
-  for (const tool of agentTools) {
-    if (tool.agentId) {
-      try {
-        const existingTool = await prisma.tool.findFirst({
-          where: { agentId: tool.agentId, name: tool.name },
-        });
-
-        if (!existingTool) {
-          const createdTool = await prisma.tool.create({
-            data: tool,
-          });
-          createdAgentTools.push(createdTool);
-          console.log(`✓ Created tool ${tool.name} for agent ${tool.agentId}`);
-        } else {
-          createdAgentTools.push(existingTool);
-        }
-      } catch (error) {
-        console.log(`⚠ Error creating tool:`, error);
+  for (const at of agentTools) {
+    try {
+      const existing = await prisma.agentTool.findUnique({
+        where: { agentId_toolId: { agentId: at.agentId, toolId: at.toolId } },
+      });
+      if (!existing) {
+        const created = await prisma.agentTool.create({ data: at });
+        createdAgentTools.push(created);
+        console.log(`✓ Linked agent ${at.agentId} to tool ${at.toolId}`);
+      } else {
+        createdAgentTools.push(existing);
       }
+    } catch (error) {
+      console.log(`⚠ Error linking agent-tool:`, error);
     }
   }
 
-  // Add mock label to all agent tools
+  // Add mock label to all agent-tool links (optional, or label tools only)
   if (mockLabelId && createdAgentTools.length > 0) {
-    const agentToolLabels = createdAgentTools.map((tool) => ({
-      entityId: tool.id,
+    const agentToolLabels = createdAgentTools.map((at) => ({
+      entityId: at.toolId,
       entityType: 'tool',
       labelId: mockLabelId,
     }));
-
     await entityLabelRepo.createMany(agentToolLabels);
   }
 

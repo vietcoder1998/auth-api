@@ -19,7 +19,11 @@ export class AgentRepository extends BaseRepository<AgentModel, AgentDto, AgentD
                     orderBy: { createdAt: 'desc' },
                     take: 10,
                 },
-                tools: true,
+                tools: {
+                    include: {
+                        tool: true
+                    }
+                },
                 _count: {
                     select: {
                         conversations: true,

@@ -441,7 +441,7 @@ model Agent {
   tasks         AgentTask[]
   aiKeys        AIKeyAgent[]
   model         AIModel?       @relation(fields: [aIModelId], references: [id])
-  tools         Tool[]
+  tools         AgentTool[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -453,8 +453,6 @@ model Agent {
 
 model Tool {
   id          String      @id @default(uuid())
-  agentId     String?
-  agent       Agent?      @relation(fields: [agentId], references: [id], onDelete: Cascade)
   name        String      @unique
   description String?
   type        String      // e.g. 'api', 'function', 'system', 'plugin'
@@ -463,8 +461,22 @@ model Tool {
   commands    Command[]   @relation("ToolCommands") // 1:N Tool-Command, restrict on delete
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @default(now())
+  agents      AgentTool[]
 
   @@map("tool")
+}
+
+// Junction table for Agent <-> Tool (many-to-many)
+model AgentTool {
+  id        String   @id @default(uuid())
+  agentId   String
+  toolId    String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  tool      Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([agentId, toolId])
+  @@map("agent_tool")
 }
 
 model Command {
