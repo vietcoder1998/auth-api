@@ -1,22 +1,23 @@
-import { BaseRepository } from './base.repository';
-import { CommandModel, CommandDto, CommandDro } from '../interfaces';
+import { GetResult } from '@prisma/client/runtime';
+import { CommandDro, CommandDto, CommandModel, CommandResult, ToolDro, ToolResult } from '../interfaces';
 import { prisma } from '../setup';
+import { BaseRepository } from './base.repository';
 
 /**
  * CommandRepository - Data access layer for Command operations
- * 
+ *
  * Provides database operations for managing commands that tools can execute
  * for actions with repositories and other systems.
- * 
+ *
  * @extends BaseRepository<CommandModel, CommandDto, CommandDro>
- * 
+ *
  * @example
  * ```typescript
  * const commandRepo = new CommandRepository();
- * 
+ *
  * // Find all commands for a tool
  * const commands = await commandRepo.findByToolId('tool-123');
- * 
+ *
  * // Find enabled commands
  * const enabledCommands = await commandRepo.findEnabledCommands('tool-123');
  * ```
@@ -45,9 +46,15 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
         },
       },
     });
-    return commands as CommandDro[];
+    return commands.map(command => ({
+      ...command,
+      // Add any necessary transformation here if CommandDro differs from the Prisma result
+    })) as unknown as CommandDro[];
   }
 
+  get commandModel(): CommandModel {
+    return this.model as CommandModel;
+  }
   /**
    * Find enabled commands for a tool
    * @param toolId - The ID of the tool
@@ -95,7 +102,7 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
       },
       orderBy: { createdAt: 'desc' },
     });
-    return commands as CommandDro[];
+    return commands as unknown as CommandDro[];
   }
 
   /**
@@ -122,10 +129,9 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
    * @returns Update result with count of modified records
    */
   async enableAllForTool(toolId: string): Promise<{ count: number }> {
-    return this.updateMany<CommandDto, { count: number }>(
-      { toolId },
-      { enabled: true } as Partial<CommandDto>
-    );
+    return this.updateMany<CommandDto, { count: number }>({ toolId }, {
+      enabled: true,
+    } as Partial<CommandDto>);
   }
 
   /**
@@ -134,10 +140,9 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
    * @returns Update result with count of modified records
    */
   async disableAllForTool(toolId: string): Promise<{ count: number }> {
-    return this.updateMany<CommandDto, { count: number }>(
-      { toolId },
-      { enabled: false } as Partial<CommandDto>
-    );
+    return this.updateMany<CommandDto, { count: number }>({ toolId }, {
+      enabled: false,
+    } as Partial<CommandDto>);
   }
 
   /**
@@ -171,5 +176,20 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
    */
   async existsByToolAndName(toolId: string, name: string): Promise<boolean> {
     return this.exists({ toolId, name });
+  }
+
+  override async findOne(id: string): Promise<CommandDro | null> {
+    const entity: CommandResult | null = await this.commandModel.findFirst({
+      where: { id },
+      include: {
+        tool: true,
+      },
+    }) as CommandResult | null;
+    // Use convertResultToDro to map to CommandDro
+    return entity ? this.convertResultToDro(entity) : null;
+  }
+
+  private convertResultToDro(result: CommandResult): CommandDro {
+    return result as unknown as CommandDro
   }
 }

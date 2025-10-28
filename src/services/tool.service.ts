@@ -338,7 +338,23 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
   }
 
   override async findOne(toolId: string): Promise<ToolDro | null> {
-    return this.toolRepository.findByIdWithAgents(toolId);
+    const tool = await this.toolRepository.findByIdWithAgents(toolId);
+    if (!tool) return null;
+    
+    // Map or transform the result to ToolDro type
+    return {
+      id: tool.id,
+      name: tool.name,
+      type: tool.type,
+      description: tool.description,
+      config: tool.config ? JSON.parse(tool.config as string) : null,
+      enabled: tool.enabled,
+      // Ensure agentId is present if ToolDro expects it
+      agentId: (tool as any).agentId ?? null,
+      commands: tool.commands ?? [],
+      agents: tool.agents ?? [],
+      // Add other ToolDro fields as needed
+    } as unknown as ToolDro;
   }
 }
 

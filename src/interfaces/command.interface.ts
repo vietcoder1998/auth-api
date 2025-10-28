@@ -2,30 +2,20 @@
  * Command Interface - Defines actions that tools can execute
  */
 
+import { PrismaClient } from '@prisma/client';
+import { GetResult } from '@prisma/client/runtime';
+import { ToolDro, ToolModel } from './tool.interface';
+import { AgentModel } from './agent.interface';
+
 /**
  * CommandModel - Database model interface
  */
-export interface CommandModel {
-  id: string;
-  toolId: string;
-  name: string;
-  action: string;
-  repository?: string | null;
-  script?: string | null;
-  params?: string | null;
-  description?: string | null;
-  enabled: boolean;
-  timeout?: number | null;
-  retries?: number | null;
-  metadata?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export type CommandModel = PrismaClient['command'];
 
 /**
  * CommandDto - Data Transfer Object for creating/updating commands
  */
-export interface CommandDto {
+export interface CommandDto extends CommandModel {
   toolId: string;
   name: string;
   action: string;
@@ -42,7 +32,7 @@ export interface CommandDto {
 /**
  * CommandDro - Data Response Object for command responses
  */
-export interface CommandDro {
+export interface CommandDro extends Omit<CommandDto, 'params' | 'metadata' | 'config' | 'tools'> {
   id: string;
   toolId: string;
   name: string;
@@ -57,14 +47,16 @@ export interface CommandDro {
   metadata?: Record<string, any> | null; // Parsed JSON metadata
   createdAt: Date;
   updatedAt: Date;
-  tool?: {
-    id: string;
-    name: string;
-    type: string;
-  };
+  tools?: ToolDro[];
   executions?: CommandExecutionDro[];
 }
 
+export type CommandResult =
+  | ({
+      tools: GetResult<ToolModel, {}> & {},
+      agent: GetResult<AgentModel, {}> & {}
+    } & GetResult<CommandModel, {}> & CommandDto)
+  | null;
 /**
  * CommandExecutionModel - Database model for command execution history
  */

@@ -754,4 +754,10 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
 
     return foundRecord || null;
   }
+
+  protected async findOne(id: string){
+    const entity = await (this.model as T | any).findUnique({ where: { id } });
+    
+    return entity;
+  }
 }

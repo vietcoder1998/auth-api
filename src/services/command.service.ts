@@ -32,6 +32,10 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
   constructor() {
     super(commandRepository);
   }
+
+  get commandRepository() {
+    return this.repository as CommandRepository;
+  }
   /**
    * Process command from conversation
    */
@@ -337,10 +341,10 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
     }
   }
 
-  /**
+  /** 
    * Parse command from message content
    */
-  parseCommand(content: string): {
+  public parseCommand(content: string): {
     isCommand: boolean;
     command?: string;
     type?: string;
@@ -379,5 +383,14 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
       type: parameters.type || command,
       parameters,
     };
+  }
+
+  override async findOne(id: string): Promise<CommandDro | null> {
+    const command: CommandDro | null = await this.commandRepository.findOne(id);
+    if (!command) {
+      return null;
+    }
+
+    return command as CommandDro;
   }
 }
