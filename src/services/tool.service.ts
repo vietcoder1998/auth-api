@@ -337,8 +337,8 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
     return this.toolRepository.exists({ agentId, name });
   }
 
-  async findOne(toolId: string): Promise<ToolDro | null> {
-    return this.toolRepository.findByIdWithAgents(toolId)
+  override async findOne(toolId: string): Promise<ToolDro | null> {
+    return this.toolRepository.findByIdWithAgents(toolId);
   }
 }
 

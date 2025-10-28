@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
+import { ToolDro, ToolDto, ToolModel } from '../interfaces';
 import { toolService } from '../services/tool.service';
 import { BaseController } from './base.controller';
-import { ToolModel, ToolDto, ToolDro } from '../interfaces';
 
 /**
  * ToolController - HTTP request handlers for Tool operations
@@ -28,8 +28,8 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
       if (data.relatedAgentIds && Array.isArray(data.relatedAgentIds)) {
         data.agents = {
           create: data.relatedAgentIds.map((agentId: string) => ({
-            agent: { connect: { id: agentId } }
-          }))
+            agent: { connect: { id: agentId } },
+          })),
         };
         delete data.relatedAgentIds;
       }
@@ -61,8 +61,8 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
         data.agents = {
           deleteMany: {}, // First remove all existing relations
           create: data.relatedAgentIds.map((agentId: string) => ({
-            agent: { connect: { id: agentId } }
-          }))
+            agent: { connect: { id: agentId } },
+          })),
         };
         delete data.relatedAgentIds;
       }
@@ -130,11 +130,7 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
         res.status(404).json({ success: false, error: 'Tool not found' });
         return;
       }
-      this.sendSuccess(
-        res,
-        tool,
-        `Tool is now ${tool.enabled ? 'enabled' : 'disabled'}`
-      );
+      this.sendSuccess(res, tool, `Tool is now ${tool.enabled ? 'enabled' : 'disabled'}`);
     } catch (error) {
       this.handleError(res, error, 400);
     }
@@ -307,6 +303,17 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
         res.status(404).json({ success: false, error: 'Tool not found' });
         return;
       }
+      this.sendSuccess(res, tool);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  override async findOne(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const tool = await this.service.findOne(id);
+
       this.sendSuccess(res, tool);
     } catch (error) {
       this.handleError(res, error);

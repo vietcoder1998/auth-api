@@ -94,6 +94,7 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> 
     return prisma.tool.findUnique({
       where: { id: id },
       include: {
+        commands: true,
         agents: {
           include: {
             agent: {
