@@ -130,49 +130,115 @@ export class CacheMiddleware {
     }
   }
 
-  getMiddleware() {
-    return async (req: Request, res: Response, next: NextFunction) => {
-      // Handle cache invalidation for non-GET requests
-      if (['PUT', 'POST', 'DELETE', 'PATCH'].includes(req.method)) {
+  // Helper method to generate cache invalidation paths
+  private generateInvalidationPaths(urlPath: string): string[] {
+    const pathParts = urlPath.split('/').filter((part) => part.length > 0);
+    const paths = [urlPath]; // Start with full path
+
+    // Add parent paths
+    for (let i = pathParts.length - 1; i > 0; i--) {
+      paths.push('/' + pathParts.slice(0, i).join('/'));
+    }
+
+    return paths;
+  }
+
+  // Handle cache invalidation for write operations
+  private async handleCacheInvalidation(req: Request): Promise<void> {
+    try {
+      const urlPath = req.originalUrl.split('?')[0];
+      const pathsToInvalidate = this.generateInvalidationPaths(urlPath);
+
+      const totalInvalidated = await Promise.all(
+        pathsToInvalidate.map(path => CacheMiddleware.invalidateCacheByUrlPattern(path))
+      ).then(counts => counts.reduce((sum, count) => sum + count, 0));
+
+      if (totalInvalidated > 0) {
+        logger.info(`Cache invalidation completed for ${req.method} ${urlPath}`, {
+          method: req.method,
+          url: urlPath,
+          invalidatedPaths: pathsToInvalidate,
+          totalInvalidated,
+        });
+      }
+    } catch (error) {
+      logger.error('Cache invalidation error:', error);
+    }
+  }
+
+  // Process cached response data
+  private processResponseData(data: any): any {
+    let responseData = data;
+
+    // Try to parse string data as JSON for objects only
+    if (typeof data === 'string') {
+      try {
+        const parsedData = JSON.parse(data);
+        responseData = (typeof parsedData === 'object' && parsedData !== null && !Array.isArray(parsedData)) 
+          ? parsedData 
+          : data;
+      } catch {
+        responseData = data;
+      }
+    }
+
+    // Don't modify the original data to avoid circular references or data mutation
+    return responseData;
+  }
+
+  // Handle cache hit scenario
+  private handleCacheHit(res: Response, cachedResponse: string, cacheKey: string): Response {
+    const { statusCode, data, headers } = JSON.parse(cachedResponse);
+
+    // Set headers efficiently
+    Object.entries(headers).forEach(([key, value]) => res.set(key, value as string));
+    res.set('X-Cache', 'HIT').set('X-Cache-Key', cacheKey);
+
+    logger.info('Cache HIT for:', res.req.originalUrl);
+    
+    const processedData = this.processResponseData(data);
+    return res.status(statusCode).json(processedData);
+  }
+
+  // Setup cache miss handling
+  private setupCacheMissHandling(res: Response, cacheKey: string): void {
+    const originalJson = res.json;
+
+    res.json = (body: any) => {
+      // Cache successful responses asynchronously
+      if (res.statusCode >= 200 && res.statusCode < 300) {
         try {
-          const urlPath = req.originalUrl.split('?')[0];
+          // Create a clean copy of data to avoid circular references
+          const cleanData = body?.data ?? body;
+          const responseData = {
+            statusCode: res.statusCode,
+            data: cleanData,
+            headers: res.getHeaders(),
+          };
 
-          // Invalidate cache for the current path and its parent paths
-          // For example: PUT /api/admin/conversions/123 should invalidate:
-          // - /api/admin/conversions/123
-          // - /api/admin/conversions
-          // - /api/admin
-          // - /api
-          const pathParts = urlPath.split('/').filter((part) => part.length > 0);
-          const pathsToInvalidate = [];
-
-          // Add the full path
-          pathsToInvalidate.push(urlPath);
-
-          // Add parent paths
-          for (let i = pathParts.length - 1; i > 0; i--) {
-            const parentPath = '/' + pathParts.slice(0, i).join('/');
-            pathsToInvalidate.push(parentPath);
-          }
-
-          let totalInvalidated = 0;
-          for (const path of pathsToInvalidate) {
-            const count = await CacheMiddleware.invalidateCacheByUrlPattern(path);
-            totalInvalidated += count;
-          }
-
-          if (totalInvalidated > 0) {
-            logger.info(`Cache invalidation completed for ${req.method} ${urlPath}`, {
-              method: req.method,
-              url: urlPath,
-              invalidatedPaths: pathsToInvalidate,
-              totalInvalidated,
-            });
-          }
-        } catch (error) {
-          logger.error('Cache invalidation error:', error);
+          // Safely stringify and cache
+          const serializedData = JSON.stringify(responseData);
+          client
+            .setEx(cacheKey, this.ttl, serializedData)
+            .catch((err: any) => console.error('Cache set error:', err));
+        } catch (serializeError) {
+          console.error('Failed to serialize cache data:', serializeError);
+          // Don't cache if serialization fails
         }
+      }
 
+      res.set('X-Cache', 'MISS').set('X-Cache-Key', cacheKey);
+      return originalJson.call(res, body);
+    };
+  }
+
+  getMiddleware() {
+    const writeMethods = ['PUT', 'POST', 'DELETE', 'PATCH'];
+
+    return async (req: Request, res: Response, next: NextFunction) => {
+      // Handle cache invalidation for write operations
+      if (writeMethods.includes(req.method)) {
+        await this.handleCacheInvalidation(req);
         return next();
       }
 
@@ -181,10 +247,17 @@ export class CacheMiddleware {
         return next();
       }
 
+      // Check Redis connection early
+      if (!client.isOpen) {
+        console.warn('Redis not connected, skipping cache');
+        return next();
+      }
+
       try {
         const cacheKey = this.useUrlBasedKeys
           ? CacheMiddleware.generateUrlBasedCacheKey(req)
           : this.keyGenerator(req);
+
         logger.info('Cache middleware processing:', {
           method: req.method,
           url: req.originalUrl,
@@ -192,122 +265,20 @@ export class CacheMiddleware {
           redisConnected: client.isOpen,
         });
 
-        // Check if Redis is connected
-        if (!client.isOpen) {
-          console.warn('Redis not connected, skipping cache');
-          return next();
-        }
-
         // Try to get cached response
         const cachedResponse = await client.get(cacheKey);
 
         if (cachedResponse) {
-          logger.info('Cache HIT for:', req.originalUrl);
-          const { statusCode, data, headers } = JSON.parse(cachedResponse);
-
-          // Set cached headers
-          Object.entries(headers).forEach(([key, value]) => {
-            res.set(key, value as string);
-          });
-
-          // Add cache hit header
-          res.set('X-Cache', 'HIT');
-          res.set('X-Cache-Key', cacheKey);
-
-          // Handle different data types for cached responses
-          let responseData = data;
-
-          // If data is a string that looks like JSON, try to parse it
-          if (typeof data === 'string') {
-            try {
-              const parsedData = JSON.parse(data);
-              // If parsed data is an object (but not array), use the parsed value
-              if (
-                typeof parsedData === 'object' &&
-                parsedData !== null &&
-                !Array.isArray(parsedData)
-              ) {
-                responseData = parsedData;
-              } else {
-                // For arrays or other types, keep original logic (return as string)
-                responseData = data;
-              }
-            } catch {
-              // If parsing fails, keep as string
-              responseData = data;
-            }
-          } else {
-            // For non-string data, return as is
-            responseData = data;
-          }
-
-          // Add 'cache' property to response data if it's an object
-          if (
-            typeof responseData === 'object' &&
-            responseData !== null &&
-            !Array.isArray(responseData)
-          ) {
-            responseData = { ...responseData, cache: true, cacheUrl: cacheKey };
-          }
-
-          return res.status(statusCode).json(responseData);
+          return this.handleCacheHit(res, cachedResponse, cacheKey);
         }
 
         console.log('Cache MISS for:', req.originalUrl);
-
-        // Cache miss - intercept response
-        const originalSend = res.send;
-        const originalJson = res.json;
-
-        res.json = (body: any) => {
-          // Cache successful responses
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            const responseData = {
-              statusCode: res.statusCode,
-              data: body,
-              headers: res.getHeaders(),
-            };
-
-            // Store in cache asynchronously
-            client
-              .setEx(cacheKey, this.ttl, JSON.stringify(responseData))
-              .catch((err: any) => console.error('Cache set error:', err));
-          }
-
-          // Add cache miss header
-          res.set('X-Cache', 'MISS');
-          res.set('X-Cache-Key', cacheKey);
-
-          return originalJson.call(res, body);
-        };
-
-        res.send = (body: any) => {
-          // Cache successful responses
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            const responseData = {
-              statusCode: res.statusCode,
-              data: body,
-              headers: res.getHeaders(),
-            };
-
-            // Store in cache asynchronously
-            client
-              .setEx(cacheKey, this.ttl, JSON.stringify(responseData))
-              .catch((err: any) => console.error('Cache set error:', err));
-          }
-
-          // Add cache miss header
-          res.set('X-Cache', 'MISS');
-          res.set('X-Cache-Key', cacheKey);
-
-          return originalSend.call(res, body);
-        };
-
+        this.setupCacheMissHandling(res, cacheKey);
         next();
+
       } catch (error) {
         console.error('Cache middleware error:', error);
-        // Continue without caching on error
-        next();
+        next(); // Continue without caching on error
       }
     };
   }

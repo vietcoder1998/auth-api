@@ -4,10 +4,10 @@ import { roleController } from '../controllers/role.controller';
 class RoleRouter extends BaseRouter<any, any, any> {
   constructor() {
     super('roles', roleController);
-    this.initializeCustomRoutes();
+    this.initializeRoutes();
   }
 
-  private initializeCustomRoutes() {
+  override initializeRoutes() {
     // Override base routes with role-specific methods
     this.routes.get('/', roleController.getRoles.bind(roleController));
     this.routes.post('/', roleController.createRole.bind(roleController));
