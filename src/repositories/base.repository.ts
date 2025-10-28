@@ -131,8 +131,8 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
    * });
    * ```
    */
-  public override async create<Dto, Dro>(data: Dto): Promise<Dro> {
-    return (this.model as T | any).create({ data });
+  public override async create<T=any, R=any>(data: T): Promise<R> {
+    return (this.model as any).create({ data });
   }
 
   /**
@@ -757,7 +757,7 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
 
   protected async findOne(id: string){
     const entity = await (this.model as T | any).findUnique({ where: { id } });
-    
+
     return entity;
   }
 }

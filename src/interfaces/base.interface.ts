@@ -16,7 +16,7 @@ export abstract class BaseInterface {
     public abstract toJSON<T, T1>(data: T): T1 | Record<string, any>;
 
     // CRUD
-    public abstract create<T, R>(data: T): Promise<R>;
+    public abstract create<T = any, R=any>(data: T): Promise<R>;
     public abstract findById<R>(id: string): Promise<R | null>;
     public abstract update<T, R>(id: string, data: Partial<T>): Promise<R>;
     public abstract delete<R>(id: string): Promise<R>;

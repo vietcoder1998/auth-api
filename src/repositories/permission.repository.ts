@@ -1,4 +1,4 @@
-import { PermissionDto, PermissionModel } from '../interfaces';
+import { PermissionDro, PermissionDto, PermissionModel } from '../interfaces';
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
 
@@ -26,10 +26,17 @@ export class PermissionRepository extends BaseRepository<
     return this.model.findMany({ where: { method } });
   }
 
-  override async create<Dto, Dro>(data: Dto): Promise<Dro> {
+  override async create<T = PermissionDto, R = PermissionDro>(data: T): Promise<R> {
     // Cast or transform data to the expected Prisma input type
-
-    const createdData = await this.permissionModel.create({ data: data as any });
+    const createdData = await this.permissionModel.create({
+      data: {
+        name: (data as PermissionDto).name,
+        description: (data as PermissionDto).description,
+        category: (data as PermissionDto).category,
+        route: (data as PermissionDto).route,
+        method: (data as PermissionDto).method,
+      },
+     });
 
     // Automatically add new permission to superadmin role
     try {
@@ -63,7 +70,7 @@ export class PermissionRepository extends BaseRepository<
       // Don't fail the entire operation if role assignment fails
     }
 
-    return createdData as Dro;
+    return createdData as R;
   }
 }
 

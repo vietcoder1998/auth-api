@@ -16,16 +16,30 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
   /**
    * Create a new permission
    */
-  async createPermission(data: PermissionDto): Promise<PermissionDro> {
+  async createPermission(data: any): Promise<PermissionDro> {
+    // Extract only valid Prisma Permission fields (ignore resource, action, etc.)
+    const { name, description, category, route, method } = data;
+    
     // Check if permission already exists
-    const existingPermission = await this.permissionRepository.findByName(data.name);
+    const existingPermission = await this.permissionRepository.findByName(name);
 
     if (existingPermission) {
       throw new Error('Permission with this name already exists');
     }
 
+    // Create filtered data object with only valid Prisma fields
+    const filteredData: PermissionDto = {
+      name: name ?? "",
+      description: description || '',
+      category: category || 'other',
+      route: route || null,
+      method: method || null,
+    };
+
+    console.log('Service filtered data:', JSON.stringify(filteredData, null, 2));
+
     // Create permission (will automatically be assigned to superadmin role)
-    return await this.permissionRepository.create(data);
+    return await this.permissionRepository.create(filteredData);
   }
   /**
    * Get permission by ID
