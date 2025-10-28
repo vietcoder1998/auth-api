@@ -1,11 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
+import { BaseController } from './base.controller';
 import { logInfo, logError } from '../middlewares/logger.middle';
-import { setPaginationMeta } from '../middlewares/response.middleware';
+import { ResponseMiddleware } from '../middlewares/response.middleware';
 
 const prisma = new PrismaClient();
 
-export async function getPermissions(req: Request, res: Response) {
+export class PermissionController extends BaseController<any, any, any> {
+  constructor() {
+    // We'll need to create a PermissionService later, for now pass null
+    super(null as any);
+  }
+
+  async getPermissions(req: Request, res: Response) {
   try {
     // Extract query parameters
     const {
@@ -59,14 +66,19 @@ export async function getPermissions(req: Request, res: Response) {
 
     // Build orderBy clause
     const orderBy: any = {};
-    if (sortBy === 'name') {
-      orderBy.name = sortOrder;
-    } else if (sortBy === 'category') {
-      orderBy.category = sortOrder;
-    } else if (sortBy === 'createdAt') {
-      orderBy.createdAt = sortOrder;
-    } else {
-      orderBy.createdAt = 'desc'; // Default
+    switch (sortBy) {
+      case 'name':
+        orderBy.name = sortOrder;
+        break;
+      case 'category':
+        orderBy.category = sortOrder;
+        break;
+      case 'createdAt':
+        orderBy.createdAt = sortOrder;
+        break;
+      default:
+        orderBy.createdAt = 'desc';
+        break;
     }
 
     // Get total count for pagination
@@ -128,10 +140,10 @@ export async function getPermissions(req: Request, res: Response) {
     });
 
     // Set pagination metadata for response middleware
-    setPaginationMeta(req, total, currentPage, currentLimit);
+    ResponseMiddleware.setPaginationMeta(req, total, currentPage, currentLimit);
 
     // Return paginated response
-    res.json({
+    this.sendSuccess(res, {
       data: permissionsWithUsage,
       total,
       page: currentPage,
@@ -142,11 +154,11 @@ export async function getPermissions(req: Request, res: Response) {
     });
   } catch (err) {
     logError('Failed to fetch permissions:', err);
-    res.status(500).json({ error: 'Failed to fetch permissions' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function createPermission(req: Request, res: Response) {
+  async createPermission(req: Request, res: Response) {
   const { name, description, category, route, method, roles } = req.body;
   try {
     // Check if permission already exists
@@ -205,14 +217,14 @@ export async function createPermission(req: Request, res: Response) {
       logError('Superadmin role not found - permission not added to superadmin');
     }
 
-    res.json(permission);
+    this.sendSuccess(res, permission);
   } catch (err) {
     logError('Failed to create/update permission:', err);
-    res.status(500).json({ error: 'Failed to create/update permission' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function updatePermission(req: Request, res: Response) {
+  async updatePermission(req: Request, res: Response) {
   const { id } = req.params;
   const { name, description, category, route, method, roles } = req.body;
   try {
@@ -229,39 +241,37 @@ export async function updatePermission(req: Request, res: Response) {
         },
       },
     });
-    res.json(permission);
+    this.sendSuccess(res, permission);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update permission' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function deletePermission(req: Request, res: Response) {
+  async deletePermission(req: Request, res: Response) {
   const { id } = req.params;
   try {
     await prisma.permission.delete({
       where: { id },
     });
-    res.json({ message: 'Permission deleted successfully' });
+    this.sendSuccess(res, null, 'Permission deleted successfully');
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete permission' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function createPermissionWithSuperadmin(req: Request, res: Response) {
+  async createPermissionWithSuperadmin(req: Request, res: Response) {
   const { name, description, category, route, method } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ error: 'Permission name is required' });
-  }
-
-  try {
+    if (!name) {
+      return this.handleError(res, 'Permission name is required', 400);
+    }  try {
     // Check if permission already exists
     const existingPermission = await prisma.permission.findUnique({
       where: { name },
     });
 
     if (existingPermission) {
-      return res.status(409).json({ error: 'Permission already exists' });
+      return this.handleError(res, 'Permission already exists', 409);
     }
 
     // Find superadmin role first
@@ -270,7 +280,7 @@ export async function createPermissionWithSuperadmin(req: Request, res: Response
     });
 
     if (!superadminRole) {
-      return res.status(404).json({ error: 'Superadmin role not found' });
+      return this.handleError(res, 'Superadmin role not found', 404);
     }
 
     // Create permission and connect to superadmin role in one transaction
@@ -306,21 +316,18 @@ export async function createPermissionWithSuperadmin(req: Request, res: Response
       method: permission.method,
     });
 
-    res.json({
+    this.sendSuccess(res, {
       success: true,
       message: 'Permission created and added to superadmin successfully',
       data: permission,
     });
   } catch (err) {
     logError('Failed to create permission with superadmin:', err);
-    res.status(500).json({
-      error: 'Failed to create permission',
-      details: err instanceof Error ? err.message : 'Unknown error',
-    });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function addPermissionToSuperadmin(req: Request, res: Response) {
+  async addPermissionToSuperadmin(req: Request, res: Response) {
   const { permissionId } = req.params;
 
   try {
@@ -331,7 +338,7 @@ export async function addPermissionToSuperadmin(req: Request, res: Response) {
     });
 
     if (!permission) {
-      return res.status(404).json({ error: 'Permission not found' });
+      return this.handleError(res, 'Permission not found', 404);
     }
 
     // Find superadmin role
@@ -341,14 +348,14 @@ export async function addPermissionToSuperadmin(req: Request, res: Response) {
     });
 
     if (!superadminRole) {
-      return res.status(404).json({ error: 'Superadmin role not found' });
+      return this.handleError(res, 'Superadmin role not found', 404);
     }
 
     // Check if permission is already connected to superadmin
     const hasPermission = superadminRole.permissions.some((p) => p.id === permissionId);
 
     if (hasPermission) {
-      return res.json({
+      return this.sendSuccess(res, {
         success: true,
         message: 'Permission already assigned to superadmin',
         data: { permission, role: superadminRole },
@@ -370,25 +377,22 @@ export async function addPermissionToSuperadmin(req: Request, res: Response) {
       permissionName: permission.name,
     });
 
-    res.json({
+    this.sendSuccess(res, {
       success: true,
       message: 'Permission added to superadmin successfully',
       data: { permission, role: superadminRole },
     });
   } catch (err) {
     logError('Failed to add permission to superadmin:', err);
-    res.status(500).json({
-      error: 'Failed to add permission to superadmin',
-      details: err instanceof Error ? err.message : 'Unknown error',
-    });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function batchUpdatePermissions(req: Request, res: Response) {
+  async batchUpdatePermissions(req: Request, res: Response) {
   try {
     const { ids, ...data } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: 'ids array required' });
+      return this.handleError(res, 'ids array required', 400);
     }
     let upserted = 0;
     for (const id of ids) {
@@ -399,8 +403,11 @@ export async function batchUpdatePermissions(req: Request, res: Response) {
       });
       upserted++;
     }
-    res.json({ count: upserted });
+    this.sendSuccess(res, { count: upserted });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to batch upsert permissions' });
+    this.handleError(res, err);
+  }
   }
 }
+
+export const permissionController = new PermissionController();

@@ -3,12 +3,12 @@ import express from 'express';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import * as env from './env';
+import { ResponseMiddleware } from './middlewares';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
 import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { CacheMiddleware } from './middlewares/cache.middleware';
 import { logError, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
-import { boundaryResponse } from './middlewares/response.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
 import prisma from './prisma';
 import adminRouter from './routes/admin.routes';
@@ -17,8 +17,8 @@ import configRouter from './routes/config.routes';
 import publicBlogRouter from './routes/publicBlog.routes';
 import ssoAuthRouter from './routes/ssoAuth.routes';
 import { configService } from './services/config.service';
-import { client } from './setup';
 import { jobQueue } from './services/job.service';
+import { client } from './setup';
 import {
   getChildProcessInfo,
   getCpuStatus,
@@ -34,74 +34,83 @@ const swaggerDocument = loadSwaggerDocument(__dirname);
 const app = express();
 
 app.use(express.json());
-app.use(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
-  // Use configService to get allowed origins
-  const allowedOrigins = await configService.getAllowedOrigins();
-  logInfo('CORS check', {
-    url: req.originalUrl,
-    method: req.method,
-    allowedOrigins,
-    origin: req.headers.origin,
-  });
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-  })(req, res, next);
-});
+app.use(
+  async (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ): Promise<void> => {
+    // Use configService to get allowed origins
+    const allowedOrigins = await configService.getAllowedOrigins();
+    logInfo('CORS check', {
+      url: req.originalUrl,
+      method: req.method,
+      allowedOrigins,
+      origin: req.headers.origin,
+    });
+    cors({
+      origin: allowedOrigins,
+      credentials: true,
+    })(req, res, next);
+  },
+);
 
 // Swagger API docs setup
 app.use('/docs', swaggerUi?.serve, swaggerUi?.setup(swaggerDocument));
-app.use(boundaryResponse);
+app.use(ResponseMiddleware.boundaryResponse);
 app.use(loggerMiddleware);
 
 // Public blog/category API (no auth)
 app.use('/api/public', publicBlogRouter);
 app.use('/api/auth', authRouter);
-app.get('/api/config/health', async (req: express.Request, res: express.Response): Promise<void> => {
-  try {
-    const [databaseStatus, redisStatus] = await Promise.all([
-      getDatabaseStatus(prisma),
-      getRedisStatus(client),
-    ]);
-    const memory = getMemoryStatus();
-    const { cpu, cpuLoad } = getCpuStatus();
-  const jobs = await jobQueue.getJobs();
-    const osStatus = getOsStatus();
-    const childProcessInfo = getChildProcessInfo();
-    const healthStatus: Record<string, any> = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      api: true,
-      database: databaseStatus,
-      redis: redisStatus,
-      uptime: process.uptime(),
-      memory,
-      cpu,
-      cpuLoad,
-      disk: null as string | null,
-      jobs,
-      port: env.PORT,
-      os: osStatus,
-      childProcess: childProcessInfo,
-    };
-    getDisk((disk: string | null) => {
-      healthStatus.disk = disk;
-      const statusCode = databaseStatus && redisStatus ? 200 : 503;
-      res.status(statusCode).json(healthStatus);
-    });
-  } catch (error: any) {
-    logError('Health check endpoint error:', { error });
-    res.status(500).json({
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      api: true,
-      database: false,
-      redis: false,
-      error: 'Health check failed',
-      jobs: [],
-    });
-  }
-});
+app.get(
+  '/api/config/health',
+  async (req: express.Request, res: express.Response): Promise<void> => {
+    try {
+      const [databaseStatus, redisStatus] = await Promise.all([
+        getDatabaseStatus(prisma),
+        getRedisStatus(client),
+      ]);
+      const memory = getMemoryStatus();
+      const { cpu, cpuLoad } = getCpuStatus();
+      const jobs = await jobQueue.getJobs();
+      const osStatus = getOsStatus();
+      const childProcessInfo = getChildProcessInfo();
+      const healthStatus: Record<string, any> = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        api: true,
+        database: databaseStatus,
+        redis: redisStatus,
+        uptime: process.uptime(),
+        memory,
+        cpu,
+        cpuLoad,
+        disk: null as string | null,
+        jobs,
+        port: env.PORT,
+        os: osStatus,
+        childProcess: childProcessInfo,
+      };
+      getDisk((disk: string | null) => {
+        healthStatus.disk = disk;
+        const statusCode = databaseStatus && redisStatus ? 200 : 503;
+        res.status(statusCode).json(healthStatus);
+      });
+    } catch (error: any) {
+      logError('Health check endpoint error:', { error });
+      res.status(500).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        api: true,
+        database: false,
+        redis: false,
+        error: 'Health check failed',
+        jobs: [],
+      });
+    }
+  },
+);
 
 // SSO authentication routes (no JWT required)
 app.use('/api/sso', ssoAuthRouter);
@@ -151,11 +160,7 @@ const cacheMiddlewareInstance = new CacheMiddleware({
   },
 });
 
-app.use(
-  '/api/admin',
-  cacheMiddlewareInstance.getMiddleware(),
-  adminRouter,
-);
+app.use('/api/admin', cacheMiddlewareInstance.getMiddleware(), adminRouter);
 // Serve admin GUI at /admin
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
 app.get('/', (req: express.Request, res: express.Response) => res.json({ status: 'ok' }));

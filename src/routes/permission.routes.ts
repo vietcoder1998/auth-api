@@ -1,20 +1,26 @@
-import { Router } from 'express';
-import {
-  getPermissions,
-  createPermission,
-  updatePermission,
-  deletePermission,
-  createPermissionWithSuperadmin,
-  addPermissionToSuperadmin,
-} from '../controllers/permission.controller';
+import { BaseRouter } from './base.route';
+import { permissionController } from '../controllers/permission.controller';
 
-const router = Router();
+class PermissionRouter extends BaseRouter<any, any, any> {
+  constructor() {
+    super('permissions', permissionController);
+    this.initializeCustomRoutes();
+  }
 
-router.get('/', getPermissions);
-router.post('/', createPermission);
-router.post('/with-superadmin', createPermissionWithSuperadmin);
-router.post('/:permissionId/add-to-superadmin', addPermissionToSuperadmin);
-router.put('/:id', updatePermission);
-router.delete('/:id', deletePermission);
+  private initializeCustomRoutes() {
+    // Override base routes with permission-specific methods
+    this.routes.get('/', permissionController.getPermissions.bind(permissionController));
+    this.routes.post('/', permissionController.createPermission.bind(permissionController));
+    this.routes.put('/:id', permissionController.updatePermission.bind(permissionController));
+    this.routes.delete('/:id', permissionController.deletePermission.bind(permissionController));
 
-export default router;
+    // Custom permission routes
+    this.routes.post('/with-superadmin', permissionController.createPermissionWithSuperadmin.bind(permissionController));
+    this.routes.post('/:permissionId/add-to-superadmin', permissionController.addPermissionToSuperadmin.bind(permissionController));
+    this.routes.put('/batch', permissionController.batchUpdatePermissions.bind(permissionController));
+  }
+}
+
+// Export an instance
+const permissionRouter = new PermissionRouter();
+export default permissionRouter.routes;

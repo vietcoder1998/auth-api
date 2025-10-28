@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { setPaginationMeta } from '../middlewares/response.middleware';
 import { client } from '../setup';
+import { ResponseMiddleware } from '../middlewares';
 
 export class CacheController {
   /**
@@ -90,7 +90,7 @@ export class CacheController {
       // Remove timestamp field from response (used only for sorting)
       const response = paginatedKeys.map(({ timestamp, ...rest }) => rest);
 
-      setPaginationMeta(req, total, pageNum, limitNum);
+      ResponseMiddleware.setPaginationMeta(req, total, pageNum, limitNum);
       res.json(response);
     } catch (error) {
       console.error('Error getting cache keys:', error);

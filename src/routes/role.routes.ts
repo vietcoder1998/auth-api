@@ -1,22 +1,25 @@
-import { Router } from 'express';
-import {
-  getRoles,
-  createRole,
-  updateRole,
-  deleteRole,
-  getPermissionsNotInRole,
-  addPermissionsToRole,
-} from '../controllers/role.controller';
+import { BaseRouter } from './base.route';
+import { roleController } from '../controllers/role.controller';
 
-const router = Router();
+class RoleRouter extends BaseRouter<any, any, any> {
+  constructor() {
+    super('roles', roleController);
+    this.initializeCustomRoutes();
+  }
 
-router.get('/', getRoles);
-router.post('/', createRole);
-router.put('/:id', updateRole);
-router.delete('/:id', deleteRole);
+  private initializeCustomRoutes() {
+    // Override base routes with role-specific methods
+    this.routes.get('/', roleController.getRoles.bind(roleController));
+    this.routes.post('/', roleController.createRole.bind(roleController));
+    this.routes.put('/:id', roleController.updateRole.bind(roleController));
+    this.routes.delete('/:id', roleController.deleteRole.bind(roleController));
 
-// New endpoints for managing permissions not in role
-router.get('/:id/permissions/available', getPermissionsNotInRole);
-router.post('/:id/permissions/add', addPermissionsToRole);
+    // Custom role routes for permission management
+    this.routes.get('/:id/permissions/available', roleController.getPermissionsNotInRole.bind(roleController));
+    this.routes.post('/:id/permissions/add', roleController.addPermissionsToRole.bind(roleController));
+  }
+}
 
-export default router;
+// Export an instance
+const roleRouter = new RoleRouter();
+export default roleRouter.routes;

@@ -1,9 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
-import { setPaginationMeta } from '../middlewares/response.middleware';
+import { BaseController } from './base.controller';
+import { ResponseMiddleware } from '../middlewares/response.middleware';
 const prisma = new PrismaClient();
 
-export async function getRoles(req: Request, res: Response) {
+export class RoleController extends BaseController<any, any, any> {
+  constructor() {
+    // We'll need to create a RoleService later, for now pass null
+    super(null as any);
+  }
+
+  async getRoles(req: Request, res: Response) {
   try {
     // Extract query parameters
     const {
@@ -35,12 +42,16 @@ export async function getRoles(req: Request, res: Response) {
 
     // Build orderBy clause
     const orderBy: any = {};
-    if (sortBy === 'name') {
-      orderBy.name = sortOrder;
-    } else if (sortBy === 'createdAt') {
-      orderBy.createdAt = sortOrder;
-    } else {
-      orderBy.createdAt = 'desc'; // Default
+    switch (sortBy) {
+      case 'name':
+        orderBy.name = sortOrder;
+        break;
+      case 'createdAt':
+        orderBy.createdAt = sortOrder;
+        break;
+      default:
+        orderBy.createdAt = 'desc';
+        break;
     }
 
     // Get total count for pagination
@@ -77,10 +88,10 @@ export async function getRoles(req: Request, res: Response) {
     });
 
     // Set pagination metadata for response middleware
-    setPaginationMeta(req, total, currentPage, currentLimit);
+    ResponseMiddleware.setPaginationMeta(req, total, currentPage, currentLimit);
 
     // Return paginated response
-    res.json({
+    this.sendSuccess(res, {
       data: roles,
       total,
       page: currentPage,
@@ -89,11 +100,11 @@ export async function getRoles(req: Request, res: Response) {
     });
   } catch (err) {
     console.error('Get roles error:', err);
-    res.status(500).json({ error: 'Failed to fetch roles' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function createRole(req: Request, res: Response) {
+  async createRole(req: Request, res: Response) {
   const { name, description, permissions } = req.body;
   try {
     const role = await prisma.role.create({
@@ -106,13 +117,13 @@ export async function createRole(req: Request, res: Response) {
       },
       include: { permissions: true },
     });
-    res.json(role);
+    this.sendSuccess(res, role);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create role' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function updateRole(req: Request, res: Response) {
+  async updateRole(req: Request, res: Response) {
   const { id } = req.params;
   const { name, description, permissions } = req.body;
   try {
@@ -127,25 +138,25 @@ export async function updateRole(req: Request, res: Response) {
       },
       include: { permissions: true },
     });
-    res.json(role);
+    this.sendSuccess(res, role);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update role' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function deleteRole(req: Request, res: Response) {
+  async deleteRole(req: Request, res: Response) {
   const { id } = req.params;
   try {
     await prisma.role.delete({
       where: { id },
     });
-    res.json({ message: 'Role deleted successfully' });
+    this.sendSuccess(res, null, 'Role deleted successfully');
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete role' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function getPermissionsNotInRole(req: Request, res: Response) {
+  async getPermissionsNotInRole(req: Request, res: Response) {
   try {
     const { id } = req.params; // role id
     const {
@@ -170,7 +181,7 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
     });
 
     if (!role) {
-      return res.status(404).json({ error: 'Role not found' });
+      return this.handleError(res, 'Role not found', 404);
     }
 
     // Get IDs of permissions already in the role
@@ -195,14 +206,19 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
 
     // Build orderBy clause
     const orderBy: any = {};
-    if (sortBy === 'name') {
-      orderBy.name = sortOrder;
-    } else if (sortBy === 'category') {
-      orderBy.category = sortOrder;
-    } else if (sortBy === 'createdAt') {
-      orderBy.createdAt = sortOrder;
-    } else {
-      orderBy.name = 'asc'; // Default
+    switch (sortBy) {
+      case 'name':
+        orderBy.name = sortOrder;
+        break;
+      case 'category':
+        orderBy.category = sortOrder;
+        break;
+      case 'createdAt':
+        orderBy.createdAt = sortOrder;
+        break;
+      default:
+        orderBy.name = 'asc';
+        break;
     }
 
     // Get total count for pagination
@@ -216,7 +232,7 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
       take: currentLimit,
     });
 
-    res.json({
+    this.sendSuccess(res, {
       data: permissions,
       total,
       page: currentPage,
@@ -231,17 +247,17 @@ export async function getPermissionsNotInRole(req: Request, res: Response) {
     });
   } catch (err) {
     console.error('Get permissions not in role error:', err);
-    res.status(500).json({ error: 'Failed to fetch permissions not in role' });
+    this.handleError(res, err);
   }
-}
+  }
 
-export async function addPermissionsToRole(req: Request, res: Response) {
+  async addPermissionsToRole(req: Request, res: Response) {
   try {
     const { id } = req.params; // role id
     const { permissionIds } = req.body;
 
     if (!permissionIds || !Array.isArray(permissionIds) || permissionIds.length === 0) {
-      return res.status(400).json({ error: 'Permission IDs array is required' });
+      return this.handleError(res, 'Permission IDs array is required', 400);
     }
 
     // Check if role exists
@@ -251,7 +267,7 @@ export async function addPermissionsToRole(req: Request, res: Response) {
     });
 
     if (!role) {
-      return res.status(404).json({ error: 'Role not found' });
+      return this.handleError(res, 'Role not found', 404);
     }
 
     // Get current permission IDs
@@ -261,7 +277,7 @@ export async function addPermissionsToRole(req: Request, res: Response) {
     const newPermissionIds = permissionIds.filter((pid) => !currentPermissionIds.includes(pid));
 
     if (newPermissionIds.length === 0) {
-      return res.status(400).json({ error: 'All provided permissions are already in the role' });
+      return this.handleError(res, 'All provided permissions are already in the role', 400);
     }
 
     // Update role with new permissions (connect additional permissions)
@@ -279,7 +295,7 @@ export async function addPermissionsToRole(req: Request, res: Response) {
       },
     });
 
-    res.json({
+    this.sendSuccess(res, {
       message: `Successfully added ${newPermissionIds.length} permission(s) to role`,
       role: updatedRole,
       addedPermissionsCount: newPermissionIds.length,
@@ -287,6 +303,9 @@ export async function addPermissionsToRole(req: Request, res: Response) {
     });
   } catch (err) {
     console.error('Add permissions to role error:', err);
-    res.status(500).json({ error: 'Failed to add permissions to role' });
+    this.handleError(res, err);
+  }
   }
 }
+
+export const roleController = new RoleController();

@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken, generateRefreshToken } from '../services/auth.service';
 import { client } from '../setup';
-import { setPaginationMeta } from '../middlewares/response.middleware';
+import { ResponseMiddleware } from '../middlewares';
 
 const prisma = new PrismaClient();
 
@@ -93,7 +93,7 @@ export async function getUsers(req: Request, res: Response) {
     });
 
     // Set pagination metadata for response middleware
-    setPaginationMeta(req, total, currentPage, currentLimit);
+    ResponseMiddleware.setPaginationMeta(req, total, currentPage, currentLimit);
 
     // Return paginated response
     res.json({

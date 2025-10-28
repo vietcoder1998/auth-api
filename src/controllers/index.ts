@@ -5,3 +5,4 @@ export * from './agent.controller';
 export * from './label.controller';
 export * from './entity_method.controller';
 export * from './entity.controller';
+export * from './permission.controller';

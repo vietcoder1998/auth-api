@@ -66,11 +66,11 @@ export class BaseController<T, Dto, Dro> {
    */
   protected sendSuccess(
     res: Response,
-    data: any,
+    pureData: any,
     message?: string,
     statusCode: number = 200
   ): void {
-    res.status(statusCode).json({...data, message: message ?? "Success", success: true});
+    res.status(statusCode).json({ data: pureData, message: message ?? "Success", success: true });
   }
 
   // ==================== CRUD OPERATIONS ====================
