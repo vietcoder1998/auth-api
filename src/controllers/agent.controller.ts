@@ -29,7 +29,7 @@ export class AgentController extends BaseController<any, AgentDto, AgentDto> {
       const currentLimit = Math.max(1, Math.min(100, parseInt(limit as string, 10)));
 
       const result = await this.agentService.getUserAgents(userId, currentPage, currentLimit, searchTerm);
-      this.sendSuccess(res, result);
+      this.sendSuccess(res, result.data);
     } catch (error) {
       this.handleError(res, error);
     }
