@@ -24,7 +24,7 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
     const { name, description, category, route, method } = data;
 
     // Check if permission already exists
-    const existingPermission = await this.permissionRepository.findByName(name);
+    const existingPermission = await this.permissionRepository.findByRouteAndMethod(route, method);
 
     if (existingPermission) {
       // Permission exists, find superadmin role and add permission to it
@@ -65,8 +65,6 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
       route: route || null,
       method: method || null,
     };
-
-    console.log('Service filtered data:', JSON.stringify(filteredData, null, 2));
 
     // Create permission (will automatically be assigned to superadmin role)
     return await this.permissionRepository.create(filteredData);

@@ -15,15 +15,33 @@ export class PermissionRepository extends BaseRepository<
     return this.model as PermissionModel;
   }
   async findByName(name: string) {
-    return this.model.findFirst({ where: { name } });
+    return this.permissionModel.findFirst({ where: { name } });
+  }
+
+  async findByNameAndMethod(name: string, method: string | null) {
+    return this.permissionModel.findFirst({ 
+      where: { 
+        name,
+        method: method || null
+      } 
+    });
+  }
+
+  async findByRouteAndMethod(route: string, method: string | null) {
+    return this.permissionModel.findFirst({ 
+      where: { 
+        route,
+        method: method || null
+      } 
+    });
   }
 
   async findByCategory(category: string) {
-    return this.model.findMany({ where: { category } });
+    return this.permissionModel.findMany({ where: { category } });
   }
 
   async findByMethod(method: string) {
-    return this.model.findMany({ where: { method } });
+    return this.permissionModel.findMany({ where: { method } });
   }
 
   override async create<T = PermissionDto, R = PermissionDro>(data: T): Promise<R> {
