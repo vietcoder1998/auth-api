@@ -70,14 +70,7 @@ export class BaseController<T, Dto, Dro> {
     message?: string,
     statusCode: number = 200
   ): void {
-    const response: any = {
-      success: true,
-      data,
-    };
-    if (message) {
-      response.message = message;
-    }
-    res.status(statusCode).json(response);
+    res.status(statusCode).json({...data, message: message ?? "Success", success: true});
   }
 
   // ==================== CRUD OPERATIONS ====================

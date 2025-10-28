@@ -126,14 +126,19 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
       ];
     }
     const orderBy: any = {};
-    if (sortBy === 'title') {
-      orderBy.title = sortOrder;
-    } else if (sortBy === 'createdAt') {
-      orderBy.createdAt = sortOrder;
-    } else if (sortBy === 'updatedAt') {
-      orderBy.updatedAt = sortOrder;
-    } else {
-      orderBy.updatedAt = 'desc';
+    switch (sortBy) {
+      case 'title':
+        orderBy.title = sortOrder;
+        break;
+      case 'createdAt':
+        orderBy.createdAt = sortOrder;
+        break;
+      case 'updatedAt':
+        orderBy.updatedAt = sortOrder;
+        break;
+      default:
+        orderBy.updatedAt = 'desc';
+        break;
     }
     const total = await prisma.conversation.count({ where: whereClause });
     const conversations = await prisma.conversation.findMany({

@@ -1,40 +1,35 @@
-import { Router } from 'express';
-import {
-  addMessage,
-  createConversation,
-  deleteConversation,
-  executeCommand,
-  getConversation,
-  getConversations,
-  getMessages,
-  updateConversation,
-} from '../controllers/conversation.controller';
-import {
-  createPromptHistory,
-  deletePromptHistory,
-  getPromptHistories,
-  updatePromptHistory,
-} from '../controllers/promptHistory.controller';
+import { BaseRouter } from './base.route';
+import { conversationController } from '../controllers/conversation.controller';
 
-const router = Router();
-// Prompt CRUD for a conversation
-router.post('/:id/prompts', createPromptHistory);
-router.get('/:id/prompts', getPromptHistories);
-router.put('/prompts/:id', updatePromptHistory);
-router.delete('/prompts/:id', deletePromptHistory);
+class ConversationRouter extends BaseRouter<any, any, any> {
+  constructor() {
+    super('conversations', conversationController);
+    this.initializeCustomRoutes();
+  }
 
-// Conversation CRUD operations
-router.get('/', getConversations);
-router.post('/', createConversation);
-router.get('/:id', getConversation);
-router.put('/:id', updateConversation);
-router.delete('/:id', deleteConversation);
+  private initializeCustomRoutes() {
+    // Prompt CRUD for a conversation
+    this.routes.post('/:id/prompts', conversationController.createPromptHistory.bind(conversationController));
+    this.routes.get('/:id/prompts', conversationController.getPromptHistories.bind(conversationController));
+    this.routes.put('/prompts/:id', conversationController.updatePromptHistory.bind(conversationController));
+    this.routes.delete('/prompts/:id', conversationController.deletePromptHistory.bind(conversationController));
 
-// Message operations
-router.get('/:id/messages', getMessages);
-router.post('/:id/messages', addMessage);
+    // Override base CRUD with custom conversation operations
+    this.routes.get('/', conversationController.getConversations.bind(conversationController));
+    this.routes.post('/', conversationController.createConversation.bind(conversationController));
+    this.routes.get('/:id', conversationController.getConversation.bind(conversationController));
+    this.routes.put('/:id', conversationController.updateConversation.bind(conversationController));
+    this.routes.delete('/:id', conversationController.deleteConversation.bind(conversationController));
 
-// Command operations
-router.post('/:id/command', executeCommand);
+    // Message operations
+    this.routes.get('/:id/messages', conversationController.getMessages.bind(conversationController));
+    this.routes.post('/:id/messages', conversationController.addMessage.bind(conversationController));
 
-export default router;
+    // Command operations
+    this.routes.post('/:id/command', conversationController.executeCommand.bind(conversationController));
+  }
+}
+
+// Export an instance
+const conversationRouter = new ConversationRouter();
+export default conversationRouter.routes;
