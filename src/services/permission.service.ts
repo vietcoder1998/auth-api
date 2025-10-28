@@ -1,31 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import { BaseService } from './base.service';
-import { PermissionRepository } from '../repositories/permission.repository';
-import { PermissionDto } from '../interfaces';
+import { PermissionDro, PermissionDto, PermissionModel } from '../interfaces';
+import { permissionRepository, PermissionRepository } from '../repositories';
 
 const prisma = new PrismaClient();
 
-export interface CreatePermissionData {
-  name: string;
-  description?: string;
-  category?: string;
-  route?: string;
-  method?: string;
-}
-
-export interface UpdatePermissionData {
-  name?: string;
-  description?: string;
-  category?: string;
-  route?: string;
-  method?: string;
-}
-
-export class PermissionService extends BaseService<any, PermissionDto, PermissionDto> {
+export class PermissionService extends BaseService<PermissionModel, PermissionDto, PermissionDto> {
   private permissionRepository: PermissionRepository;
 
-  constructor() {
-    const permissionRepository = new PermissionRepository();
+  constructor(permissionRepository: PermissionRepository) {
     super(permissionRepository);
     this.permissionRepository = permissionRepository;
   }
@@ -33,23 +16,16 @@ export class PermissionService extends BaseService<any, PermissionDto, Permissio
   /**
    * Create a new permission
    */
-  async createPermission(data: CreatePermissionData) {
-    const { name, description, category, route, method } = data;
-
+  async createPermission(data: PermissionDto): Promise<PermissionDro> {
     // Check if permission already exists
-    const existingPermission = await this.permissionRepository.findByName(name);
+    const existingPermission = await this.permissionRepository.findByName(data.name);
 
     if (existingPermission) {
       throw new Error('Permission with this name already exists');
     }
 
-    return await this.permissionRepository.create({
-      name,
-      description,
-      category: category || 'other',
-      route,
-      method,
-    } as any);
+    // Create permission (will automatically be assigned to superadmin role)
+    return await this.permissionRepository.create(data);
   }
   /**
    * Get permission by ID
@@ -67,7 +43,7 @@ export class PermissionService extends BaseService<any, PermissionDto, Permissio
   /**
    * Update permission
    */
-  async updatePermission(id: string, data: UpdatePermissionData) {
+  async updatePermission(id: string, data: PermissionDto) {
     return await this.permissionRepository.update(id, data);
   }
 
@@ -240,4 +216,4 @@ export class PermissionService extends BaseService<any, PermissionDto, Permissio
   }
 }
 
-export const permissionService = new PermissionService();
+export const permissionService = new PermissionService(permissionRepository);

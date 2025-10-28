@@ -1,21 +1,70 @@
+import { PermissionDto, PermissionModel } from '../interfaces';
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
-import { PermissionDto, PermissionModel } from '../interfaces';
 
-export class PermissionRepository extends BaseRepository<PermissionModel, PermissionDto, PermissionDto> {
-    constructor(permissionDelegate = prisma.permission) {
-        super(permissionDelegate);
+export class PermissionRepository extends BaseRepository<
+  PermissionModel,
+  PermissionDto,
+  PermissionDto
+> {
+  constructor(permissionDelegate = prisma.permission) {
+    super(permissionDelegate);
+  }
+
+  get permissionModel() {
+    return this.model as PermissionModel;
+  }
+  async findByName(name: string) {
+    return this.model.findFirst({ where: { name } });
+  }
+
+  async findByCategory(category: string) {
+    return this.model.findMany({ where: { category } });
+  }
+
+  async findByMethod(method: string) {
+    return this.model.findMany({ where: { method } });
+  }
+
+  override async create<Dto, Dro>(data: Dto): Promise<Dro> {
+    // Cast or transform data to the expected Prisma input type
+
+    const createdData = await this.permissionModel.create({ data: data as any });
+
+    // Automatically add new permission to superadmin role
+    try {
+      const superadminRole = await prisma.role.findUnique({
+        where: { name: 'superadmin' },
+        include: { permissions: true },
+      });
+
+      if (superadminRole) {
+        // Check if permission is already connected to superadmin
+        const hasPermission = superadminRole.permissions.some((p: any) => p.id === createdData.id);
+
+        if (!hasPermission) {
+          await prisma.role.update({
+            where: { id: superadminRole.id },
+            data: {
+              permissions: {
+                connect: { id: createdData.id },
+              },
+            },
+          });
+          console.log(
+            `Permission '${(createdData as any).name}' automatically added to superadmin role`,
+          );
+        }
+      } else {
+        console.warn('Superadmin role not found - permission created but not assigned');
+      }
+    } catch (error) {
+      console.error('Error adding permission to superadmin role:', error);
+      // Don't fail the entire operation if role assignment fails
     }
 
-    async findByName(name: string) {
-        return this.model.findFirst({ where: { name } });
-    }
-
-    async findByCategory(category: string) {
-        return this.model.findMany({ where: { category } });
-    }
-
-    async findByMethod(method: string) {
-        return this.model.findMany({ where: { method } });
-    }
+    return createdData as Dro;
+  }
 }
+
+export const permissionRepository = new PermissionRepository(prisma.permission);
