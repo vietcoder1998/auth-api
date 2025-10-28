@@ -1,7 +1,7 @@
 import { BaseRouter } from './base.route';
 import { roleController } from '../controllers/role.controller';
 
-class RoleRouter extends BaseRouter<any, any, any> {
+export class RoleRouter extends BaseRouter<any, any, any> {
   constructor() {
     super('roles', roleController);
     this.initializeRoutes();

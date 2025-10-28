@@ -1,35 +1,37 @@
-import { PrismaClient } from '@prisma/client';
-import { BaseService } from './base.service';
+import { Role } from '@prisma/client';
+import {
+  AddPermissionsResponse,
+  CreateRoleData,
+  PaginatedRolesResponse,
+  PaginatedUsersResponse,
+  PermissionsNotInRoleResponse,
+  RoleDto,
+  RoleModel,
+  UpdateRoleData,
+  RoleWithRelations,
+  PermissionDro,
+  RoleDro,
+} from '../interfaces';
 import { RoleRepository } from '../repositories/role.repository';
-import { RoleDto } from '../interfaces';
+import { UserRepository } from '../repositories/user.repository';
+import { prisma } from '../setup';
+import { BaseService } from './base.service';
 
-const prisma = new PrismaClient();
-
-export interface CreateRoleData {
-  name: string;
-  description?: string;
-  permissionIds?: string[];
-}
-
-export interface UpdateRoleData {
-  name?: string;
-  description?: string;
-  permissionIds?: string[];
-}
-
-export class RoleService extends BaseService<any, RoleDto, RoleDto> {
+export class RoleService extends BaseService<RoleModel, RoleDto, RoleDro> {
   private roleRepository: RoleRepository;
+  private userRepository: UserRepository;
 
   constructor() {
     const roleRepository = new RoleRepository();
     super(roleRepository);
     this.roleRepository = roleRepository;
+    this.userRepository = new UserRepository();
   }
 
   /**
    * Create a new role
    */
-  async createRole(data: CreateRoleData) {
+  async createRole(data: CreateRoleData): Promise<any> {
     const { name, description, permissionIds } = data;
 
     // Check if role already exists
@@ -52,10 +54,11 @@ export class RoleService extends BaseService<any, RoleDto, RoleDto> {
     // Get full role with relations
     return this.roleRepository.findWithPermissions(role.id);
   }
+
   /**
    * Get role by ID
    */
-  async getRoleById(id: string) {
+  async getRoleById(id: string): Promise<any> {
     const role = await this.roleRepository.findWithPermissions(id);
 
     if (!role) {
@@ -64,10 +67,11 @@ export class RoleService extends BaseService<any, RoleDto, RoleDto> {
 
     return role;
   }
+
   /**
    * Update role
    */
-  async updateRole(id: string, data: UpdateRoleData) {
+  async updateRole(id: string, data: UpdateRoleData): Promise<any> {
     const { permissionIds, ...updateData } = data;
 
     await this.roleRepository.update(id, {
@@ -85,9 +89,9 @@ export class RoleService extends BaseService<any, RoleDto, RoleDto> {
   /**
    * Delete role
    */
-  async deleteRole(id: string) {
+  async deleteRole(id: string): Promise<Role> {
     // Check if role has users
-    const usersCount = await prisma.user.count({
+    const usersCount = await this.userRepository.count({
       where: { roleId: id },
     });
 
@@ -95,14 +99,19 @@ export class RoleService extends BaseService<any, RoleDto, RoleDto> {
       throw new Error('Cannot delete role that has assigned users');
     }
 
-    return await prisma.role.delete({
-      where: { id },
-    });
+    return await this.roleRepository.delete(id);
   }
+
   /**
    * Get all roles with pagination
    */
-  async getRoles(page: number = 1, limit: number = 20, search?: string) {
+  async getRoles(
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ): Promise<PaginatedRolesResponse> {
     const skip = (page - 1) * limit;
 
     const where = search
@@ -111,64 +120,236 @@ export class RoleService extends BaseService<any, RoleDto, RoleDto> {
         }
       : {};
 
-    const [roles, total] = await Promise.all([
+    // Build orderBy clause
+    const orderBy: any = {};
+    switch (sortBy) {
+      case 'name':
+        orderBy.name = sortOrder;
+        break;
+      case 'createdAt':
+        orderBy.createdAt = sortOrder;
+        break;
+      default:
+        orderBy.createdAt = 'desc';
+        break;
+    }
+
+    const [roles, total] = (await Promise.all([
       this.roleRepository.search({
         where,
         skip,
         take: limit,
         include: {
-          permissions: true,
+          permissions: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+            },
+          },
+          users: {
+            select: {
+              id: true,
+              email: true,
+              nickname: true,
+            },
+          },
           _count: {
-            select: { users: true },
+            select: {
+              permissions: true,
+              users: true,
+            },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       }),
-      prisma.role.count({ where }),
-    ]);
+      this.roleRepository.count({ where }),
+    ])) as [any[], number];
 
     return {
-      data: roles,
+      data: roles as any,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     };
   }
+
   /**
-   * Add permission to role
+   * Get permissions not in role with pagination
    */
-  async addPermissionToRole(roleId: string, permissionId: string) {
-    await this.roleRepository.update(roleId, {
+  async getPermissionsNotInRole(
+    roleId: string,
+    page: number = 1,
+    limit: number = 50,
+    search?: string,
+    sortBy: string = 'name',
+    sortOrder: 'asc' | 'desc' = 'asc',
+  ): Promise<PermissionsNotInRoleResponse> {
+    const skip = (page - 1) * limit;
+
+    // First, get the role to ensure it exists
+    const role: RoleWithRelations | null = await this.roleRepository.findById(roleId, {
+      include: { permissions: { select: { id: true } } },
+    });
+
+    if (!role) {
+      throw new Error('Role not found');
+    }
+
+    // Get IDs of permissions already in the role
+    const rolePermissionIds = role?.permissions?.map((p: PermissionDro) => p?.id) || [];
+
+    // Build where clause for search and exclusion
+    const whereClause: any = {
+      id: {
+        notIn: rolePermissionIds,
+      },
+    };
+
+    // Search across multiple fields
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      whereClause.OR = [
+        { name: { contains: searchTerm } },
+        { description: { contains: searchTerm } },
+        { category: { contains: searchTerm } },
+      ];
+    }
+
+    // Build orderBy clause
+    const orderBy: any = {};
+    switch (sortBy) {
+      case 'name':
+        orderBy.name = sortOrder;
+        break;
+      case 'category':
+        orderBy.category = sortOrder;
+        break;
+      case 'createdAt':
+        orderBy.createdAt = sortOrder;
+        break;
+      default:
+        orderBy.name = 'asc';
+        break;
+    }
+
+    // Get total count and permissions
+    const [total, permissions] = (await Promise.all([
+      prisma.permission.count({ where: whereClause }),
+      prisma.permission.findMany({
+        where: whereClause,
+        orderBy,
+        skip,
+        take: limit,
+      }),
+    ])) as [number, PermissionDro[]];
+
+    return {
+      data: permissions as PermissionDro[],
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      roleInfo: {
+        id: role.id,
+        name: role.name,
+        description: role.description,
+        currentPermissionsCount: Number(rolePermissionIds?.length || 0),
+      },
+    };
+  }
+
+  /**
+   * Add multiple permissions to role
+   */
+  async addPermissionsToRole(
+    roleId: string,
+    permissionIds: string[],
+  ): Promise<AddPermissionsResponse> {
+    if (!permissionIds || !Array.isArray(permissionIds) || permissionIds.length === 0) {
+      throw new Error('Permission IDs array is required');
+    }
+
+    // Check if role exists
+    const role: RoleWithRelations | null = await this.roleRepository.findById(roleId, {
+      include: { permissions: true },
+    });
+
+    if (!role) {
+      throw new Error('Role not found');
+    }
+
+    // Get current permission IDs
+    const currentPermissionIds = role?.permissions?.map((p: PermissionDro) => p?.id) || [];
+
+    // Filter out permissions that are already in the role
+    const newPermissionIds = permissionIds?.filter((pid) => !currentPermissionIds.includes(pid));
+
+    if (newPermissionIds.length === 0) {
+      throw new Error('All provided permissions are already in the role');
+    }
+
+    // Update role with new permissions (connect additional permissions)
+    const updatedRole = await this.roleRepository.update(roleId, {
       permissions: {
-        connect: { id: permissionId },
+        connect: newPermissionIds.map((pid) => ({ id: pid })),
       },
     } as any);
 
-    return this.roleRepository.findWithPermissions(roleId);
+    // Get updated role with sorted permissions
+    const roleWithPermissions: any = await this.roleRepository.findById(roleId, {
+      include: {
+        permissions: {
+          orderBy: { name: 'asc' },
+        },
+      },
+    });
+
+    return {
+      message: `Successfully added ${newPermissionIds.length} permission(s) to role`,
+      role: roleWithPermissions,
+      addedPermissionsCount: newPermissionIds.length,
+      totalPermissionsCount: roleWithPermissions?.permissions?.length || 0,
+    };
+  }
+
+  /**
+   * Add permission to role
+   */
+  async addPermissionToRole(roleId: string, permissionId: string): Promise<any> {
+    return await this.roleRepository.update(roleId, {
+      permissions: {
+        connect: { id: permissionId },
+      },
+      include: { permissions: true },
+    });
   }
 
   /**
    * Remove permission from role
    */
-  async removePermissionFromRole(roleId: string, permissionId: string) {
-    await this.roleRepository.update(roleId, {
+  async removePermissionFromRole(roleId: string, permissionId: string): Promise<any> {
+    return await this.roleRepository.update(roleId, {
       permissions: {
         disconnect: { id: permissionId },
       },
-    } as any);
-
-    return this.roleRepository.findWithPermissions(roleId);
+      include: { permissions: true },
+    });
   }
 
   /**
    * Get role users
    */
-  async getRoleUsers(roleId: string, page: number = 1, limit: number = 20) {
+  async getRoleUsers(
+    roleId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<PaginatedUsersResponse> {
     const skip = (page - 1) * limit;
 
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
+    const [users, total] = (await Promise.all([
+      this.userRepository.search({
         where: { roleId },
         skip,
         take: limit,
@@ -181,11 +362,11 @@ export class RoleService extends BaseService<any, RoleDto, RoleDto> {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count({ where: { roleId } }),
-    ]);
+      this.userRepository.count({ where: { roleId } }),
+    ])) as [any[], number];
 
     return {
-      data: users,
+      data: users as any,
       total,
       page,
       limit,

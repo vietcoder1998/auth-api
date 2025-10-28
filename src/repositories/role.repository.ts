@@ -7,12 +7,16 @@ export class RoleRepository extends BaseRepository<RoleModel, RoleDto, RoleDto> 
         super(roleDelegate);
     }
 
+    get roleModel(): RoleModel {
+        return this.model
+    }
+    
     async findByName(name: string) {
-        return this.model.findFirst({ where: { name } });
+        return this.roleModel.findFirst({ where: { name } });
     }
 
     async findWithPermissions(id: string) {
-        return this.model.findUnique({
+        return this.roleModel.findUnique({
             where: { id },
             include: {
                 permissions: true
@@ -21,7 +25,7 @@ export class RoleRepository extends BaseRepository<RoleModel, RoleDto, RoleDto> 
     }
 
     async assignPermissions(roleId: string, permissionIds: string[]) {
-        return this.model.update({
+        return this.roleModel.update({
             where: { id: roleId },
             data: {
                 permissions: {
@@ -31,3 +35,5 @@ export class RoleRepository extends BaseRepository<RoleModel, RoleDto, RoleDto> 
         });
     }
 }
+
+export const roleRepository = new RoleRepository(prisma.role);

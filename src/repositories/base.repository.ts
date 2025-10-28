@@ -58,9 +58,9 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
    * const user = await userRepo.findById('123');
    * ```
    */
-  public override async findById<Dro>(id: string): Promise<Dro | null> {
+  public override async findById<Dro>(id: string, condition?: any): Promise<Dro | null> {
     // @ts-ignore
-    return (this.model as any).findUnique({ where: { id } });
+    return (this.model as any).findUnique({ where: { id }, ...condition });
   }
 
   /**
