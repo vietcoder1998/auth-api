@@ -39,7 +39,7 @@ export class RoleController extends BaseController<RoleModel, RoleDto, RoleDro> 
       ResponseMiddleware.setPaginationMeta(req, result.total, currentPage, currentLimit);
 
       // Return paginated response
-      this.sendSuccess(res, result);
+      this.sendSuccess(res, result.data);
     } catch (err) {
       console.error('Get roles error:', err);
       this.handleError(res, err);
@@ -118,7 +118,7 @@ export class RoleController extends BaseController<RoleModel, RoleDto, RoleDro> 
         sortOrder as 'asc' | 'desc'
       );
 
-      this.sendSuccess(res, result);
+      this.sendSuccess(res, { data: result.data, roleInfo: result.roleInfo });
     } catch (err) {
       console.error('Get permissions not in role error:', err);
       this.handleError(res, err);

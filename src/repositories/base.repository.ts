@@ -251,9 +251,9 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
    * const activeUserCount = await userRepo.count({ status: 'active' });
    * ```
    */
-  public override async count(where?: any): Promise<number> {
+  public override async count(condition?: any): Promise<number> {
     // @ts-ignore
-    return (this.model as T | any).count({ where });
+    return (this.model as T | any).count({ ...condition });
   }
 
   /**

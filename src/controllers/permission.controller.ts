@@ -45,7 +45,7 @@ export class PermissionController extends BaseController<
       ResponseMiddleware.setPaginationMeta(req, result.total, currentPage, currentLimit);
 
       // Return paginated response
-      this.sendSuccess(res, result);
+      this.sendSuccess(res, result.data);
     } catch (err) {
       logError('Failed to fetch permissions:', err);
       this.handleError(res, err);
