@@ -1,167 +1,218 @@
 import { Request, Response } from 'express';
-import { agentService } from '../services/agent.service';
+import { BaseController } from './base.controller';
+import { AgentService } from '../services/agent.service';
+import { AgentDto } from '../dto/agent.dto';
 
-// Get all agents for a user
-export async function getAgents(req: Request, res: Response) {
-  try {
-    const userId = req.user?.id;
-    const { page = '1', limit = '10', search = '', q = '', model } = req.query;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+export class AgentController extends BaseController<any, AgentDto, AgentDto> {
+  private agentService: AgentService;
+
+  constructor() {
+    const agentService = new AgentService();
+    super(agentService);
+    this.agentService = agentService;
+  }
+
+  /**
+   * GET /agents - Get all agents for authenticated user
+   */
+  async getUserAgents(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        this.handleError(res, 'User not authenticated', 401);
+        return;
+      }
+
+      const { page = '1', limit = '10', search = '', q = '' } = req.query;
+      const searchTerm = (q as string) || (search as string) || '';
+      const currentPage = Math.max(1, parseInt(page as string, 10));
+      const currentLimit = Math.max(1, Math.min(100, parseInt(limit as string, 10)));
+
+      const result = await this.agentService.getUserAgents(userId, currentPage, currentLimit, searchTerm);
+      this.sendSuccess(res, result);
+    } catch (error) {
+      this.handleError(res, error);
     }
-    // Use search param (q or search)
-    const searchTerm = (q as string) || (search as string) || '';
-    const currentPage = Math.max(1, parseInt(page as string, 10));
-    const currentLimit = Math.max(1, Math.min(100, parseInt(limit as string, 10)));
-    // Use agentService for logic
-    const result = await agentService.getUserAgents(userId, currentPage, currentLimit, searchTerm);
-    res.json(result);
-  } catch (err) {
-    console.error('Get agents error:', err);
-    res.status(500).json({ error: 'Failed to fetch agents' });
+  }
+
+  /**
+   * POST /agents - Create new agent
+   */
+  async create(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        this.handleError(res, 'User not authenticated', 401);
+        return;
+      }
+
+      const { name, description, model, aiModelId, personality, systemPrompt, config } = req.body;
+      if (!name) {
+        this.handleError(res, 'Agent name is required', 400);
+        return;
+      }
+
+      const agent = await this.agentService.createAgent({
+        userId,
+        name,
+        description,
+        model,
+        aiModelId,
+        personality,
+        systemPrompt,
+        config,
+      });
+      this.sendSuccess(res, agent);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * GET /agents/:id - Get single agent by ID
+   */
+  async findOne(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      if (!userId) {
+        this.handleError(res, 'User not authenticated', 401);
+        return;
+      }
+
+      const agent = await this.agentService.getAgentById(id);
+      if (!agent || agent.user.id !== userId) {
+        this.handleError(res, 'Agent not found', 404);
+        return;
+      }
+
+      this.sendSuccess(res, agent);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * PUT /agents/:id - Update agent
+   */
+  async update(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      if (!userId) {
+        this.handleError(res, 'User not authenticated', 401);
+        return;
+      }
+
+      // Check if agent belongs to user
+      const agent = await this.agentService.getAgentById(id);
+      if (!agent || agent.user.id !== userId) {
+        this.handleError(res, 'Agent not found', 404);
+        return;
+      }
+
+      const { name, description, model, aiModelId, personality, systemPrompt, config, isActive } = req.body;
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (model !== undefined) updateData.model = model;
+      if (aiModelId !== undefined) updateData.aiModelId = aiModelId;
+      if (personality !== undefined) updateData.personality = personality;
+      if (systemPrompt !== undefined) updateData.systemPrompt = systemPrompt;
+      if (config !== undefined) updateData.config = config;
+      if (isActive !== undefined) updateData.isActive = isActive;
+
+      const updatedAgent = await this.agentService.updateAgent(id, updateData);
+      this.sendSuccess(res, updatedAgent);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * DELETE /agents/:id - Delete agent
+   */
+  async delete(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      if (!userId) {
+        this.handleError(res, 'User not authenticated', 401);
+        return;
+      }
+
+      const agent = await this.agentService.getAgentById(id);
+      if (!agent || agent.user.id !== userId) {
+        this.handleError(res, 'Agent not found', 404);
+        return;
+      }
+
+      await this.agentService.deleteAgent(id);
+      this.sendSuccess(res, { message: 'Agent deleted successfully' });
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * POST /agents/:id/memories - Add memory to agent
+   */
+  async addMemory(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      const { type, content, metadata, importance = 1 } = req.body;
+
+      if (!userId) {
+        this.handleError(res, 'User not authenticated', 401);
+        return;
+      }
+
+      const agent = await this.agentService.getAgentById(id);
+      if (!agent || agent.user.id !== userId) {
+        this.handleError(res, 'Agent not found', 404);
+        return;
+      }
+
+      const memory = await this.agentService.addMemory(id, content, type, importance, metadata);
+      this.sendSuccess(res, memory);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * GET /agents/:id/memories - Get agent memories
+   */
+  async getMemories(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      const { type, page = '1', limit = '50' } = req.query;
+
+      if (!userId) {
+        this.handleError(res, 'User not authenticated', 401);
+        return;
+      }
+
+      const agent = await this.agentService.getAgentById(id);
+      if (!agent || agent.user.id !== userId) {
+        this.handleError(res, 'Agent not found', 404);
+        return;
+      }
+
+      const pageNum = parseInt(page as string);
+      const limitNum = parseInt(limit as string);
+      const result = await this.agentService.getAgentMemories(id, type as string, pageNum, limitNum);
+      this.sendSuccess(res, result);
+    } catch (error) {
+      this.handleError(res, error);
+    }
   }
 }
 
-// Create new agent
-export async function createAgent(req: Request, res: Response) {
-  try {
-    const userId = req.user?.id;
-    const { name, description, model, aiModelId, personality, systemPrompt, config } = req.body;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-    if (!name) {
-      return res.status(400).json({ error: 'Agent name is required' });
-    }
-    const agent = await agentService.createAgent({
-      userId,
-      name,
-      description,
-      model,
-      aiModelId,
-      personality,
-      systemPrompt,
-      config,
-    });
-    res.status(201).json(agent);
-  } catch (err) {
-    console.error('Create agent error:', err);
-    res.status(500).json({ error: 'Failed to create agent' });
-  }
-}
-
-// Get single agent
-export async function getAgent(req: Request, res: Response) {
-  try {
-    const userId = req.user?.id;
-    const { id } = req.params;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-    // Use agentService for logic
-    const agent = await agentService.getAgentById(id);
-    if (!agent || agent.user.id !== userId) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-    res.json(agent);
-  } catch (err) {
-    console.error('Get agent error:', err);
-    res.status(500).json({ error: 'Failed to fetch agent' });
-  }
-}
-
-// Update agent
-export async function updateAgent(req: Request, res: Response) {
-  try {
-    const userId = req.user?.id;
-    const { id } = req.params;
-    const { name, description, model, aiModelId, personality, systemPrompt, config, isActive } =
-      req.body;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-    // Check if agent belongs to user
-    const agent = await agentService.getAgentById(id);
-    if (!agent || agent.user.id !== userId) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (description !== undefined) updateData.description = description;
-    if (model !== undefined) updateData.model = model;
-    if (aiModelId !== undefined) updateData.aiModelId = aiModelId;
-    if (personality !== undefined) updateData.personality = personality;
-    if (systemPrompt !== undefined) updateData.systemPrompt = systemPrompt;
-    if (config !== undefined) updateData.config = config;
-    if (isActive !== undefined) updateData.isActive = isActive;
-    const updatedAgent = await agentService.updateAgent(id, updateData);
-    res.json(updatedAgent);
-  } catch (err) {
-    console.error('Update agent error:', err);
-    res.status(500).json({ error: 'Failed to update agent' });
-  }
-}
-
-// Delete agent
-export async function deleteAgent(req: Request, res: Response) {
-  try {
-    const userId = req.user?.id;
-    const { id } = req.params;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-    const agent = await agentService.getAgentById(id);
-    if (!agent || agent.user.id !== userId) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-    await agentService.deleteAgent(id);
-    res.json({ message: 'Agent deleted successfully' });
-  } catch (err) {
-    console.error('Delete agent error:', err);
-    res.status(500).json({ error: 'Failed to delete agent' });
-  }
-}
-
-// Add memory to agent
-export async function addAgentMemory(req: Request, res: Response) {
-  try {
-    const userId = req.user?.id;
-    const { id } = req.params;
-    const { type, content, metadata, importance = 1 } = req.body;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-    const agent = await agentService.getAgentById(id);
-    if (!agent || agent.user.id !== userId) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-    const memory = await agentService.addMemory(id, content, type, importance, metadata);
-    res.status(201).json(memory);
-  } catch (err) {
-    console.error('Add agent memory error:', err);
-    res.status(500).json({ error: 'Failed to add memory' });
-  }
-}
-
-// Get agent memories
-export async function getAgentMemories(req: Request, res: Response) {
-  try {
-    const userId = req.user?.id;
-    const { id } = req.params;
-    const { type, page = 1, limit = 50 } = req.query;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-    const agent = await agentService.getAgentById(id);
-    if (!agent || agent.user.id !== userId) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const result = await agentService.getAgentMemories(id, type as string, pageNum, limitNum);
-    res.json(result);
-  } catch (err) {
-    console.error('Get agent memories error:', err);
-    res.status(500).json({ error: 'Failed to fetch memories' });
-  }
-}
+// Export singleton instance
+export const agentController = new AgentController();

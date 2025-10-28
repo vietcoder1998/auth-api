@@ -149,6 +149,7 @@ export class AgentService extends BaseService<any, AgentDto, AgentDto> {
       personality: agent.personality ? JSON.parse(agent.personality) : null,
       config: agent.config ? JSON.parse(agent.config) : null,
       model: agent.model || null,
+      tool: agent.tools ?? []
     }));
 
     return {

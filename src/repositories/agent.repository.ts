@@ -51,6 +51,29 @@ export class AgentRepository extends BaseRepository<AgentModel, AgentDto, AgentD
             take,
             include: {
                 model: true,
+                tools: {
+                    include: {
+                        tool: {
+                            include: {
+                                commands: {
+                                    where: { enabled: true },
+                                    orderBy: { createdAt: 'desc' },
+                                },
+                            },
+                        },
+                    },
+                },
+                conversations: {
+                    orderBy: { updatedAt: 'desc' },
+                    take: 5,
+                    include: {
+                        _count: {
+                            select: {
+                                messages: true,
+                            },
+                        },
+                    },
+                },
                 _count: {
                     select: {
                         conversations: true,
