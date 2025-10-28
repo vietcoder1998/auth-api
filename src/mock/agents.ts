@@ -110,6 +110,28 @@ export const mockAgents = [
     isActive: true,
     ownerId: 'user-id',
   },
+  {
+    id: 'agent-006',
+    name: 'Permission Manager Agent',
+    description:
+      'AI assistant specialized in managing permissions and access control. Handles CRUD operations for permissions, roles, and access management.',
+    model: 'gpt-4',
+    personality: JSON.stringify({
+      traits: ['precise', 'security-focused', 'methodical', 'reliable'],
+      tone: 'professional',
+      responseStyle: 'structured',
+    }),
+    systemPrompt:
+      'You are a security and permission management expert. Help users manage permissions, roles, and access control. Always prioritize security and follow the principle of least privilege. Provide clear explanations of permission changes and their implications.',
+    config: JSON.stringify({
+      temperature: 0.2,
+      max_tokens: 2000,
+      presence_penalty: 0.0,
+      frequency_penalty: 0.0,
+    }),
+    isActive: true,
+    ownerId: 'super-admin-id',
+  },
 ];
 
 // Mock data for agent memories
@@ -144,6 +166,28 @@ export const mockAgentMemories = [
       source: 'business-analysis',
     }),
   },
+  {
+    agentId: 'agent-006',
+    type: 'knowledge_base',
+    content:
+      'Permission system follows role-based access control (RBAC). Common categories: user, admin, system, api. Follows principle of least privilege.',
+    importance: 9,
+    metadata: JSON.stringify({
+      tags: ['permissions', 'rbac', 'security', 'access-control'],
+      source: 'system-knowledge',
+    }),
+  },
+  {
+    agentId: 'agent-006',
+    type: 'long_term',
+    content:
+      'Recent permission changes: Created user.read, user.write, admin.manage. Deleted deprecated legacy.access permission.',
+    importance: 7,
+    metadata: JSON.stringify({
+      tags: ['audit', 'permission-changes', 'history'],
+      source: 'permission-audit-log',
+    }),
+  },
 ];
 
 // Mock data for agent tools
@@ -169,6 +213,17 @@ export const mockAgentTools = [
     config: JSON.stringify({
       provider: 'bloomberg',
       data_types: ['stocks', 'forex', 'commodities'],
+    }),
+    enabled: true,
+  },
+  {
+    agentId: 'agent-006',
+    name: 'Permission Manager', // Must match the tool name in mockTools
+    type: 'api',
+    config: JSON.stringify({
+      baseUrl: '/api/permission',
+      supportedOperations: ['create', 'read', 'update', 'delete', 'search'],
+      capabilities: ['CRUD', 'search_by_name', 'search_by_category', 'search_by_method'],
     }),
     enabled: true,
   },
@@ -231,5 +286,176 @@ export const mockAgentTasks = [
     status: 'failed',
     error: 'API rate limit exceeded',
     startedAt: new Date('2024-01-15T08:00:00Z'),
+  },
+  {
+    agentId: 'agent-006',
+    name: 'CREATE_PERMISSION',
+    input: JSON.stringify({
+      command: 'CREATE_PERMISSION',
+      params: {
+        name: 'user.profile.read',
+        description: 'Allow users to read their own profile information',
+        category: 'user',
+        route: '/api/users/profile',
+        method: 'GET',
+      },
+    }),
+    output: JSON.stringify({
+      success: true,
+      permission: {
+        id: 'perm-001',
+        name: 'user.profile.read',
+        category: 'user',
+        created: true,
+      },
+    }),
+    status: 'completed',
+    startedAt: new Date('2024-01-15T09:00:00Z'),
+  },
+  {
+    agentId: 'agent-006',
+    name: 'LIST_PERMISSIONS',
+    input: JSON.stringify({
+      command: 'LIST_PERMISSIONS',
+      params: {
+        category: 'user',
+        method: 'GET',
+      },
+    }),
+    output: JSON.stringify({
+      success: true,
+      permissions: [
+        { name: 'user.profile.read', category: 'user', method: 'GET' },
+        { name: 'user.profile.update', category: 'user', method: 'PUT' },
+        { name: 'user.settings.read', category: 'user', method: 'GET' },
+      ],
+      total: 3,
+    }),
+    status: 'completed',
+    startedAt: new Date('2024-01-15T09:30:00Z'),
+  },
+  {
+    agentId: 'agent-006',
+    name: 'UPDATE_PERMISSION',
+    input: JSON.stringify({
+      command: 'UPDATE_PERMISSION',
+      params: {
+        id: 'perm-001',
+        description: 'Allow users to read and view their profile information and settings',
+        category: 'user',
+      },
+    }),
+    output: JSON.stringify({
+      success: true,
+      updated: true,
+      permission: {
+        id: 'perm-001',
+        name: 'user.profile.read',
+        description: 'Allow users to read and view their profile information and settings',
+      },
+    }),
+    status: 'completed',
+    startedAt: new Date('2024-01-15T10:00:00Z'),
+  },
+  {
+    agentId: 'agent-006',
+    name: 'GET_PERMISSION',
+    input: JSON.stringify({
+      command: 'GET_PERMISSION',
+      params: {
+        id: 'perm-001',
+      },
+    }),
+    output: JSON.stringify({
+      success: true,
+      permission: {
+        id: 'perm-001',
+        name: 'user.profile.read',
+        description: 'Allow users to read and view their profile information and settings',
+        category: 'user',
+        route: '/api/users/profile',
+        method: 'GET',
+      },
+    }),
+    status: 'completed',
+    startedAt: new Date('2024-01-15T10:30:00Z'),
+  },
+  {
+    agentId: 'agent-006',
+    name: 'FIND_PERMISSION_BY_NAME',
+    input: JSON.stringify({
+      command: 'FIND_PERMISSION_BY_NAME',
+      params: {
+        name: 'user.profile.read',
+      },
+    }),
+    output: JSON.stringify({
+      success: true,
+      permission: {
+        id: 'perm-001',
+        name: 'user.profile.read',
+        description: 'Allow users to read and view their profile information and settings',
+        category: 'user',
+      },
+    }),
+    status: 'completed',
+    startedAt: new Date('2024-01-15T11:00:00Z'),
+  },
+  {
+    agentId: 'agent-006',
+    name: 'FIND_PERMISSIONS_BY_CATEGORY',
+    input: JSON.stringify({
+      command: 'FIND_PERMISSIONS_BY_CATEGORY',
+      params: {
+        category: 'admin',
+      },
+    }),
+    output: JSON.stringify({
+      success: true,
+      permissions: [
+        { name: 'admin.users.manage', category: 'admin', method: 'POST' },
+        { name: 'admin.roles.manage', category: 'admin', method: 'PUT' },
+      ],
+      total: 2,
+    }),
+    status: 'completed',
+    startedAt: new Date('2024-01-15T11:30:00Z'),
+  },
+  {
+    agentId: 'agent-006',
+    name: 'FIND_PERMISSIONS_BY_METHOD',
+    input: JSON.stringify({
+      command: 'FIND_PERMISSIONS_BY_METHOD',
+      params: {
+        method: 'POST',
+      },
+    }),
+    output: JSON.stringify({
+      success: true,
+      permissions: [
+        { name: 'user.create', category: 'user', method: 'POST' },
+        { name: 'admin.users.manage', category: 'admin', method: 'POST' },
+      ],
+      total: 2,
+    }),
+    status: 'completed',
+    startedAt: new Date('2024-01-15T12:00:00Z'),
+  },
+  {
+    agentId: 'agent-006',
+    name: 'DELETE_PERMISSION',
+    input: JSON.stringify({
+      command: 'DELETE_PERMISSION',
+      params: {
+        id: 'perm-legacy-001',
+      },
+    }),
+    output: JSON.stringify({
+      success: true,
+      deleted: true,
+      message: 'Permission perm-legacy-001 has been permanently deleted',
+    }),
+    status: 'completed',
+    startedAt: new Date('2024-01-15T12:30:00Z'),
   },
 ];

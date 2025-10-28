@@ -7,6 +7,10 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> 
         super(toolDelegate);
     }
 
+    async findByName(name: string) {
+        return this.model.findUnique({ where: { name } });
+    }
+
     async enableTool(agentId: string, name: string) {
         // Enable tool for a specific agent (many-to-many)
         return prisma.agentTool.updateMany({

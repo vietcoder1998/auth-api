@@ -21,4 +21,14 @@ export const mockTools = [
     config: JSON.stringify({ smtp: 'smtp.example.com' }),
     enabled: false,
   },
+  {
+    name: 'Permission Manager',
+    description: 'CRUD operations for permission management',
+    type: 'api',
+    config: JSON.stringify({ 
+      baseUrl: '/api/permission',
+      supportedMethods: ['GET', 'POST', 'PUT', 'DELETE']
+    }),
+    enabled: true,
+  },
 ];
