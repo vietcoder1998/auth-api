@@ -1,1 +1,7 @@
+export * from './base.controller'
 export * from './tool.controller';
+export * from './user.controller';
+export * from './agent.controller';
+export * from './label.controller';
+export * from './entity_method.controller';
+export * from './entity.controller';

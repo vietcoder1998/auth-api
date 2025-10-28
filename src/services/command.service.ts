@@ -394,3 +394,5 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
     return command as CommandDro;
   }
 }
+
+export const commandService = new CommandService();

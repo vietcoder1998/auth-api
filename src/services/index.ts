@@ -36,17 +36,11 @@ export { seedService } from './seed.service';
 
 // Service types
 export type { CreateUserData, UpdateUserData } from './user.service';
-
 export type { CreateRoleData, UpdateRoleData } from './role.service';
-
 export type { CreatePermissionData, UpdatePermissionData } from './permission.service';
-
 export type { CreateApiKeyData, UpdateApiKeyData, ApiUsageLogData } from './apiKey.service';
-
 export type { CreateTokenData, TokenPayload } from './token.service';
-
 export type { CreateSSOData, UpdateSSOData } from './sso.service';
-
 export type {
   CreateMailData,
   CreateMailTemplateData,
@@ -55,14 +49,11 @@ export type {
 
 export type { CreateAgentData, UpdateAgentData } from './agent.service';
 
-export type {
-  CreateConversationData,
-  UpdateConversationData,
-  CreateMessageData,
-} from './conversation.service';
-
 export type { CommandResult, CommandContext } from './command.service';
 
 export type { CreateConfigData, UpdateConfigData } from './config.service';
 
 export type { LLMResponse, LLMMessage } from './llm.service';
+
+export * from './entitymethod.service';
+export * from './entity.service';

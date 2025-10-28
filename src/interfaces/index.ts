@@ -30,3 +30,5 @@ export * from './entitylabel.interface';
 export * from './document.interface';
 export * from './loginhistory.interface';
 export * from './logichistory.interface';
+export * from './entity.interface';
+export * from './entitymethod.interface';
