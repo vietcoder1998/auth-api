@@ -1,59 +1,43 @@
-// Core services
-export { userService } from './user.service';
-export { roleService } from './role.service';
-export { permissionService } from './permission.service';
-export { configService } from './config.service';
-export { faqService } from './faq.service';
-export { documentService } from './document.service';
+// 🚀 Auto-generated exports for all services
 
-// Authentication & Security
-export { apiKeyService } from './apiKey.service';
-export { tokenService } from './token.service';
-export { ssoService } from './sso.service';
-
-// AI Services
-export { aiKeyService } from './aiKey.service';
-export { aiModelService } from './aiModel.service';
-export { aiPlatformService } from './aiPlatform.service';
-export { promptTemplateService } from './promptTemplate.service';
-export { promptHistoryService } from './promptHistory.service';
-
-// Communication
-export { mailService } from './mail.service';
-
-// AI & Conversation
-export { llmService } from './llm.service';
-export { agentService } from './agent.service';
-export { conversationService } from './conversation.service';
-export { commandService } from './command.service';
-
-// Tracking & History
-export { historyService } from './history.service';
-export { entityLabelService } from './entityLabel.service';
-
-// Database Management
-export { seedService } from './seed.service';
-
-// Service types
-export type { CreateUserData, UpdateUserData } from './user.service';
-export type { CreateRoleData, UpdateRoleData } from './role.service';
-export type { CreatePermissionData, UpdatePermissionData } from './permission.service';
-export type { CreateApiKeyData, UpdateApiKeyData, ApiUsageLogData } from './apiKey.service';
-export type { CreateTokenData, TokenPayload } from './token.service';
-export type { CreateSSOData, UpdateSSOData } from './sso.service';
-export type {
-  CreateMailData,
-  CreateMailTemplateData,
-  UpdateMailTemplateData,
-} from './mail.service';
-
-export type { CreateAgentData, UpdateAgentData } from './agent.service';
-
-export type { CommandResult, CommandContext } from './command.service';
-
-export type { CreateConfigData, UpdateConfigData } from './config.service';
-
-export type { LLMResponse, LLMMessage } from './llm.service';
-
-export * from './entitymethod.service';
+export * from './agent.service';
+export * from './aiKey.service';
+export * from './aiModel.service';
+export * from './aiPlatform.service';
+export * from './apiKey.service';
+export * from './auth.service';
+export * from './base.service';
+export * from './billing.service';
+export * from './cloude.service';
+export * from './command.service';
+export * from './config.service';
+export * from './conversation.service';
+export * from './database-connection.service';
+export * from './document.service';
 export * from './entity.service';
+export * from './entityLabel.service';
+export * from './entitymethod.service';
+export * from './faq.service';
+export * from './gemini.service';
+export * from './gpt.service';
+export * from './history.service';
+export * from './job.service';
+export * from './llm.service';
+export * from './logger.service';
+export * from './mail.service';
+export * from './memory.service';
+export * from './mock.service';
+export * from './permission.service';
+export * from './prompt.service';
+export * from './promptHistory.service';
+export * from './promptTemplate.service';
+export * from './role.service';
+export * from './seed.service';
+export * from './socket.service';
+export * from './sso.service';
+export * from './system.service';
+export * from './token.service';
+export * from './tool.service';
+export * from './toolCommand.service';
+export * from './user.service';
+export * from './vector.service';

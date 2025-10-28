@@ -45,4 +45,5 @@ export class CloudService {
   }
 }
 
-export default CloudService;
+
+export const cloudService = new CloudService();
