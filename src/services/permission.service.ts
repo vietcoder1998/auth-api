@@ -1,16 +1,19 @@
 import { PrismaClient } from '@prisma/client';
-import { BaseService } from './base.service';
 import { PermissionDro, PermissionDto, PermissionModel } from '../interfaces';
 import { permissionRepository, PermissionRepository } from '../repositories';
+import { RoleRepository } from '../repositories/role.repository';
+import { BaseService } from './base.service';
 
 const prisma = new PrismaClient();
 
 export class PermissionService extends BaseService<PermissionModel, PermissionDto, PermissionDto> {
   private permissionRepository: PermissionRepository;
+  private roleRepository: RoleRepository;
 
   constructor(permissionRepository: PermissionRepository) {
     super(permissionRepository);
     this.permissionRepository = permissionRepository;
+    this.roleRepository = new RoleRepository();
   }
 
   /**
@@ -19,17 +22,44 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
   async createPermission(data: any): Promise<PermissionDro> {
     // Extract only valid Prisma Permission fields (ignore resource, action, etc.)
     const { name, description, category, route, method } = data;
-    
+
     // Check if permission already exists
     const existingPermission = await this.permissionRepository.findByName(name);
 
     if (existingPermission) {
-      throw new Error('Permission with this name already exists');
+      // Permission exists, find superadmin role and add permission to it
+      const superadminRole = await this.roleRepository.findByName('superadmin');
+
+      if (superadminRole) {
+        // Get role with permissions to check if already assigned
+        const roleWithPermissions = await this.roleRepository.findWithPermissions(
+          superadminRole.id,
+        );
+
+        if (roleWithPermissions) {
+          const hasPermission = roleWithPermissions.permissions.some(
+            (p: any) => p.id === existingPermission.id,
+          );
+
+          if (!hasPermission) {
+            // Add existing permission to superadmin role
+            await this.roleRepository.assignPermissions(superadminRole.id, [existingPermission.id]);
+            console.log(`Existing permission '${name}' added to superadmin role`);
+          } else {
+            console.log(`Permission '${name}' already assigned to superadmin role`);
+          }
+        }
+      } else {
+        console.warn('Superadmin role not found - cannot assign existing permission');
+      }
+
+      // Return the existing permission
+      return existingPermission as PermissionDro;
     }
 
     // Create filtered data object with only valid Prisma fields
     const filteredData: PermissionDto = {
-      name: name ?? "",
+      name: name ?? '',
       description: description || '',
       category: category || 'other',
       route: route || null,
@@ -79,7 +109,7 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
     }
 
     return await this.permissionRepository.delete(id);
-  }  /**
+  } /**
    * Get all permissions with pagination
    */
   async getPermissions(page: number = 1, limit: number = 20, search?: string, category?: string) {

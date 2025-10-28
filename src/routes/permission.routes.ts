@@ -4,13 +4,13 @@ import { permissionController } from '../controllers/permission.controller';
 class PermissionRouter extends BaseRouter<any, any, any> {
   constructor() {
     super('permissions', permissionController);
-    this.initializeCustomRoutes();
+    this.initializeRoutes();
   }
 
-  private initializeCustomRoutes() {
+  override initializeRoutes() {
     // Override base routes with permission-specific methods
     this.routes.get('/', permissionController.getPermissions.bind(permissionController));
-    this.routes.post('/', permissionController.createPermission.bind(permissionController));
+    this.routes.post('/', permissionController.createPermissionWithSuperadmin.bind(permissionController));
     this.routes.put('/:id', permissionController.updatePermission.bind(permissionController));
     this.routes.delete('/:id', permissionController.deletePermission.bind(permissionController));
 
