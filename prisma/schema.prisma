@@ -860,6 +860,7 @@ model Entity {
   methods     EntityMethod[] // Relation: one Entity -> many EntityMethod
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  @@map("entity")
 }
 
 model EntityMethod {
@@ -870,4 +871,5 @@ model EntityMethod {
   entity      Entity?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  @@map("entity_method")
 }
