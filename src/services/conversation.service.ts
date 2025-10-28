@@ -1,28 +1,24 @@
-import { PrismaClient } from '@prisma/client';
-import { BaseService } from './base.service';
-import { ConversationRepository } from '../repositories/conversation.repository';
-import { MessageRepository } from '../repositories/message.repository';
-import { ConversationDto } from '../interfaces';
-import { llmService } from './llm.service';
-import { MemoryService } from './memory.service';
-import { CacheMiddleware } from '../middlewares/cache.middleware';
-import { prisma } from '../setup';
 import {
-  ConversationPromptHistory,
-  ConversationPromptHistoryList,
+  ConversationDetail,
   ConversationListItem,
   ConversationListResponse,
-  ConversationDetail,
+  ConversationPromptHistory,
   ConversationStats,
-  CreateConversationData,
-  UpdateConversationData,
-  DeleteResponse,
+  DeleteResponse
 } from '../dto/conversation.dto';
 import {
-  MessageResponse,
-  MessageListResponse,
   CreateMessageData,
+  MessageListResponse,
+  MessageResponse,
 } from '../dto/message.dto';
+import { ConversationDto } from '../interfaces';
+import { cacheMiddleware } from '../middlewares/cache.middleware';
+import { ConversationRepository } from '../repositories/conversation.repository';
+import { MessageRepository } from '../repositories/message.repository';
+import { prisma } from '../setup';
+import { BaseService } from './base.service';
+import { llmService } from './llm.service';
+import { MemoryService } from './memory.service';
 
 export class ConversationService extends BaseService<any, ConversationDto, ConversationDto> {
   private conversationRepository: ConversationRepository;
@@ -47,7 +43,7 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
     });
     // Invalidate cache for conversations after prompt
     try {
-      await CacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
+      await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
     } catch (err) {
       console.error('Failed to invalidate cache after prompt:', err);
     }
@@ -178,7 +174,7 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
       limit: currentLimit,
       totalPages: Math.ceil(total / currentLimit),
     };
-  }  async createConversation(userId: string, agentId: string, title?: string): Promise<ConversationListItem> {
+  } async createConversation(userId: string, agentId: string, title?: string): Promise<ConversationListItem> {
     const agent = await prisma.agent.findFirst({
       where: { id: agentId, userId },
     });
@@ -325,9 +321,9 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
       messages: {
         data: Array.isArray(parsedConversation.messages)
           ? parsedConversation.messages.map((msg) => ({
-              ...msg,
-              tokens: msg.tokens ?? -1,
-            }))
+            ...msg,
+            tokens: msg.tokens ?? -1,
+          }))
           : [],
         total: Array.isArray(parsedConversation.messages) ? parsedConversation.messages.length : 0,
         page: 1,
@@ -440,7 +436,7 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
 
     // Invalidate cache for conversations after message
     try {
-      await CacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
+      await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
     } catch (err) {
       console.error('Failed to invalidate cache after message:', err);
     }
