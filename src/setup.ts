@@ -136,6 +136,82 @@ export class Setup {
   }
 
   /**
+   * Change Redis connection
+   */
+  public async changeRedisConnection(redisUrl: string): Promise<void> {
+    console.log('🔄 Changing Redis connection...');
+    
+    // Disconnect existing Redis client if connected
+    if (this._redisClient && this._redisClient.isOpen) {
+      await this._redisClient.disconnect();
+      console.log('✅ Previous Redis disconnected');
+    }
+
+    // Create new Redis client
+    this._redisClient = rd.createClient({ url: redisUrl });
+    this._redisClient.on('error', (err: Error) =>
+      console.error('❌ Redis Error:', err)
+    );
+
+    // Connect to new Redis
+    await this._redisClient.connect();
+    console.log('✅ New Redis connected');
+  }
+
+  /**
+   * Change Prisma connection
+   */
+  public async changePrismaConnection(databaseUrl: string): Promise<void> {
+    console.log('🔄 Changing Prisma connection...');
+    
+    // Disconnect existing Prisma client if connected
+    if (this._prisma) {
+      await this._prisma.$disconnect();
+      this._prisma = null;
+      console.log('✅ Previous Prisma disconnected');
+    }
+
+    // Create new Prisma client with new database URL
+    this._prisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: databaseUrl
+        }
+      },
+      log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+    });
+
+    // Connect to new database
+    await this._prisma.$connect();
+    console.log('✅ New Prisma connected');
+  }
+
+  /**
+   * Reconnect to both databases
+   */
+  public async reconnect(): Promise<void> {
+    console.log('🔄 Reconnecting to databases...');
+    
+    this._isConnected = false;
+    await this.disconnect();
+    await this.connect();
+    
+    console.log('🚀 Reconnection complete');
+  }
+
+  /**
+   * Test connection to both databases
+   */
+  public async testConnections(): Promise<{ prisma: boolean; redis: boolean }> {
+    console.log('🧪 Testing connections...');
+    
+    const results = await this.healthCheck();
+    
+    console.log('🧪 Connection test results:', results);
+    return results;
+  }
+
+  /**
    * Setup graceful shutdown
    */
   public setupGracefulShutdown(): void {
