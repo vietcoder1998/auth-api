@@ -411,6 +411,51 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
     return commands;
   }
 
+  /**
+   * Override search method to include relationships with tools and entity methods
+   * @param params - Search parameters
+   * @returns Array of commands with tool and entity method relationships
+   */
+  override async search<CommandDro>(params: any): Promise<CommandDro[]> {
+    const query = this.buildQueryFromParams(params);
+    
+    // Merge the include relationships with any existing query
+    const searchQuery = {
+      ...query,
+      include: {
+        tool: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            description: true,
+            enabled: true,
+          },
+        },
+        entityMethods: {
+          include: {
+            entityMethod: {
+              include: {
+                entity: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        // Include existing relationships if any
+        ...query.include,
+      },
+    };
+
+    const commands = await prisma.command.findMany(searchQuery);
+    return commands as unknown as CommandDro[];
+  }
+
   private convertResultToDro(result: CommandResult): CommandDro {
     return result as unknown as CommandDro
   }
