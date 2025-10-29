@@ -18,6 +18,9 @@ export class AIModelRoutes extends BaseRouter<AIModelModel, AIModelDto, AIModelD
 
     // Custom route for fetching Gemini models
     this.routes.post('/fetch-gemini-models', aiModelController.fetchGeminiModels.bind(aiModelController));
+    // Generic models selection endpoint (query or body driven)
+    this.routes.get('/models', aiModelController.selectModels.bind(aiModelController));
+    this.routes.post('/models/select', aiModelController.selectModels.bind(aiModelController));
   }
 }
 
