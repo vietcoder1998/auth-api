@@ -1,12 +1,24 @@
-import { Router } from 'express';
+import { BaseRouter } from './base.route';
 import { aiModelController } from '../controllers/aiModel.controller';
+import { AIModelDto, AIModelDro, AIModelModel } from '../interfaces';
 
-const router = Router();
+export class AIModelRoutes extends BaseRouter<AIModelModel, AIModelDto, AIModelDro> {
+  constructor() {
+    super('/ai-models');
+    this.initializeRoutes();
+  }
 
-router.post('/', aiModelController.create);
-router.get('/', aiModelController.getAll);
-router.get('/:id', aiModelController.getById);
-router.put('/:id', aiModelController.update);
-router.delete('/:id', aiModelController.delete);
+  override initializeRoutes(): void {
+    // Standard CRUD routes
+    this.routes.post('/', aiModelController.create.bind(aiModelController));
+    this.routes.get('/', aiModelController.getAll.bind(aiModelController));
+    this.routes.get('/:id', aiModelController.getById.bind(aiModelController));
+    this.routes.put('/:id', aiModelController.update.bind(aiModelController));
+    this.routes.delete('/:id', aiModelController.delete.bind(aiModelController));
 
-export default router;
+    // Custom route for fetching Gemini models
+    this.routes.post('/fetch-gemini-models', aiModelController.fetchGeminiModels.bind(aiModelController));
+  }
+}
+
+export const aiModelRoutes = new AIModelRoutes().routes;

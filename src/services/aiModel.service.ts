@@ -53,6 +53,11 @@ export class AIModelService extends BaseService<any, AIModelDto, AIModelDto> {
   async getAIModelsByPlatform(platformId: string) {
     return this.aiModelRepository.findByPlatformId(platformId);
   }
+
+  async fetchGeminiModels(geminiConfig: any): Promise<string[]> {
+    const { default: GeminiService } = await import('./gemini.service');
+    return GeminiService.pingEnabledGeminiModels(geminiConfig);
+  }
 }
 
 export const aiModelService = new AIModelService();

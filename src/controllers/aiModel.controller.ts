@@ -47,6 +47,16 @@ export class AIModelController {
       res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
     }
   }
+
+  async fetchGeminiModels(req: Request, res: Response) {
+    try {
+      const geminiConfig = req.body;
+      const models = await aiModelService.fetchGeminiModels(geminiConfig);
+      res.json({ models });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
 }
 
 export const aiModelController = new AIModelController();

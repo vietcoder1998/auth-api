@@ -5,3 +5,4 @@ export * from './permission.routes';
 export * from './user.routes';
 export * from './agent.routes';
 export * from './label.routes';
+export * from './aiModel.routes'
