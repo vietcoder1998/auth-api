@@ -3,6 +3,8 @@ import * as rd from 'redis';
 import { REDIS_URL } from './env';
 import { checkRedisConnection } from './utils/validationUtils';
 import { databaseConnectionService } from './services/database-connection.service';
+
+type RedisClient = ReturnType<typeof rd.createClient>;
         
 /**
  * Setup Service
@@ -17,6 +19,12 @@ export class Setup {
   private _isConnected: boolean = false;
   private _connectionPromise: Promise<void> | null = null;
   private databaseConnectionService = databaseConnectionService;
+  
+  // Multi-connection storage
+  private _multiPrismaConnections: Map<string, PrismaClient> = new Map();
+  private _multiRedisConnections: Map<string, RedisClient> = new Map();
+  private _activePrismaConnection: string = 'default';
+  private _activeRedisConnection: string = 'default';
 
   public constructor() {}
 
@@ -445,18 +453,323 @@ export class Setup {
   }
 
   /**
+   * Create multiple database connections
+   */
+  public async createMultipleDatabaseConnections(connections: Array<{
+    name: string;
+    databaseUrl: string;
+    setAsActive?: boolean;
+  }>): Promise<void> {
+    console.log(`🔌 Creating ${connections.length} database connections...`);
+    
+    for (const conn of connections) {
+      try {
+        const prismaClient = new PrismaClient({
+          datasources: {
+            db: {
+              url: conn.databaseUrl
+            }
+          },
+          log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+        });
+        
+        await prismaClient.$connect();
+        this._multiPrismaConnections.set(conn.name, prismaClient);
+        
+        if (conn.setAsActive || conn.name === 'default') {
+          this._activePrismaConnection = conn.name;
+          this._prisma = prismaClient;
+        }
+        
+        console.log(`✅ Database connection '${conn.name}' created successfully`);
+      } catch (error) {
+        console.error(`❌ Failed to create database connection '${conn.name}':`, error);
+        throw error;
+      }
+    }
+    
+    console.log(`🚀 All database connections created. Active: ${this._activePrismaConnection}`);
+  }
+
+  /**
+   * Create multiple Redis connections
+   */
+  public async createMultipleRedisConnections(connections: Array<{
+    name: string;
+    redisUrl: string;
+    setAsActive?: boolean;
+  }>): Promise<void> {
+    console.log(`🔌 Creating ${connections.length} Redis connections...`);
+    
+    for (const conn of connections) {
+      try {
+        const redisClient = rd.createClient({ url: conn.redisUrl });
+        redisClient.on('error', (err: Error) => 
+          console.error(`❌ Redis Error (${conn.name}):`, err)
+        );
+        
+        await redisClient.connect();
+        this._multiRedisConnections.set(conn.name, redisClient);
+        
+        if (conn.setAsActive || conn.name === 'default') {
+          this._activeRedisConnection = conn.name;
+          this._redisClient = redisClient;
+        }
+        
+        console.log(`✅ Redis connection '${conn.name}' created successfully`);
+      } catch (error) {
+        console.error(`❌ Failed to create Redis connection '${conn.name}':`, error);
+        throw error;
+      }
+    }
+    
+    console.log(`🚀 All Redis connections created. Active: ${this._activeRedisConnection}`);
+  }
+
+  /**
+   * Switch active database connection
+   */
+  public switchActiveDatabaseConnection(connectionName: string): void {
+    const connection = this._multiPrismaConnections.get(connectionName);
+    if (!connection) {
+      throw new Error(`Database connection '${connectionName}' not found`);
+    }
+    
+    this._activePrismaConnection = connectionName;
+    this._prisma = connection;
+    console.log(`🔄 Switched active database connection to: ${connectionName}`);
+  }
+
+  /**
+   * Switch active Redis connection
+   */
+  public switchActiveRedisConnection(connectionName: string): void {
+    const connection = this._multiRedisConnections.get(connectionName);
+    if (!connection) {
+      throw new Error(`Redis connection '${connectionName}' not found`);
+    }
+    
+    this._activeRedisConnection = connectionName;
+    this._redisClient = connection;
+    console.log(`🔄 Switched active Redis connection to: ${connectionName}`);
+  }
+
+  /**
+   * Get specific database connection
+   */
+  public getDatabaseConnection(connectionName: string): PrismaClient {
+    const connection = this._multiPrismaConnections.get(connectionName);
+    if (!connection) {
+      throw new Error(`Database connection '${connectionName}' not found`);
+    }
+    return connection;
+  }
+
+  /**
+   * Get specific Redis connection
+   */
+  public getRedisConnection(connectionName: string): RedisClient {
+    const connection = this._multiRedisConnections.get(connectionName);
+    if (!connection) {
+      throw new Error(`Redis connection '${connectionName}' not found`);
+    }
+    return connection;
+  }
+
+  /**
+   * List all active connections
+   */
+  public listAllConnections(): {
+    databases: Array<{ name: string; isActive: boolean }>;
+    redis: Array<{ name: string; isActive: boolean }>;
+  } {
+    return {
+      databases: Array.from(this._multiPrismaConnections.keys()).map((name: string) => ({
+        name,
+        isActive: name === this._activePrismaConnection
+      })),
+      redis: Array.from(this._multiRedisConnections.keys()).map((name: string) => ({
+        name,
+        isActive: name === this._activeRedisConnection
+      }))
+    };
+  }
+
+  /**
+   * Test specific connection
+   */
+  public async testSpecificConnections(connectionNames?: {
+    database?: string;
+    redis?: string;
+  }): Promise<{ prisma: boolean; redis: boolean; details: { database?: string; redis?: string } }> {
+    const results = { prisma: false, redis: false, details: {} as { database?: string; redis?: string } };
+    
+    // Test specific database connection
+    if (connectionNames?.database) {
+      try {
+        const dbConnection = this.getDatabaseConnection(connectionNames.database);
+        await dbConnection.$queryRaw`SELECT 1`;
+        results.prisma = true;
+        results.details.database = `Connection '${connectionNames.database}' is healthy`;
+      } catch (error) {
+        results.details.database = `Connection '${connectionNames.database}' failed: ${error}`;
+      }
+    }
+    
+    // Test specific Redis connection
+    if (connectionNames?.redis) {
+      try {
+        const redisConnection = this.getRedisConnection(connectionNames.redis);
+        if (redisConnection.isOpen) {
+          await redisConnection.ping();
+          results.redis = true;
+          results.details.redis = `Connection '${connectionNames.redis}' is healthy`;
+        }
+      } catch (error) {
+        results.details.redis = `Connection '${connectionNames.redis}' failed: ${error}`;
+      }
+    }
+    
+    return results;
+  }
+
+  /**
+   * Test all connections
+   */
+  public async testAllConnections(): Promise<{
+    databases: Record<string, boolean>;
+    redis: Record<string, boolean>;
+    summary: { totalDatabases: number; healthyDatabases: number; totalRedis: number; healthyRedis: number };
+  }> {
+    const results = {
+      databases: {} as Record<string, boolean>,
+      redis: {} as Record<string, boolean>,
+      summary: { totalDatabases: 0, healthyDatabases: 0, totalRedis: 0, healthyRedis: 0 }
+    };
+    
+    // Test all database connections
+    for (const [name, connection] of this._multiPrismaConnections) {
+      results.summary.totalDatabases++;
+      try {
+        await connection.$queryRaw`SELECT 1`;
+        results.databases[name] = true;
+        results.summary.healthyDatabases++;
+      } catch {
+        results.databases[name] = false;
+      }
+    }
+    
+    // Test all Redis connections
+    for (const [name, connection] of this._multiRedisConnections) {
+      results.summary.totalRedis++;
+      try {
+        if (connection.isOpen) {
+          await connection.ping();
+          results.redis[name] = true;
+          results.summary.healthyRedis++;
+        } else {
+          results.redis[name] = false;
+        }
+      } catch {
+        results.redis[name] = false;
+      }
+    }
+    
+    return results;
+  }
+
+  /**
+   * Remove specific connection
+   */
+  public async removeConnection(type: 'database' | 'redis', connectionName: string): Promise<void> {
+    if (type === 'database') {
+      const connection = this._multiPrismaConnections.get(connectionName);
+      if (connection) {
+        await connection.$disconnect();
+        this._multiPrismaConnections.delete(connectionName);
+        
+        // If this was the active connection, switch to another or clear
+        if (this._activePrismaConnection === connectionName) {
+          const remainingConnections = Array.from(this._multiPrismaConnections.keys()) as string[];
+          if (remainingConnections.length > 0) {
+            this.switchActiveDatabaseConnection(remainingConnections[0]);
+          } else {
+            this._prisma = null;
+            this._activePrismaConnection = '';
+          }
+        }
+        
+        console.log(`✅ Database connection '${connectionName}' removed`);
+      }
+    } else {
+      const connection = this._multiRedisConnections.get(connectionName);
+      if (connection) {
+        await connection.disconnect();
+        this._multiRedisConnections.delete(connectionName);
+        
+        // If this was the active connection, switch to another or clear
+        if (this._activeRedisConnection === connectionName) {
+          const remainingConnections = Array.from(this._multiRedisConnections.keys()) as string[];
+          if (remainingConnections.length > 0) {
+            this.switchActiveRedisConnection(remainingConnections[0]);
+          } else {
+            this._redisClient = null;
+            this._activeRedisConnection = '';
+          }
+        }
+        
+        console.log(`✅ Redis connection '${connectionName}' removed`);
+      }
+    }
+  }
+
+  /**
+   * Disconnect all connections
+   */
+  public async disconnectAllConnections(): Promise<void> {
+    console.log('🔌 Disconnecting all connections...');
+    
+    // Disconnect all database connections
+    for (const [name, connection] of this._multiPrismaConnections) {
+      try {
+        await connection.$disconnect();
+        console.log(`✅ Database '${name}' disconnected`);
+      } catch (error) {
+        console.error(`❌ Failed to disconnect database '${name}':`, error);
+      }
+    }
+    this._multiPrismaConnections.clear();
+    
+    // Disconnect all Redis connections
+    for (const [name, connection] of this._multiRedisConnections) {
+      try {
+        await connection.disconnect();
+        console.log(`✅ Redis '${name}' disconnected`);
+      } catch (error) {
+        console.error(`❌ Failed to disconnect Redis '${name}':`, error);
+      }
+    }
+    this._multiRedisConnections.clear();
+    
+    // Clear single connections
+    await this.disconnect();
+    
+    console.log('👋 All connections disconnected');
+  }
+
+  /**
    * Setup graceful shutdown
    */
   public setupGracefulShutdown(): void {
     process.on('SIGINT', async () => {
       console.log('🛑 Shutting down...');
-      await this.disconnect();
+      await this.disconnectAllConnections();
       process.exit(0);
     });
 
     process.on('SIGTERM', async () => {
       console.log('🛑 Shutting down...');
-      await this.disconnect();
+      await this.disconnectAllConnections();
       process.exit(0);
     });
 
