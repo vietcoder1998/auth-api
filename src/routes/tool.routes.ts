@@ -20,6 +20,7 @@ import {
   getGlobalTools,
   deleteAgentTools,
   hasToolForAgent,
+  bulkUpdateAgentTools,
 } from '../controllers/tool.controller';
 
 const router = Router();
@@ -150,5 +151,12 @@ router.put('/agent/:agentId/enable-all', enableAllTools);
  * Disable all tools for an agent
  */
 router.put('/agent/:agentId/disable-all', disableAllTools);
+
+/**
+ * PUT /api/tools/agent/:agentId/bulk-update
+ * Bulk update agent tools - assign/unassign multiple tools
+ * Body: { toolIds: string[] }
+ */
+router.put('/agent/:agentId/bulk-update', bulkUpdateAgentTools);
 
 export default router;

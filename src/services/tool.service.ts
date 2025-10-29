@@ -337,6 +337,65 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
     return this.toolRepository.exists({ agentId, name });
   }
 
+  /**
+   * Bulk update agent tools - assign/unassign multiple tools to an agent
+   * @param agentId - The ID of the agent
+   * @param toolIds - Array of tool IDs to assign to the agent
+   * @returns Array of operation results with action, tool info, and status
+   * @example
+   * ```typescript
+   * const results = await toolService.bulkUpdateAgentTools('agent-123', ['tool-1', 'tool-2']);
+   * console.log(`Completed ${results.length} operations`);
+   * ```
+   */
+  async bulkUpdateAgentTools(agentId: string, toolIds: string[]): Promise<Array<{
+    action: 'enabled' | 'disabled' | 'failed';
+    tool: string;
+    toolId: string;
+    error?: string;
+  }>> {
+    const results = [];
+
+    // Get current tools for comparison
+    const currentTools = await this.listAgentTools(agentId);
+    const currentToolIds = currentTools.map(tool => tool.id);
+
+    // Get all available tools to find tool names by ID
+    const allTools = await this.listTools();
+
+    // Enable selected tools that aren't currently enabled
+    for (const toolId of toolIds) {
+      const tool = allTools.find(t => t.id === toolId);
+      if (tool && !currentToolIds.includes(toolId)) {
+        try {
+          await this.enableTool(agentId, tool.name);
+          results.push({ action: 'enabled' as const, tool: tool.name, toolId });
+        } catch (error) {
+          console.error(`Failed to enable tool ${tool.name}:`, error);
+          results.push({ action: 'failed' as const, tool: tool.name, toolId, error: 'Enable failed' });
+        }
+      }
+    }
+
+    // Disable tools that are currently enabled but not selected
+    for (const toolId of currentToolIds) {
+      if (!toolIds.includes(toolId)) {
+        const tool = allTools.find(t => t.id === toolId);
+        if (tool) {
+          try {
+            await this.disableTool(agentId, tool.name);
+            results.push({ action: 'disabled' as const, tool: tool.name, toolId });
+          } catch (error) {
+            console.error(`Failed to disable tool ${tool.name}:`, error);
+            results.push({ action: 'failed' as const, tool: tool.name, toolId, error: 'Disable failed' });
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
   override async findOne(toolId: string): Promise<ToolDro | null> {
     const tool = await this.toolRepository.findByIdWithAgents(toolId);
     if (!tool) return null;

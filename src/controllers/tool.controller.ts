@@ -292,6 +292,32 @@ class ToolController extends BaseController<ToolModel, ToolDto, ToolDro> {
   }
 
   /**
+   * Bulk update agent tools - assign/unassign multiple tools to an agent
+   * PUT /api/tools/agent/:agentId/bulk-update
+   * Body: { toolIds: string[] }
+   */
+  async bulkUpdateAgentTools(req: Request, res: Response): Promise<void> {
+    try {
+      const { agentId } = req.params;
+      const { toolIds } = req.body;
+
+      if (!Array.isArray(toolIds)) {
+        res.status(400).json({ 
+          success: false, 
+          error: 'toolIds must be an array' 
+        });
+        return;
+      }
+
+      const results = await toolService.bulkUpdateAgentTools(agentId, toolIds);
+
+      this.sendSuccess(res, { results }, `Bulk update completed with ${results.length} operations`);
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
+  /**
    * Get a single tool by ID with all related agents
    * GET /api/tools/:id/with-agents
    */
@@ -344,3 +370,4 @@ export const getToolsByType = toolController.getToolsByType.bind(toolController)
 export const getGlobalTools = toolController.getGlobalTools.bind(toolController);
 export const deleteAgentTools = toolController.deleteAgentTools.bind(toolController);
 export const hasToolForAgent = toolController.hasToolForAgent.bind(toolController);
+export const bulkUpdateAgentTools = toolController.bulkUpdateAgentTools.bind(toolController);
