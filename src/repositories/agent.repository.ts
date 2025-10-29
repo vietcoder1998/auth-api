@@ -139,3 +139,5 @@ export class AgentRepository extends BaseRepository<AgentModel, AgentDto, AgentD
         });
     }
 }
+
+export const agentRepository = new AgentRepository();

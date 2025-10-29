@@ -193,3 +193,5 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
     return result as unknown as CommandDro
   }
 }
+
+export const commandRepository = new CommandRepository();

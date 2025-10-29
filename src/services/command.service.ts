@@ -1,17 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { llmService } from './llm.service';
-import { ToolRepository } from '../repositories/tool.repository';
-import { AgentMemoryRepository } from '../repositories/agentmemory.repository';
-import { AgentTaskRepository } from '../repositories/agenttask.repository';
 import { BaseService } from './base.service';
 import { CommandDro, CommandDto, CommandModel } from '../interfaces';
-import { CommandRepository } from '../repositories/command.repository';
+import * as repositoryInstances from '../repositories';
 
 const prisma = new PrismaClient();
-const toolRepository = new ToolRepository();
-const agentMemoryRepository = new AgentMemoryRepository();
-const agentTaskRepository = new AgentTaskRepository();
-const commandRepository = new CommandRepository();
 
 export interface CommandResult {
   success: boolean;
@@ -26,15 +19,22 @@ export interface CommandContext {
   agentId: string;
   type: string;
   parameters?: any;
+  // Extended command properties
+  description?: string;
+  name?: string;
+  params?: string;
+  exampleParams?: string;
+  toolId?: string;
+  entityMethodIds?: string[];
 }
 
 export class CommandService extends BaseService<CommandModel, CommandDto, CommandDro> {
   constructor() {
-    super(commandRepository);
+    super(repositoryInstances.commandRepository);
   }
 
   get commandRepository() {
-    return this.repository as CommandRepository;
+    return this.repository as repositoryInstances.CommandRepository;
   }
   /**
    * Process command from conversation
@@ -54,6 +54,13 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
           return await this.handleTaskCommand(context);
         case 'tool':
           return await this.handleToolCommand(context);
+        case 'query':
+        case 'execute':
+        case 'create':
+        case 'update':
+        case 'delete':
+        case 'transform':
+          return await this.executeEntityMethod(context);
         default:
           return {
             success: false,
@@ -69,6 +76,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
       };
     }
   }
+
   /**
    * Handle cache-related commands
    */
@@ -78,7 +86,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
     switch (parameters?.action) {
       case 'remove_all':
         // Clear all agent memories
-        await agentMemoryRepository.deleteByAgentId(context.agentId);
+        await repositoryInstances.agentMemoryRepository.deleteByAgentId(context.agentId);
         return {
           success: true,
           message: 'All agent cache/memories cleared successfully',
@@ -86,7 +94,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
         };
 
       case 'remove_short_term':
-        await agentMemoryRepository.deleteByType(context.agentId, 'short_term');
+        await repositoryInstances.agentMemoryRepository.deleteByType(context.agentId, 'short_term');
         return {
           success: true,
           message: 'Short-term cache cleared successfully',
@@ -94,7 +102,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
         };
 
       case 'remove_long_term':
-        await agentMemoryRepository.deleteByType(context.agentId, 'long_term');
+        await repositoryInstances.agentMemoryRepository.deleteByType(context.agentId, 'long_term');
         return {
           success: true,
           message: 'Long-term cache cleared successfully',
@@ -118,7 +126,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
 
     switch (parameters?.action) {
       case 'add':
-        const memory = await agentMemoryRepository.create({
+        const memory = await repositoryInstances.agentMemoryRepository.create({
           agentId: context.agentId,
           type: parameters.type || 'long_term',
           content: parameters.content,
@@ -133,7 +141,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
         };
 
       case 'search':
-        const memories = await agentMemoryRepository.searchByContent(
+        const memories = await repositoryInstances.agentMemoryRepository.searchByContent(
           context.agentId,
           parameters.query,
           parameters.limit || 10
@@ -259,7 +267,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
 
     switch (parameters?.action) {
       case 'create':
-        const task = await agentTaskRepository.create({
+        const task = await repositoryInstances.agentTaskRepository.create({
           agentId: context.agentId,
           name: parameters.name,
           input: parameters.input ? JSON.stringify(parameters.input) : null,
@@ -273,7 +281,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
         };
 
       case 'list':
-        const tasks = await agentTaskRepository.findByAgentId(context.agentId);
+        const tasks = await repositoryInstances.agentTaskRepository.findByAgentId(context.agentId);
         // Limit results
         const limitedTasks = tasks.slice(0, parameters.limit || 20);
         return {
@@ -284,7 +292,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
         };
 
       case 'cancel':
-        await agentTaskRepository.cancelPendingTasks(context.agentId);
+        await repositoryInstances.agentTaskRepository.cancelPendingTasks(context.agentId);
         return {
           success: true,
           message: 'All pending/running tasks cancelled',
@@ -308,7 +316,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
 
     switch (parameters?.action) {
       case 'enable':
-        await toolRepository.enableTool(context.agentId, parameters.name);
+        await repositoryInstances.toolRepository.enableTool(context.agentId, parameters.name);
         return {
           success: true,
           message: `Tool "${parameters.name}" enabled successfully`,
@@ -316,7 +324,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
         };
 
       case 'disable':
-        await toolRepository.disableTool(context.agentId, parameters.name);
+        await repositoryInstances.toolRepository.disableTool(context.agentId, parameters.name);
         return {
           success: true,
           message: `Tool "${parameters.name}" disabled successfully`,
@@ -324,7 +332,7 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
         };
 
       case 'list':
-        const tools = await toolRepository.listAgentTools(context.agentId);
+        const tools = await repositoryInstances.toolRepository.listAgentTools(context.agentId);
         return {
           success: true,
           message: `Found ${tools.length} tools`,
@@ -392,6 +400,261 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
     }
 
     return command as CommandDro;
+  }
+
+  /**
+   * Execute repository method dynamically based on entity method name
+   */
+  private async executeRepositoryMethod(entityMethodName: string, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    // Extract entity and method from the entity method name
+    // Example: "permission_search" -> entity: "permission", method: "search"
+    const [entityName, methodName] = entityMethodName.split('_');
+    
+    // Get repository instance
+    const repositoryKey = `${entityName}Repository` as keyof typeof repositoryInstances;
+    const repository = repositoryInstances[repositoryKey];
+    
+    if (!repository) {
+      throw new Error(`No repository found for entity: ${entityName}`);
+    }
+
+    // Switch case for different method patterns
+    switch (methodName) {
+      case 'search':
+        return await this.executeSearchMethod(entityName, repository, parsedParams, parsedExampleParams);
+      
+      case 'findByCategory':
+        return await this.executeFindByCategoryMethod(repository, parsedParams, parsedExampleParams);
+      
+      case 'findByName':
+        return await this.executeFindByNameMethod(repository, parsedParams, parsedExampleParams);
+      
+      case 'findByEmail':
+        return await this.executeFindByEmailMethod(repository, parsedParams, parsedExampleParams);
+      
+      case 'findByMethod':
+        return await this.executeFindByMethodMethod(repository, parsedParams, parsedExampleParams);
+      
+      case 'findByRoute':
+        return await this.executeFindByRouteMethod(repository, parsedParams, parsedExampleParams);
+      
+      case 'findByUser':
+        return await this.executeFindByUserMethod(repository, parsedParams, parsedExampleParams);
+      
+      case 'findByRole':
+        return await this.executeFindByRoleMethod(repository, parsedParams, parsedExampleParams);
+      
+      default:
+        // Default to search if specific method not found
+        if (repository && typeof (repository as any).search === 'function') {
+          return await (repository as any).search({});
+        } else {
+          throw new Error(`Method '${methodName}' not supported for entity '${entityName}'`);
+        }
+    }
+  }
+
+  /**
+   * Execute search method for different entities
+   */
+  private async executeSearchMethod(entityName: string, repository: any, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    switch (entityName) {
+      case 'permission':
+        const category = parsedExampleParams.category || parsedParams.category;
+        if (category) {
+          return await repository.findByCategory(category);
+        }
+        return await repository.findMany({});
+      
+      case 'user':
+        const email = parsedExampleParams.email || parsedParams.email;
+        if (email) {
+          return await repository.findByEmail(email);
+        }
+        return await repository.findMany({});
+      
+      case 'role':
+        const name = parsedExampleParams.name || parsedParams.name;
+        if (name) {
+          return await repository.findByName(name);
+        }
+        return await repository.findMany({});
+      
+      default:
+        return await repository.findMany({});
+    }
+  }
+
+  /**
+   * Execute findByCategory method
+   */
+  private async executeFindByCategoryMethod(repository: any, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    const category = parsedExampleParams.category || parsedParams.category;
+    if (!category) {
+      throw new Error('Category parameter is required for findByCategory method');
+    }
+    return await repository.findByCategory(category);
+  }
+
+  /**
+   * Execute findByName method
+   */
+  private async executeFindByNameMethod(repository: any, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    const name = parsedExampleParams.name || parsedParams.name;
+    if (!name) {
+      throw new Error('Name parameter is required for findByName method');
+    }
+    return await repository.findByName(name);
+  }
+
+  /**
+   * Execute findByEmail method
+   */
+  private async executeFindByEmailMethod(repository: any, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    const email = parsedExampleParams.email || parsedParams.email;
+    if (!email) {
+      throw new Error('Email parameter is required for findByEmail method');
+    }
+    return await repository.findByEmail(email);
+  }
+
+  /**
+   * Execute findByMethod method
+   */
+  private async executeFindByMethodMethod(repository: any, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    const method = parsedExampleParams.method || parsedParams.method;
+    if (!method) {
+      throw new Error('Method parameter is required for findByMethod method');
+    }
+    return await repository.findByMethod(method);
+  }
+
+  /**
+   * Execute findByRoute method
+   */
+  private async executeFindByRouteMethod(repository: any, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    const route = parsedExampleParams.route || parsedParams.route;
+    if (!route) {
+      throw new Error('Route parameter is required for findByRoute method');
+    }
+    return await repository.findByRoute(route);
+  }
+
+  /**
+   * Execute findByUser method
+   */
+  private async executeFindByUserMethod(repository: any, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    const userId = parsedExampleParams.userId || parsedParams.userId;
+    if (!userId) {
+      throw new Error('UserId parameter is required for findByUser method');
+    }
+    return await repository.findByUser(userId);
+  }
+
+  /**
+   * Execute findByRole method
+   */
+  private async executeFindByRoleMethod(repository: any, parsedParams: any, parsedExampleParams: any): Promise<any> {
+    const roleId = parsedExampleParams.roleId || parsedParams.roleId;
+    if (!roleId) {
+      throw new Error('RoleId parameter is required for findByRole method');
+    }
+    return await repository.findByRole(roleId);
+  }
+
+  /**
+   * Execute entity method with example functionality
+   */
+  async executeEntityMethod(context: CommandContext): Promise<CommandResult> {
+    try {
+      const { entityMethodIds, params, exampleParams } = context;
+      
+      if (!entityMethodIds || entityMethodIds.length === 0) {
+        return {
+          success: false,
+          message: 'No entity method IDs provided',
+          type: 'error',
+        };
+      }
+
+      const results = [];
+      
+      for (const entityMethodId of entityMethodIds) {
+        // Fetch entity method details
+        const entityMethod = await repositoryInstances.entityMethodRepository.findById(entityMethodId);
+        
+        if (!entityMethod) {
+          results.push({
+            entityMethodId,
+            success: false,
+            error: `Entity method with ID ${entityMethodId} not found`,
+          });
+          continue;
+        }
+
+        // Parse parameters
+        let parsedParams: any = {};
+        let parsedExampleParams: any = {};
+        
+        try {
+          if (params) {
+            parsedParams = typeof params === 'string' ? JSON.parse(params) : params;
+          }
+          if (exampleParams) {
+            parsedExampleParams = typeof exampleParams === 'string' ? JSON.parse(exampleParams) : exampleParams;
+          }
+        } catch (parseError) {
+          results.push({
+            entityMethodId,
+            success: false,
+            error: `Failed to parse parameters: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
+          });
+          continue;
+        }
+
+        // Get entity method name and execute
+        const entityMethodName = `${(entityMethod as any).name?.toLowerCase()}`;
+        
+        // Execute the method based on the entity method name
+        try {
+          let result;
+          
+          // Use the new dynamic execution approach
+          result = await this.executeRepositoryMethod(entityMethodName, parsedParams, parsedExampleParams);
+
+          results.push({
+            entityMethodId,
+            entityMethodName,
+            success: true,
+            data: result,
+            parameters: parsedParams,
+            exampleParameters: parsedExampleParams,
+          });
+          
+        } catch (executionError) {
+          results.push({
+            entityMethodId,
+            entityMethodName,
+            success: false,
+            error: `Execution failed: ${executionError instanceof Error ? executionError.message : 'Unknown error'}`,
+          });
+        }
+      }
+
+      return {
+        success: true,
+        message: `Executed ${results.length} entity method(s)`,
+        data: results,
+        type: 'entity_method_execution',
+      };
+      
+    } catch (error) {
+      return {
+        success: false,
+        message: `Entity method execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: 'error',
+      };
+    }
   }
 }
 

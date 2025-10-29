@@ -44,3 +44,5 @@ export class AgentMemoryRepository extends BaseRepository<AgentMemoryModel, Agen
         });
     }
 }
+
+export const agentMemoryRepository = new AgentMemoryRepository();

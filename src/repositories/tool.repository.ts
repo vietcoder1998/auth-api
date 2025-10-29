@@ -100,3 +100,5 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> 
     });
   }
 }
+
+export const toolRepository = new ToolRepository();

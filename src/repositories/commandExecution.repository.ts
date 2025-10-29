@@ -169,3 +169,5 @@ export class CommandExecutionRepository extends BaseRepository<
     return { count: result.count };
   }
 }
+
+export const commandExecutionRepository = new CommandExecutionRepository();

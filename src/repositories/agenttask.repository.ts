@@ -38,3 +38,5 @@ export class AgentTaskRepository extends BaseRepository<AgentTaskModel, AgentTas
         });
     }
 }
+
+export const agentTaskRepository = new AgentTaskRepository();

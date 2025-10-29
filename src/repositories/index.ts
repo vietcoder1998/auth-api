@@ -31,3 +31,5 @@ export * from './socketConfig.repository';
 export * from './socketEvent.repository';
 export * from './entity.repository';
 export * from './entitymethod.repository';
+export * from './command.repository';
+export * from './commandExecution.repository';
