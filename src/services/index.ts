@@ -41,3 +41,6 @@ export * from './tool.service';
 export * from './toolCommand.service';
 export * from './user.service';
 export * from './vector.service';
+export * from './database.service';
+export * from './llm.service';
+export * from './database-connection.service';
