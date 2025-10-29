@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
-import { client } from '../setup';
+import { setup } from '../setup';
 import { logger } from './logger.middle';
 import { 
   CACHE_TTL, 
@@ -21,7 +21,7 @@ import {
   WriteMethods, 
   InvalidationPaths 
 } from '../interfaces/cache.interface';
-
+const client = setup.redis;
 // Cache middleware class
 export class CacheMiddleware {
   private readonly ttl: number;
@@ -235,9 +235,9 @@ export class CacheMiddleware {
               headers: res.getHeaders(),
             };
 
-            client
-              .setEx(cacheKey, this.ttl, JSON.stringify(cachedResponse))
-              .catch((err) => logger.error('Cache set error:', err));
+            (client
+              .setEx(cacheKey, this.ttl, JSON.stringify(cachedResponse)) as Promise<'OK'>)
+              .catch((err: unknown) => logger.error('Cache set error:', err));
           } catch (error) {
             logger.error('Failed to cache response:', error);
           }

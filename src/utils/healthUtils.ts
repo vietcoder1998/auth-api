@@ -1,8 +1,9 @@
 import os from 'os';
 import fs from 'fs';
 import { logError } from '../middlewares/logger.middle';
+import { PrismaClient } from '@prisma/client';
 
-export async function getDatabaseStatus(prisma: any): Promise<boolean> {
+export async function getDatabaseStatus(prisma: PrismaClient): Promise<boolean> {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return true;

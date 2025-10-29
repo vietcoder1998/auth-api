@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
-import { client } from '../setup';
+import { setup } from '../setup';
 
-const prisma = new PrismaClient();
+const client = setup.redis;
+const prisma = setup.prisma;
 
 export async function redisTokenValidation(req: Request, res: Response, next: NextFunction) {
   const token = req.headers['authorization']?.replace('Bearer ', '');

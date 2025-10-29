@@ -10,7 +10,6 @@ import { CacheMiddleware } from './middlewares/cache.middleware';
 import { logError, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
-import prisma from './prisma';
 import adminRouter from './routes/admin.routes';
 import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
@@ -18,7 +17,7 @@ import publicBlogRouter from './routes/publicBlog.routes';
 import ssoAuthRouter from './routes/ssoAuth.routes';
 import { configService } from './services/config.service';
 import { jobQueue } from './services/job.service';
-import { client } from './setup';
+import { setup } from './setup';
 import {
   getChildProcessInfo,
   getCpuStatus,
@@ -68,8 +67,8 @@ app.get(
   async (req: express.Request, res: express.Response): Promise<void> => {
     try {
       const [databaseStatus, redisStatus] = await Promise.all([
-        getDatabaseStatus(prisma),
-        getRedisStatus(client),
+        getDatabaseStatus(setup.prisma),
+        getRedisStatus(setup.redis),
       ]);
       const memory = getMemoryStatus();
       const { cpu, cpuLoad } = getCpuStatus();
@@ -165,15 +164,20 @@ app.use('/api/admin', cacheMiddlewareInstance.getMiddleware(), adminRouter);
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
 app.get('/', (req: express.Request, res: express.Response) => res.json({ status: 'ok' }));
 app.listen(env.PORT, async () => {
-  await checkRedisConnection(client);
+  try {
+    logInfo(`Auth API running on port ${env.PORT}`);
+    logInfo(`Admin GUI available at http://localhost:${env.PORT}/admin`);
 
-  logInfo(`Auth API running on port ${env.PORT}`);
-  logInfo(`Admin GUI available at http://localhost:${env.PORT}/admin`);
+    if (swaggerDocument) {
+      logInfo(`API docs available at http://localhost:${env.PORT}/docs`, {
+        file: 'index.ts',
+        line: '147',
+      });
+    }
 
-  if (swaggerDocument) {
-    logInfo(`API docs available at http://localhost:${env.PORT}/docs`, {
-      file: 'index.ts',
-      line: '147',
-    });
+    logInfo('🚀 Server started successfully with database connections');
+  } catch (error) {
+    logError('💥 Failed to start server:', { error });
+    process.exit(1);
   }
 });
