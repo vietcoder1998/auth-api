@@ -14,6 +14,7 @@ import documentRouter from './document.routes';
 import faqRouter from './faq.routes';
 import fileRouter from './file.routes';
 import { entityMethodRoutes, entityRoutes } from './index';
+import entityMethodRouter from './entitymethod.routes';
 import jobRouter from './job.routes';
 import labelRouter from './label.routes';
 import loggerRouter from './logger.routes';
@@ -75,6 +76,6 @@ router.use('/tool-commands', commandRouter);
 router.use('/files', fileRouter);
 router.use('/prompts', promptHistoryRouter);
 router.use(entityRoutes.path, entityRoutes.routes);
-router.use(entityMethodRoutes.path, entityMethodRoutes.routes);
+router.use('/entity-methods', entityMethodRouter.routes);
 
 export default router;
