@@ -212,7 +212,7 @@ model User {
   Notification  Notification[]
   AIKey         AIKey[]
 
-  @@map("user")
+@@map("user")
 }
 
 model Role {
