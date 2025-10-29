@@ -33,3 +33,6 @@ export * from './logichistory.interface';
 export * from './entity.interface';
 export * from './entitymethod.interface';
 export * from './cache.interface';
+export * from './conversation.interface'
+export * from './prompthistory.interface'
+export * from './message.interface'

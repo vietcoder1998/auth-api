@@ -2,8 +2,8 @@ import { PrismaClient, Conversation as PrismaConversation } from '@prisma/client
 
 export type ConversationModel = PrismaClient['conversation'];
 
-export interface ConversationDro extends Omit<PrismaConversation, 'id' | 'createdAt' | 'updatedAt'> {}
-export interface ConversationDto extends ConversationDro {
+export interface ConversationDto extends Partial<PrismaConversation> {}
+export interface ConversationDro extends ConversationDto {
     id: string;
     createdAt: Date;
     updatedAt: Date;

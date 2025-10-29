@@ -1,7 +1,7 @@
 import { BaseRouter } from './base.route';
 import { conversationController } from '../controllers/conversation.controller';
 
-class ConversationRouter extends BaseRouter<any, any, any> {
+export class ConversationRouter extends BaseRouter<any, any, any> {
   constructor() {
     super('conversations', conversationController);
     this.initializeCustomRoutes();
@@ -31,5 +31,5 @@ class ConversationRouter extends BaseRouter<any, any, any> {
 }
 
 // Export an instance
-const conversationRouter = new ConversationRouter();
+export const conversationRouter = new ConversationRouter();
 export default conversationRouter.routes;

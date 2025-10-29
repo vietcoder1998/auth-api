@@ -6,32 +6,42 @@ import { Message } from '@prisma/client';
 export interface MessageModel extends Partial<Message> {
   id: string;
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  /** canonical sender field used in the codebase */
+  sender: 'user' | 'agent' | 'system';
+  /** legacy alias kept for compatibility */
+  role?: 'user' | 'assistant' | 'system';
   conversationId: string;
   userId?: string | null;
   metadata?: string | null;
   createdAt: Date;
   updatedAt: Date;
+  tokens?: number;
 }
 
 /**
  * Message DTO - Data Transfer Object for API operations
  */
 export interface MessageDto {
+  id?: string;
   content: string;
-  role: 'user' | 'assistant' | 'system';
   conversationId: string;
-  userId?: string;
-  metadata?: Record<string, any>;
+  sender?: 'user' | 'agent' | 'system';
+  role?: 'user' | 'assistant' | 'system';
+  userId?: string | null;
+  metadata?: Record<string, any> | null;
+  tokens?: number;
+  position?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 /**
  * Message DRO - Data Response Object for API responses
  */
-export interface MessageDro {
+export interface MessageDro extends Partial<MessageDto> {
   id: string;
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  sender: 'user' | 'agent' | 'system';
   conversationId: string;
   userId?: string | null;
   metadata?: Record<string, any> | null;
@@ -47,7 +57,8 @@ export interface MessageDro {
  */
 export interface MessageCreateInput {
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  sender?: 'user' | 'agent' | 'system';
+  role?: 'user' | 'assistant' | 'system';
   conversationId: string;
   userId?: string;
   metadata?: Record<string, any>;
@@ -58,6 +69,7 @@ export interface MessageCreateInput {
  */
 export interface MessageUpdateInput {
   content?: string;
+  sender?: 'user' | 'agent' | 'system';
   role?: 'user' | 'assistant' | 'system';
   metadata?: Record<string, any>;
 }
@@ -68,7 +80,7 @@ export interface MessageUpdateInput {
 export interface MessageFilters {
   conversationId?: string;
   userId?: string;
-  role?: 'user' | 'assistant' | 'system';
+  sender?: 'user' | 'agent' | 'system';
   createdAfter?: Date;
   createdBefore?: Date;
 }

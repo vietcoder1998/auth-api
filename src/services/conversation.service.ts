@@ -4,14 +4,18 @@ import {
   ConversationListResponse,
   ConversationPromptHistory,
   ConversationStats,
-  DeleteResponse
+  DeleteResponse,
 } from '../dto/conversation.dto';
 import {
   CreateMessageData,
   MessageListResponse,
   MessageResponse,
 } from '../dto/message.dto';
-import { ConversationDto } from '../interfaces';
+import {
+  ConversationDto,
+  MessageDto,
+  ConversationModel,
+} from '../interfaces';
 import { cacheMiddleware } from '../middlewares/cache.middleware';
 import { ConversationRepository } from '../repositories/conversation.repository';
 import { MessageRepository } from '../repositories/message.repository';
@@ -20,7 +24,7 @@ import { BaseService } from './base.service';
 import { llmService } from './llm.service';
 import { MemoryService } from './memory.service';
 
-export class ConversationService extends BaseService<any, ConversationDto, ConversationDto> {
+export class ConversationService extends BaseService<ConversationModel, ConversationDto, ConversationDto> {
   private conversationRepository: ConversationRepository;
   private messageRepository: MessageRepository;
 
@@ -399,27 +403,19 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
     const { conversationId, sender, content, metadata, tokens } = data;
 
     // Save user message (prompt)
-    const messageCount = await prisma.message.count({ where: { conversationId } });
-    const message = await prisma.message.create({
-      data: {
-        conversationId,
-        sender,
-        content, // This is the prompt
-        metadata: metadata ? JSON.stringify(metadata) : null,
-        position: messageCount,
-        tokens,
-      },
+    const messageCount = await this.messageRepository.count({ conversationId });
+    const message = await this.messageRepository.create({
+      conversationId,
+      sender,
+      content, // This is the prompt
+      metadata: metadata ? JSON.stringify(metadata) : null,
+      position: messageCount,
+      tokens,
     });
 
-    // Add message to conversation's messages relation
-    await prisma.conversation.update({
-      where: { id: conversationId },
-      data: {
-        updatedAt: new Date(),
-        messages: {
-          connect: { id: message.id },
-        },
-      },
+    // Update conversation timestamp and connect message
+    await this.conversationRepository.update(conversationId, {
+      updatedAt: new Date(),
     });
 
     // Also add a promptHistory for this message
@@ -442,7 +438,7 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
     }
 
     // Get agentId from conversation
-    const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
+    const conversation: ConversationDto | null = await this.conversationRepository.findById(conversationId);
     const agentId = conversation?.agentId || metadata?.agentId || '';
 
     // Save user message as memory
@@ -465,37 +461,33 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
       llmResponse = await llmService.processAndSaveConversation(conversationId, content, agentId);
 
       // Save agent reply as message
-      llmMessage = await prisma.message.create({
-        data: {
-          agentId,
-          conversationId,
-          sender: 'agent',
-          content: llmResponse.content,
-          tokens: llmResponse.tokens,
-          metadata: JSON.stringify({
-            model: llmResponse.model,
-            processingTime: llmResponse.processingTime,
-            ...llmResponse.metadata,
-            relatedUserMessageId: message.id, // link to prompt
-          }),
-        },
+      llmMessage = await this.messageRepository.create({
+        agentId,
+        conversationId,
+        sender: 'agent',
+        content: llmResponse.content,
+        tokens: llmResponse.tokens,
+        metadata: JSON.stringify({
+          model: llmResponse.model,
+          processingTime: llmResponse.processingTime,
+          ...llmResponse.metadata,
+          relatedUserMessageId: message.id, // link to prompt
+        }),
       });
 
     } catch (err) {
       // If error, push an error message as answer (not linked to question)
-      llmMessage = await prisma.message.create({
-        data: {
-          agentId,
-          conversationId,
-          sender: 'agent',
-          content: `Error: ${err instanceof Error ? err.message : String(err)}`,
-          tokens: 0,
-          metadata: JSON.stringify({
-            error: true,
-            model: 'error',
-            processingTime: 0,
-          }),
-        },
+      llmMessage = await this.messageRepository.create({
+        agentId,
+        conversationId,
+        sender: 'agent',
+        content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+        tokens: 0,
+        metadata: JSON.stringify({
+          error: true,
+          model: 'error',
+          processingTime: 0,
+        }),
       });
     }
 
@@ -518,17 +510,17 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
     const skip = (page - 1) * limit;
 
     const [messages, total] = await Promise.all([
-      prisma.message.findMany({
+      this.messageRepository.search({
         where: { conversationId },
         skip,
         take: limit,
         orderBy: { createdAt: 'asc' },
       }),
-      prisma.message.count({ where: { conversationId } }),
+      this.messageRepository.count({ conversationId }),
     ]);
 
     // Parse metadata
-    const parsedMessages = messages.map((message) => ({
+    const parsedMessages = messages.map((message: any) => ({
       ...message,
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
     }));
@@ -549,67 +541,88 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
       updateData.metadata = JSON.stringify(metadata);
     }
 
-    const message = await prisma.message.update({
-      where: { id: messageId },
-      data: updateData,
-    });
+    const message: MessageDto = await this.messageRepository.update(messageId, updateData);
 
-    return {
-      ...message,
-      sender: (['user', 'agent', 'system'].includes(message.sender) ? message.sender : 'user') as 'user' | 'agent' | 'system',
+    const sender = message && (['user', 'agent', 'system'] as const).includes(message.sender as any)
+      ? (message.sender as 'user' | 'agent' | 'system')
+      : 'user';
+
+    // Parse metadata which may be stored as JSON string or already as object
+    let parsedMetadata: any = null;
+    if (typeof message.metadata === 'string') {
+      try {
+        parsedMetadata = JSON.parse(message.metadata);
+      } catch (e) {
+        parsedMetadata = message.metadata;
+      }
+    } else {
+      parsedMetadata = message.metadata ?? null;
+    }
+
+    const response: MessageResponse = {
+      id: message.id ?? messageId,
+      conversationId: message.conversationId,
+      sender,
+      content: message.content,
+      metadata: parsedMetadata,
       tokens: message.tokens ?? -1,
-      metadata: message.metadata ? JSON.parse(message.metadata) : null,
+      createdAt: message.createdAt,
+      memory: (message as any).memory,
+      llmMessage: (message as any).llmMessage,
+      answerMemory: (message as any).answerMemory,
     };
+
+    return response;
   }
 
   /**
    * Delete message
    */
   async deleteMessage(messageId: string): Promise<any> {
-    return await prisma.message.delete({
-      where: { id: messageId },
-    });
+    return await this.messageRepository.delete(messageId);
   }
 
   /**
    * Clear conversation messages
    */
   async clearConversationMessages(conversationId: string): Promise<any> {
-    return await prisma.message.deleteMany({
+    // Use repository's search to find all messages first, then delete them
+    const messages = await this.messageRepository.search({
       where: { conversationId },
     });
+
+    // Delete each message using repository
+    await Promise.all(
+      messages.map((message: any) => this.messageRepository.delete(message.id))
+    );
+
+    return { deleted: messages.length };
   }
 
   /**
    * Get conversation summary
    */
   async generateConversationSummary(conversationId: string): Promise<string> {
-    const messages = await prisma.message.findMany({
+    const messages: MessageDto[] | null = await this.messageRepository.search({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
       take: 100, // Limit to last 100 messages for summary
     });
 
-    if (messages.length === 0) {
-      return 'Empty conversation';
-    }
+    const msgs = messages || [];
+    if (msgs.length === 0) return 'Empty conversation';
 
     // Simple summary - count messages by sender
-    const messageCounts = messages.reduce(
-      (acc, msg) => {
-        acc[msg.sender] = (acc[msg.sender] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const messageCounts = msgs.reduce((acc: Record<string, number>, msg: MessageDto) => {
+      const key = (msg.sender as string) || (msg as any).role || 'user';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-    const summary = `Conversation with ${messageCounts.user || 0} user messages, ${messageCounts.agent || 0} agent responses, and ${messageCounts.system || 0} system messages.`;
+    const summary = `Conversation with ${messageCounts['user'] || 0} user messages, ${messageCounts['agent'] || 0} agent responses, and ${messageCounts['system'] || 0} system messages.`;
 
     // Update conversation with summary
-    await prisma.conversation.update({
-      where: { id: conversationId },
-      data: { summary },
-    });
+    await this.conversationRepository.update(conversationId, { summary });
 
     return summary;
   }
@@ -618,7 +631,7 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
    * Get conversation statistics
    */
   async getConversationStats(conversationId: string): Promise<ConversationStats> {
-    const messages = await prisma.message.findMany({
+    const messages: MessageDto[] | null = await this.messageRepository.search({
       where: { conversationId },
       select: {
         sender: true,
@@ -626,26 +639,22 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
         createdAt: true,
       },
     });
-
+    const msgs2 = messages || [];
     const stats = {
-      totalMessages: messages.length,
-      totalTokens: messages.reduce((sum, msg) => sum + (msg.tokens || 0), 0),
-      messagesBySender: messages.reduce(
-        (acc, msg) => {
-          acc[msg.sender] = (acc[msg.sender] || 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>,
-      ),
-      tokensBySender: messages.reduce(
-        (acc, msg) => {
-          acc[msg.sender] = (acc[msg.sender] || 0) + (msg.tokens || 0);
-          return acc;
-        },
-        {} as Record<string, number>,
-      ),
-      firstMessage: messages.length > 0 ? messages[0].createdAt : null,
-      lastMessage: messages.length > 0 ? messages[messages.length - 1].createdAt : null,
+      totalMessages: msgs2.length,
+      totalTokens: msgs2.reduce((sum: number, msg: MessageDto) => sum + (msg.tokens || 0), 0),
+      messagesBySender: msgs2.reduce((acc: Record<string, number>, msg: MessageDto) => {
+        const key = (msg.sender as string) || (msg as any).role || 'user';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      tokensBySender: msgs2.reduce((acc: Record<string, number>, msg: MessageDto) => {
+        const key = (msg.sender as string) || (msg as any).role || 'user';
+        acc[key] = (acc[key] || 0) + (msg.tokens || 0);
+        return acc;
+      }, {} as Record<string, number>),
+      firstMessage: msgs2.length > 0 ? msgs2[0].createdAt ?? null : null,
+      lastMessage: msgs2.length > 0 ? msgs2[msgs2.length - 1].createdAt ?? null : null,
     };
 
     return stats;
@@ -663,7 +672,7 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
     const skip = (page - 1) * limit;
 
     const [messages, total] = await Promise.all([
-      prisma.message.findMany({
+      this.messageRepository.search({
         where: {
           conversationId,
           content: {
@@ -674,18 +683,16 @@ export class ConversationService extends BaseService<any, ConversationDto, Conve
         take: limit,
         orderBy: { createdAt: 'asc' },
       }),
-      prisma.message.count({
-        where: {
-          conversationId,
-          content: {
-            contains: query,
-          },
+      this.messageRepository.count({
+        conversationId,
+        content: {
+          contains: query,
         },
       }),
     ]);
 
     // Parse metadata
-    const parsedMessages = messages.map((message) => ({
+    const parsedMessages = messages.map((message: any) => ({
       ...message,
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
     }));

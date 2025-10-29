@@ -69,10 +69,6 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
       where.userId = filters.userId;
     }
 
-    if (filters.role) {
-      where.role = filters.role;
-    }
-
     if (filters.createdAfter || filters.createdBefore) {
       where.createdAt = {};
       if (filters.createdAfter) {
