@@ -206,3 +206,5 @@ export class ToolCommandSeeder {
     return toolSeeds;
   }
 }
+
+export const toolCommandSeeder = ToolCommandSeeder.instance;

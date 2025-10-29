@@ -244,16 +244,28 @@ export class BaseRepository<T, Dto, Dro> extends BaseInterface {
 
   /**
    * Count records matching the where condition
-   * @param where - Optional condition to filter records
+   * @param condition - Optional condition to filter records (can be where clause or full query params)
    * @returns Count of matching records
    * @example
    * ```typescript
+   * const activeUserCount = await userRepo.count({ where: { status: 'active' } });
+   * // or simple where clause
    * const activeUserCount = await userRepo.count({ status: 'active' });
    * ```
    */
   public override async count(condition?: any): Promise<number> {
     // @ts-ignore
-    return (this.model as T | any).count({ ...condition });
+    if (!condition) {
+      return (this.model as T | any).count();
+    }
+    
+    // If condition has 'where' property, use it as is
+    if (condition.where !== undefined) {
+      return (this.model as T | any).count(condition);
+    }
+    
+    // Otherwise, wrap the condition in a 'where' clause
+    return (this.model as T | any).count({ where: condition });
   }
 
   /**

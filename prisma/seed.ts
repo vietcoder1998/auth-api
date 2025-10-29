@@ -49,7 +49,7 @@ import {
   UIConfigRepository,
   UserRepository,
 } from '../src/repositories';
-import { RoleSeeder, ToolCommandSeeder } from './seeders';
+import { entityMethodSeeder, entitySeeder, RoleSeeder, toolCommandSeeder } from './seeders';
 import { AgentSeeder } from './seeders/agent.seeder';
 
 interface MockModel {
@@ -113,7 +113,8 @@ async function main() {
   });
 
   // Generate labels mapping and get mockLabelId
-  const { createdLabelsMap, mockLabelId } = LabelUtilitySeeder.instance.generateLabelsMapping(createdLabels);
+  const { createdLabelsMap, mockLabelId } =
+    LabelUtilitySeeder.instance.generateLabelsMapping(createdLabels);
 
   // Get users for relationships
   const [superadminUser, adminUser, regularUser] = await Promise.all([
@@ -568,7 +569,6 @@ async function main() {
   // Seed AI Agents
   console.log('🤖 Seeding AI Agents...');
 
-
   const createdAgents: any[] = await AgentSeeder.run({
     prisma,
     mockAgents,
@@ -774,13 +774,15 @@ async function main() {
   }
 
   // Now, create AgentTool join records
-  const agentTools = mockAgentTools.map((at) => {
-    const agentId = createdAgents.find(
-      (agent: any) => agent.name === mockAgents.find((a: any) => a.id === at.agentId)?.name,
-    )?.id;
-    const toolId = toolNameToId[at.name];
-    return agentId && toolId ? { agentId, toolId } : null;
-  }).filter(Boolean) as { agentId: string; toolId: string }[];
+  const agentTools = mockAgentTools
+    .map((at) => {
+      const agentId = createdAgents.find(
+        (agent: any) => agent.name === mockAgents.find((a: any) => a.id === at.agentId)?.name,
+      )?.id;
+      const toolId = toolNameToId[at.name];
+      return agentId && toolId ? { agentId, toolId } : null;
+    })
+    .filter(Boolean) as { agentId: string; toolId: string }[];
 
   const createdAgentTools: any[] = [];
   for (const at of agentTools) {
@@ -790,10 +792,10 @@ async function main() {
       });
       if (!existing) {
         const created = await prisma.agentTool.create({ data: at });
-        createdAgentTools.push(created)
-        console.log(`✓ Linked agent ${at.agentId} to tool ${at.toolId}`)
+        createdAgentTools.push(created);
+        console.log(`✓ Linked agent ${at.agentId} to tool ${at.toolId}`);
       } else {
-        createdAgentTools.push(existing)
+        createdAgentTools.push(existing);
       }
     } catch (error) {
       console.log(`⚠ Error linking agent-tool:`, error);
@@ -1031,7 +1033,9 @@ async function main() {
     });
   }
 
-  await ToolCommandSeeder.instance.run();
+  await entitySeeder.run();
+  await entityMethodSeeder.run();
+  await toolCommandSeeder.run();
 
   console.log('✅ Seeding completed successfully!');
 }

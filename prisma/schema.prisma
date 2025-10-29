@@ -866,6 +866,7 @@ model Entity {
 model EntityMethod {
   id          String   @id @default(uuid())
   name        String
+  code        String?  @db.Text
   description String?
   entityId    String? // @db.Uuid
   entity      Entity?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
