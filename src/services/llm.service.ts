@@ -1,6 +1,6 @@
 import { MemoryService } from './memory.service';
 import { vectorService } from './vector.service';
-
+import { MessageRepository } from '../repositories';
 import { PrismaClient } from '@prisma/client';
 import { GPTService } from './gpt.service';
 import { CloudService } from './cloude.service';
@@ -43,6 +43,8 @@ export interface LLMResponseWithVectors extends LLMResponse {
 }
 
 export class LLMService {
+  private readonly messageRepository = new MessageRepository();
+  
   constructor() {
     // Optionally, you can fetch enabled Gemini models here and store if needed
     // Example:
@@ -395,12 +397,12 @@ export class LLMService {
       });
     }
     // 5. Save answer message and link to question (if MessageService exists)
-    // const message = await MessageService.create({
-    //   conversationId,
-    //   content: llmResponse.content,
-    //   sender: 'agent',
-    //   linkedQuestionVectorId: questionVector?.vectorId,
-    // });
+    const message = await this.messageRepository.create({
+      conversationId,
+      content: llmResponse.content,
+      sender: 'agent',
+      linkedQuestionVectorId: questionVector?.vectorId,
+    });
     return {
       ...llmResponse,
       questionVector,

@@ -44,3 +44,4 @@ export * from './vector.service';
 export * from './database.service';
 export * from './llm.service';
 export * from './database-connection.service';
+export * from './message.service';
