@@ -222,20 +222,19 @@ export class Setup {
       console.log('🔄 Switching database connection via database service...');
 
       // Import database connection service dynamically
-      const { databaseConnectionService } = await import('./services/database-connection.service');
 
       let connection;
 
       if (connectionId) {
         // Find connection by ID
-        connection = await databaseConnectionService.findById(connectionId);
+        connection = await this.databaseConnectionService.findById(connectionId);
       } else if (connectionName) {
         // Find connection by name
-        const connections = await databaseConnectionService.findAll();
+        const connections = await this.databaseConnectionService.findAll();
         connection = connections.find((conn: any) => conn.name === connectionName);
       } else {
         // Get default active connection
-        const connections = await databaseConnectionService.findAll();
+        const connections = await this.databaseConnectionService.findAll();
         connection = connections.find((conn: any) => conn.isActive);
       }
 
@@ -270,22 +269,20 @@ export class Setup {
       console.log('🔄 Switching Redis connection via database connection service...');
 
       // Import database connection service dynamically
-      const { databaseConnectionService } = await import('./services/database-connection.service');
-
       let connection;
 
       if (connectionId) {
         // Find Redis connection by ID
-        connection = await databaseConnectionService.findById(connectionId);
+        connection = await this.databaseConnectionService.findById(connectionId);
       } else if (connectionName) {
         // Find Redis connection by name
-        const connections = await databaseConnectionService.findAll();
+        const connections = await this.databaseConnectionService.findAll();
         connection = connections.find(
           (conn: any) => conn.name === connectionName && conn.type === 'redis',
         );
       } else {
         // Get default active Redis connection
-        const connections = await databaseConnectionService.findAll();
+        const connections = await this.databaseConnectionService.findAll();
         connection = connections.find((conn: any) => conn.isActive && conn.type === 'redis');
       }
 
@@ -318,8 +315,7 @@ export class Setup {
    */
   public async listDatabaseConnections(): Promise<any[]> {
     try {
-      const { databaseConnectionService } = await import('./services/database-connection.service');
-      const connections = await databaseConnectionService.findAll();
+      const connections = await this.databaseConnectionService.findAll();
 
       return connections.map((conn: any) => ({
         id: conn.id,
@@ -342,8 +338,7 @@ export class Setup {
    */
   public async getActiveConnections(): Promise<{ database?: any; redis?: any }> {
     try {
-      const { databaseConnectionService } = await import('./services/database-connection.service');
-      const connections = await databaseConnectionService.findAll();
+      const connections = await this.databaseConnectionService.findAll();
 
       const activeDatabase = connections.find(
         (conn: any) =>
