@@ -356,41 +356,25 @@ export class ToolService extends BaseService<ToolModel, ToolDto, ToolDro> {
   }>> {
     const results = [];
 
-    // Get current tools for comparison
-    const currentTools = await this.listAgentTools(agentId);
-    const currentToolIds = currentTools.map(tool => tool.id);
+    // Get current tool IDs for comparison using repository method
+    const currentToolIds = await this._toolRepository.getCurrentAgentToolIds(agentId);
 
-    // Get all available tools to find tool names by ID
-    const allTools = await this.listTools();
+    // Determine which tools to enable (selected but not currently assigned)
+    const toolsToEnable = toolIds.filter(toolId => !currentToolIds.includes(toolId));
+    
+    // Determine which tools to disable (currently assigned but not selected)
+    const toolsToDisable = currentToolIds.filter(toolId => !toolIds.includes(toolId));
 
-    // Enable selected tools that aren't currently enabled
-    for (const toolId of toolIds) {
-      const tool = allTools.find(t => t.id === toolId);
-      if (tool && !currentToolIds.includes(toolId)) {
-        try {
-          await this.enableTool(agentId, tool.name);
-          results.push({ action: 'enabled' as const, tool: tool.name, toolId });
-        } catch (error) {
-          console.error(`Failed to enable tool ${tool.name}:`, error);
-          results.push({ action: 'failed' as const, tool: tool.name, toolId, error: 'Enable failed' });
-        }
-      }
+    // Enable tools using repository bulk method
+    if (toolsToEnable.length > 0) {
+      const enableResults = await this._toolRepository.bulkEnableTools(agentId, toolsToEnable);
+      results.push(...enableResults);
     }
 
-    // Disable tools that are currently enabled but not selected
-    for (const toolId of currentToolIds) {
-      if (!toolIds.includes(toolId)) {
-        const tool = allTools.find(t => t.id === toolId);
-        if (tool) {
-          try {
-            await this.disableTool(agentId, tool.name);
-            results.push({ action: 'disabled' as const, tool: tool.name, toolId });
-          } catch (error) {
-            console.error(`Failed to disable tool ${tool.name}:`, error);
-            results.push({ action: 'failed' as const, tool: tool.name, toolId, error: 'Disable failed' });
-          }
-        }
-      }
+    // Disable tools using repository bulk method
+    if (toolsToDisable.length > 0) {
+      const disableResults = await this._toolRepository.bulkDisableTools(agentId, toolsToDisable);
+      results.push(...disableResults);
     }
 
     return results;

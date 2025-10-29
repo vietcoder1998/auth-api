@@ -99,6 +99,82 @@ export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> 
       },
     });
   }
+
+  async bulkEnableTools(agentId: string, toolIds: string[]) {
+    // Get tool names from IDs
+    const tools = await prisma.tool.findMany({
+      where: { id: { in: toolIds } },
+      select: { id: true, name: true },
+    });
+
+    const results = [];
+    
+    for (const tool of tools) {
+      try {
+        // Check if agent-tool relation already exists
+        const existingRelation = await prisma.agentTool.findFirst({
+          where: {
+            agentId,
+            toolId: tool.id,
+          },
+        });
+
+        if (!existingRelation) {
+          // Create the agent-tool relation if it doesn't exist
+          await prisma.agentTool.create({
+            data: {
+              agentId,
+              toolId: tool.id,
+            },
+          });
+        }
+
+        results.push({ action: 'enabled' as const, tool: tool.name, toolId: tool.id });
+      } catch (error) {
+        console.error(`Failed to enable tool ${tool.name}:`, error);
+        results.push({ action: 'failed' as const, tool: tool.name, toolId: tool.id, error: 'Enable failed' });
+      }
+    }
+
+    return results;
+  }
+
+  async bulkDisableTools(agentId: string, toolIds: string[]) {
+    // Get tool names from IDs
+    const tools = await prisma.tool.findMany({
+      where: { id: { in: toolIds } },
+      select: { id: true, name: true },
+    });
+
+    const results = [];
+
+    for (const tool of tools) {
+      try {
+        // Remove the agent-tool relation
+        await prisma.agentTool.deleteMany({
+          where: {
+            agentId,
+            toolId: tool.id,
+          },
+        });
+
+        results.push({ action: 'disabled' as const, tool: tool.name, toolId: tool.id });
+      } catch (error) {
+        console.error(`Failed to disable tool ${tool.name}:`, error);
+        results.push({ action: 'failed' as const, tool: tool.name, toolId: tool.id, error: 'Disable failed' });
+      }
+    }
+
+    return results;
+  }
+
+  async getCurrentAgentToolIds(agentId: string): Promise<string[]> {
+    const agentTools = await prisma.agentTool.findMany({
+      where: { agentId },
+      select: { toolId: true },
+    });
+    return agentTools.map(at => at.toolId);
+  }
 }
 
 export const toolRepository = new ToolRepository();
