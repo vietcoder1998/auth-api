@@ -9,6 +9,7 @@ export class EntityMethodRoutes extends BaseRouter<EntityModel, EntityDto, Entit
         super('/entitiy-methods');
         this.entityMethodController = entityMethodController;
         this.routes = express.Router();
+        this.path = '/entity-methods';
         this.initializeRoutes();
     }
 

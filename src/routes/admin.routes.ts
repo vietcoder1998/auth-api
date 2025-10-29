@@ -76,6 +76,6 @@ router.use('/tool-commands', commandRouter);
 router.use('/files', fileRouter);
 router.use('/prompts', promptHistoryRouter);
 router.use(entityRoutes.path, entityRoutes.routes);
-router.use('/entity-methods', entityMethodRouter.routes);
+router.use(entityMethodRoutes.path, entityMethodRouter.routes);
 
 export default router;
