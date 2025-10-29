@@ -396,12 +396,13 @@ export class LLMService {
         conversationId,
       });
     }
-    // 5. Save answer message and link to question (if MessageService exists)
+    // 5. Save answer message and link to question using MessageRepository
     const message = await this.messageRepository.create({
       conversationId,
       content: llmResponse.content,
       sender: 'agent',
-      linkedQuestionVectorId: questionVector?.vectorId,
+      agentId,
+      metadata: questionVector?.vectorId ? JSON.stringify({ linkedQuestionVectorId: questionVector.vectorId }) : null,
     });
     return {
       ...llmResponse,
