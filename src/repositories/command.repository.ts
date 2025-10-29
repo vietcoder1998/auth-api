@@ -42,6 +42,23 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
             id: true,
             name: true,
             type: true,
+            description: true,
+            enabled: true,
+          },
+        },
+        entityMethods: {
+          include: {
+            entityMethod: {
+              include: {
+                entity: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -56,15 +73,45 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
     return this.model as CommandModel;
   }
   /**
-   * Find enabled commands for a tool
+   * Find enabled commands for a tool with full relationships
    * @param toolId - The ID of the tool
-   * @returns Array of enabled commands
+   * @returns Array of enabled commands with tool and entity methods
    */
   async findEnabledCommands(toolId: string): Promise<CommandDro[]> {
-    return this.findMany<CommandDro>({
-      toolId,
-      enabled: true,
+    const commands = await prisma.command.findMany({
+      where: { 
+        toolId,
+        enabled: true 
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        tool: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            description: true,
+            enabled: true,
+          },
+        },
+        entityMethods: {
+          include: {
+            entityMethod: {
+              include: {
+                entity: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
+    return commands as unknown as CommandDro[];
   }
 
   /**
@@ -178,15 +225,190 @@ export class CommandRepository extends BaseRepository<CommandModel, CommandDto, 
     return this.exists({ toolId, name });
   }
 
+  /**
+   * Find commands that use a specific entity method
+   * @param entityMethodId - The ID of the entity method
+   * @returns Array of commands that use the entity method
+   */
+  async findByEntityMethodId(entityMethodId: string): Promise<CommandDro[]> {
+    const commands = await prisma.command.findMany({
+      where: {
+        entityMethods: {
+          some: {
+            entityMethodId: entityMethodId,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        tool: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            description: true,
+            enabled: true,
+          },
+        },
+        entityMethods: {
+          include: {
+            entityMethod: {
+              include: {
+                entity: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    return commands as unknown as CommandDro[];
+  }
+
+  /**
+   * Find commands that use entity methods for a specific entity
+   * @param entityId - The ID of the entity
+   * @returns Array of commands that use methods from the entity
+   */
+  async findByEntityId(entityId: string): Promise<CommandDro[]> {
+    const commands = await prisma.command.findMany({
+      where: {
+        entityMethods: {
+          some: {
+            entityMethod: {
+              entityId: entityId,
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        tool: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            description: true,
+            enabled: true,
+          },
+        },
+        entityMethods: {
+          include: {
+            entityMethod: {
+              include: {
+                entity: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    return commands as unknown as CommandDro[];
+  }
+
   override async findOne(id: string): Promise<CommandDro | null> {
     const entity: CommandResult | null = await this.commandModel.findFirst({
       where: { id },
       include: {
-        tool: true,
+        tool: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            description: true,
+            enabled: true,
+          },
+        },
+        entityMethods: {
+          include: {
+            entityMethod: {
+              include: {
+                entity: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     }) as CommandResult | null;
     // Use convertResultToDro to map to CommandDro
     return entity ? this.convertResultToDro(entity) : null;
+  }
+
+  /**
+   * Get command statistics including entity method counts
+   * @param id - Command ID
+   * @returns Command with statistics
+   */
+  async getCommandStats(id: string): Promise<any> {
+    const command = await prisma.command.findUnique({
+      where: { id },
+      include: {
+        tool: true,
+        entityMethods: {
+          include: {
+            entityMethod: {
+              include: {
+                entity: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            entityMethods: true,
+            executions: true,
+          },
+        },
+      },
+    });
+    return command;
+  }
+
+  /**
+   * Find commands with entity method counts for listing purposes
+   * @param toolId - Optional tool ID to filter by
+   * @returns Array of commands with entity method counts
+   */
+  async findCommandsWithStats(toolId?: string): Promise<any[]> {
+    const where = toolId ? { toolId } : {};
+    
+    const commands = await prisma.command.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        tool: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        _count: {
+          select: {
+            entityMethods: true,
+            executions: true,
+          },
+        },
+      },
+    });
+    return commands;
   }
 
   private convertResultToDro(result: CommandResult): CommandDro {

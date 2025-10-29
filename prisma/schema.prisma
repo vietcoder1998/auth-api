@@ -503,8 +503,9 @@ model Command {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now())
 
-  executions CommandExecution[]
-  Entity     Entity[]
+  executions    CommandExecution[]
+  Entity        Entity[]
+  entityMethods CommandEntityMethod[] // Many-to-many relation with EntityMethod
 
   @@unique([toolId, name])
   @@index([toolId])
@@ -870,7 +871,23 @@ model EntityMethod {
   description String?
   entityId    String? // @db.Uuid
   entity      Entity?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  commands    CommandEntityMethod[] // Many-to-many relation with Command
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@map("entity_method")
+}
+
+// Junction table for Command <-> EntityMethod (many-to-many)
+model CommandEntityMethod {
+  id             String       @id @default(uuid())
+  commandId      String
+  entityMethodId String
+  command        Command      @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  entityMethod   EntityMethod @relation(fields: [entityMethodId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([commandId, entityMethodId])
+  @@index([commandId])
+  @@index([entityMethodId])
+  @@map("command_entity_method")
 }
