@@ -4,11 +4,14 @@ import { BaseRepository } from './base.repository';
 
 export class ToolRepository extends BaseRepository<ToolModel, ToolDto, ToolDro> {
   constructor(toolDelegate = prisma.tool) {
-    super(toolDelegate);
+    super(toolDelegate);}
+
+  get toolModel() {
+    return this.model;
   }
 
   async findByName(name: string) {
-    return this.model.findUnique({ where: { name } });
+    return this.toolModel.findFirst({ where: { name } });
   }
 
   async enableTool(agentId: string, name: string) {
