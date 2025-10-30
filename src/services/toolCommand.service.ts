@@ -232,13 +232,31 @@ export class ToolCommandService extends BaseService<CommandModel, CommandDto, Co
     command: CommandDro,
     input?: Record<string, any>,
   ): Promise<Record<string, any>> {
-    // Parse command params if they're a string, otherwise use as-is
-    let params: Record<string, any> = {};
+    // Parse command metadata and extract parameters
+    let commandConfig: Record<string, any> = {};
+    let entityConfig: Record<string, any> = {};
+    let permissionConfig: Record<string, any> = {};
+    
+    if (command.metadata) {
+      if (typeof command.metadata === 'string') {
+        const metadata = JSON.parse(command.metadata);
+        commandConfig = metadata;
+        permissionConfig = metadata.permission || {};
+        entityConfig = metadata.entity || {};
+      } else {
+        commandConfig = command.metadata;
+        permissionConfig = command.metadata.permission || {};
+        entityConfig = command.metadata.entity || {};
+      }
+    }
+    
+    // Fallback to legacy params for backward compatibility
+    let legacyParams: Record<string, any> = {};
     if (command.params) {
       if (typeof command.params === 'string') {
-        params = JSON.parse(command.params);
+        legacyParams = JSON.parse(command.params);
       } else {
-        params = command.params;
+        legacyParams = command.params;
       }
     }
 
@@ -252,7 +270,10 @@ export class ToolCommandService extends BaseService<CommandModel, CommandDto, Co
       action: command.action,
       repository: command.repository,
       input,
-      params,
+      metadata: commandConfig,
+      permission: permissionConfig,
+      entity: entityConfig,
+      legacyParams, // Include for backward compatibility
     };
   }
 

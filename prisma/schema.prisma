@@ -487,19 +487,25 @@ model Command {
   action        String // Action type (e.g., 'execute', 'query', 'update')
   repository    String? // Repository identifier or path
   script        String?  @db.Text // Script or command to execute
-  params        String?  @db.Text // JSON parameters schema
-  exampleParams String?  @db.Text // Example parameters as JSON string
-  // Example params:
-  // {
-  //   "name": "Create permission",
-  //   "route": "/api/permission",
-  //   "method": "POST"
-  // }
+  params        String?  @db.Text // Deprecated: Use metadata field instead
+  exampleParams String?  @db.Text // Deprecated: Use metadata field instead
   description   String?  @db.Text
   enabled       Boolean  @default(true)
   timeout       Int?     @default(30000) // Timeout in milliseconds
   retries       Int?     @default(0) // Number of retry attempts
-  metadata      String?  @db.Text // JSON metadata for additional configuration
+  metadata      String?  @db.Text // JSON metadata for parameters and configuration
+  // Example metadata structure:
+  // {
+  //   "permission": {
+  //     "name": "Create permission",
+  //     "route": "/api/permission", 
+  //     "method": "POST"
+  //   },
+  //   "entity": {
+  //     "permissionId": "{permission_id}",
+  //     "userId": "{user_id}"
+  //   }
+  // }
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now())
 

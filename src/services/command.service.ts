@@ -22,8 +22,9 @@ export interface CommandContext {
   // Extended command properties
   description?: string;
   name?: string;
-  params?: string;
-  exampleParams?: string;
+  params?: string; // Deprecated: Use metadata instead
+  exampleParams?: string; // Deprecated: Use metadata instead
+  metadata?: string | Record<string, any>; // New metadata field
   toolId?: string;
   entityMethodIds?: string[];
 }
@@ -592,15 +593,25 @@ export class CommandService extends BaseService<CommandModel, CommandDto, Comman
           continue;
         }
 
-        // Parse parameters
+        // Parse parameters (support both legacy params and new metadata)
         let parsedParams: any = {};
         let parsedExampleParams: any = {};
+        let parsedMetadata: any = {};
         
         try {
-          if (params) {
-            parsedParams = typeof params === 'string' ? JSON.parse(params) : params;
+          // Handle new metadata structure
+          if (context.metadata) {
+            parsedMetadata = typeof context.metadata === 'string' ? JSON.parse(context.metadata) : context.metadata;
+            // Extract parameters from metadata structure
+            parsedParams = parsedMetadata.permission || {};
+            parsedExampleParams = parsedMetadata.example || {};
           }
-          if (exampleParams) {
+          
+          // Fallback to legacy params for backward compatibility
+          if (params && !parsedParams.name) {
+            parsedParams = { ...parsedParams, ...(typeof params === 'string' ? JSON.parse(params) : params) };
+          }
+          if (exampleParams && Object.keys(parsedExampleParams).length === 0) {
             parsedExampleParams = typeof exampleParams === 'string' ? JSON.parse(exampleParams) : exampleParams;
           }
         } catch (parseError) {

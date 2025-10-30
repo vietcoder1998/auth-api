@@ -55,17 +55,24 @@ export class ToolCommandSeeder {
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: JSON.stringify({
-          name: 'Create permission',
-          route: '/api/permission',
-          method: 'POST',
-        }),
-        exampleParams: JSON.stringify({
-          name: 'user.create',
-          description: 'Create a new user permission',
-          category: 'user',
-          route: '/api/users',
-          method: 'POST',
+        params: null, // Deprecated - use metadata instead
+        exampleParams: null, // Deprecated - use metadata instead
+        metadata: JSON.stringify({
+          permission: {
+            name: 'Create permission',
+            route: '/api/permission',
+            method: 'POST',
+          },
+          entity: {
+            permissionId: '{permission_id}',
+          },
+          example: {
+            name: 'user.create',
+            description: 'Create a new user permission',
+            category: 'user',
+            route: '/api/users',
+            method: 'POST',
+          }
         }),
         createdAt: now,
         updatedAt: now,
@@ -78,13 +85,20 @@ export class ToolCommandSeeder {
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: JSON.stringify({
-          name: 'Get permission',
-          route: '/api/permission/:id',
-          method: 'GET',
-        }),
-        exampleParams: JSON.stringify({
-          id: 'permission-id-123',
+        params: null, // Deprecated - use metadata instead
+        exampleParams: null, // Deprecated - use metadata instead
+        metadata: JSON.stringify({
+          permission: {
+            name: 'Get permission',
+            route: '/api/permission/:id',
+            method: 'GET',
+          },
+          entity: {
+            permissionId: '{permission_id}',
+          },
+          example: {
+            id: 'permission-id-123',
+          }
         }),
         createdAt: now,
         updatedAt: now,
@@ -97,14 +111,21 @@ export class ToolCommandSeeder {
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: JSON.stringify({
-          name: 'List permissions',
-          route: '/api/permission',
-          method: 'GET',
-        }),
-        exampleParams: JSON.stringify({
-          category: 'user',
-          method: 'POST',
+        params: null, // Deprecated - use metadata instead
+        exampleParams: null, // Deprecated - use metadata instead
+        metadata: JSON.stringify({
+          permission: {
+            name: 'List permissions',
+            route: '/api/permission',
+            method: 'GET',
+          },
+          entity: {
+            permissionId: '{permission_id}',
+          },
+          example: {
+            category: 'user',
+            method: 'POST',
+          }
         }),
         createdAt: now,
         updatedAt: now,
@@ -117,16 +138,23 @@ export class ToolCommandSeeder {
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: JSON.stringify({
-          name: 'Update permission',
-          route: '/api/permission/:id',
-          method: 'PUT',
-        }),
-        exampleParams: JSON.stringify({
-          id: 'permission-id-123',
-          name: 'user.update',
-          description: 'Updated permission description',
-          category: 'user',
+        params: null, // Deprecated - use metadata instead
+        exampleParams: null, // Deprecated - use metadata instead
+        metadata: JSON.stringify({
+          permission: {
+            name: 'Update permission',
+            route: '/api/permission/:id',
+            method: 'PUT',
+          },
+          entity: {
+            permissionId: '{permission_id}',
+          },
+          example: {
+            id: 'permission-id-123',
+            name: 'user.update',
+            description: 'Updated permission description',
+            category: 'user',
+          }
         }),
         createdAt: now,
         updatedAt: now,
@@ -139,13 +167,20 @@ export class ToolCommandSeeder {
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: JSON.stringify({
-          name: 'Delete permission',
-          route: '/api/permission/:id',
-          method: 'DELETE',
-        }),
-        exampleParams: JSON.stringify({
-          id: 'permission-id-123',
+        params: null, // Deprecated - use metadata instead
+        exampleParams: null, // Deprecated - use metadata instead
+        metadata: JSON.stringify({
+          permission: {
+            name: 'Delete permission',
+            route: '/api/permission/:id',
+            method: 'DELETE',
+          },
+          entity: {
+            permissionId: '{permission_id}',
+          },
+          example: {
+            id: 'permission-id-123',
+          }
         }),
         createdAt: now,
         updatedAt: now,
@@ -158,13 +193,20 @@ export class ToolCommandSeeder {
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: JSON.stringify({
-          name: 'Find permission by name',
-          route: '/api/permission/name/:name',
-          method: 'GET',
-        }),
-        exampleParams: JSON.stringify({
-          name: 'user.create',
+        params: null, // Deprecated - use metadata instead
+        exampleParams: null, // Deprecated - use metadata instead
+        metadata: JSON.stringify({
+          permission: {
+            name: 'Find permission by name',
+            route: '/api/permission/name/:name',
+            method: 'GET',
+          },
+          entity: {
+            permissionId: '{permission_id}',
+          },
+          example: {
+            name: 'user.create',
+          }
         }),
         createdAt: now,
         updatedAt: now,
@@ -177,13 +219,20 @@ export class ToolCommandSeeder {
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: JSON.stringify({
-          name: 'Find permissions by category',
-          route: '/api/permission/category/:category',
-          method: 'GET',
-        }),
-        exampleParams: JSON.stringify({
-          category: 'user',
+        params: null, // Deprecated - use metadata instead
+        exampleParams: null, // Deprecated - use metadata instead
+        metadata: JSON.stringify({
+          permission: {
+            name: 'Find permissions by category',
+            route: '/api/permission/category/:category',
+            method: 'GET',
+          },
+          entity: {
+            permissionId: '{permission_id}',
+          },
+          example: {
+            category: 'user',
+          }
         }),
         createdAt: now,
         updatedAt: now,
@@ -196,13 +245,20 @@ export class ToolCommandSeeder {
         enabled: true,
         toolId: tool.id,
         repository: 'permission',
-        params: JSON.stringify({
-          name: 'Find permissions by method',
-          route: '/api/permission/method/:method',
-          method: 'GET',
-        }),
-        exampleParams: JSON.stringify({
-          method: 'POST',
+        params: null, // Deprecated - use metadata instead
+        exampleParams: null, // Deprecated - use metadata instead
+        metadata: JSON.stringify({
+          permission: {
+            name: 'Find permissions by method',
+            route: '/api/permission/method/:method',
+            method: 'GET',
+          },
+          entity: {
+            permissionId: '{permission_id}',
+          },
+          example: {
+            method: 'POST',
+          }
         }),
         createdAt: now,
         updatedAt: now,
@@ -224,6 +280,7 @@ export class ToolCommandSeeder {
           enabled: command.enabled,
           repository: command.repository,
           params: command.params,
+          metadata: command.metadata,
         },
       }))
     );

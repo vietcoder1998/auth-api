@@ -39,12 +39,25 @@ export interface CommandDro extends Omit<CommandDto, 'params' | 'metadata' | 'co
   action: string;
   repository?: string | null;
   script?: string | null;
-  params?: Record<string, any> | null; // Parsed JSON params
+  params?: Record<string, any> | null; // Deprecated: Use metadata instead
   description?: string | null;
   enabled: boolean;
   timeout?: number | null;
   retries?: number | null;
-  metadata?: Record<string, any> | null; // Parsed JSON metadata
+  metadata?: {
+    permission?: {
+      name: string;
+      route: string;
+      method: string;
+    };
+    entity?: {
+      permissionId?: string;
+      userId?: string;
+      [key: string]: string | undefined;
+    };
+    example?: Record<string, any>;
+    [key: string]: any;
+  } | null; // Structured metadata with permission/entity/example
   createdAt: Date;
   updatedAt: Date;
   tools?: ToolDro[];
