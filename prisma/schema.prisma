@@ -474,18 +474,21 @@ model Tool {
   updatedAt   DateTime    @default(now())
   agents      AgentTool[]
 
-  toolContexts ToolContext[] // 1:n relation to ToolContext
+  toolContexts      ToolContext[] // 1:n relation to ToolContext
+  Result            Result[]
+  ToolExecuteResult ToolExecuteResult[]
+  ToolCommand       ToolCommand[]
 
   @@map("tool")
 }
 
 // Context model
 model Context {
-  id          String        @id @default(uuid())
-  name        String        @unique
+  id          String   @id @default(uuid())
+  name        String   @unique
   description String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
 
   toolContexts ToolContext[] // 1:n relation to ToolContext
 
@@ -494,13 +497,14 @@ model Context {
 
 // Join table for Tool <-> Context (many-to-one, cascade)
 model ToolContext {
-  id        String   @id @default(uuid())
-  toolId    String
-  contextId String
-  tool      Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
-  context   Context  @relation(fields: [contextId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  id                String              @id @default(uuid())
+  toolId            String
+  contextId         String
+  tool              Tool                @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  context           Context             @relation(fields: [contextId], references: [id], onDelete: Cascade)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @default(now())
+  ToolExplainResult ToolExplainResult[]
 
   @@unique([toolId, contextId])
   @@index([toolId])
@@ -522,21 +526,21 @@ model AgentTool {
 }
 
 model Command {
-  id            String   @id @default(uuid())
+  id            String       @id @default(uuid())
   toolId        String
-  tool          Tool     @relation("ToolCommands", fields: [toolId], references: [id], onDelete: Restrict)
+  tool          Tool         @relation("ToolCommands", fields: [toolId], references: [id], onDelete: Restrict)
   name          String // Command name (e.g., 'git_commit', 'deploy', 'test')
   action        String // Action type (e.g., 'execute', 'query', 'update')
   type          CommandType? @default(execute) // <-- Add type field, default to execute
   repository    String? // Repository identifier or path
-  script        String?  @db.Text // Script or command to execute
-  params        String?  @db.Text // Deprecated: Use metadata field instead
-  exampleParams String?  @db.Text // Deprecated: Use metadata field instead
-  description   String?  @db.Text
-  enabled       Boolean  @default(true)
-  timeout       Int?     @default(30000) // Timeout in milliseconds
-  retries       Int?     @default(0) // Number of retry attempts
-  metadata      String?  @db.Text // JSON metadata for parameters and configuration
+  script        String?      @db.Text // Script or command to execute
+  params        String?      @db.Text // Deprecated: Use metadata field instead
+  exampleParams String?      @db.Text // Deprecated: Use metadata field instead
+  description   String?      @db.Text
+  enabled       Boolean      @default(true)
+  timeout       Int?         @default(30000) // Timeout in milliseconds
+  retries       Int?         @default(0) // Number of retry attempts
+  metadata      String?      @db.Text // JSON metadata for parameters and configuration
   // Example metadata structure:
   // {
   //   "permission": {
@@ -554,14 +558,14 @@ model Command {
   //     {"tool": "Forecaster", "command": "predict_next_quarter"}
   //   ]
   // }
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now())
 
   executions    CommandExecution[]
   Entity        Entity[]
   entityMethods CommandEntityMethod[] // Many-to-many relation with EntityMethod
 
-  toolSteps     ToolStep[] // 1:n relation to ToolStep
+  toolSteps ToolStep[] // 1:n relation to ToolStep
 
   @@unique([toolId, name])
   @@index([toolId])
@@ -571,16 +575,16 @@ model Command {
 
 // ToolStep model for planning steps
 model ToolStep {
-  id         String   @id @default(uuid())
-  commandId  String
-  command    Command  @relation(fields: [commandId], references: [id], onDelete: Cascade)
-  stepIndex  Int      // Order of the step in the plan
-  tool       String   // Tool name
-  toolType   String?  // Optional: type of tool
-  commandName String  // Command to execute
-  params     String?  @db.Text // JSON params for the step
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now())
+  id          String   @id @default(uuid())
+  commandId   String
+  command     Command  @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  stepIndex   Int // Order of the step in the plan
+  tool        String // Tool name
+  toolType    String? // Optional: type of tool
+  commandName String // Command to execute
+  params      String?  @db.Text // JSON params for the step
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
 
   @@index([commandId])
   @@map("tool_step")
@@ -934,19 +938,21 @@ model Entity {
   methods     EntityMethod[] // Relation: one Entity -> many EntityMethod
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
   @@map("entity")
 }
 
 model EntityMethod {
-  id          String   @id @default(uuid())
+  id          String                @id @default(uuid())
   name        String
-  code        String?  @db.Text
+  code        String?               @db.Text
   description String?
   entityId    String? // @db.Uuid
-  entity      Entity?  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  entity      Entity?               @relation(fields: [entityId], references: [id], onDelete: Cascade)
   commands    CommandEntityMethod[] // Many-to-many relation with Command
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
   @@map("entity_method")
 }
 
@@ -964,3 +970,63 @@ model CommandEntityMethod {
   @@index([entityMethodId])
   @@map("command_entity_method")
 }
+
+// --- Added from UML diagram ---
+
+enum ToolType {
+  gen_context
+  planner
+  explainer
+  adjust_execution
+  execute
+}
+
+enum ResultType {
+  tool_execute_result
+  command_execute_result
+  tool_explain_result
+  adjust_tool_result
+}
+
+model Result {
+  id         String      @id @default(uuid())
+  content    String?     @db.Text
+  toolId     String?
+  tool       Tool?       @relation(fields: [toolId], references: [id])
+  resultType ResultType?
+  createdAt  DateTime    @default(now())
+}
+
+model ToolExecuteResult {
+  id        String   @id @default(uuid())
+  toolId    String
+  tool      Tool     @relation(fields: [toolId], references: [id])
+  result    String?  @db.Text
+  createdAt DateTime @default(now())
+}
+
+model ToolCommand {
+  id        String   @id @default(uuid())
+  toolId    String
+  tool      Tool     @relation(fields: [toolId], references: [id])
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model ToolExplainResult {
+  id            String      @id @default(uuid())
+  toolContextId String
+  toolContext   ToolContext @relation(fields: [toolContextId], references: [id])
+  result        String?     @db.Text
+  createdAt     DateTime    @default(now())
+}
+
+// --- Extend existing models with new fields/relations ---
+
+// Tool: add toolType, toolSteps, toolExecuteResult, toolCommands, conversations, agentsDirect
+// ToolStep: add toolId, toolRef, toolExecuteResult
+// ToolContext: add toolExplainResult, promptId, prompt, goal
+// Agent: add toolsDirect
+// Conversation: add toolId, tool
+
+// NOTE: These should be manually merged into the respective models above for best practice.

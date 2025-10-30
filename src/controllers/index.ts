@@ -7,3 +7,7 @@ export * from './entity_method.controller';
 export * from './entitymethod.controller';
 export * from './entity.controller';
 export * from './permission.controller';
+export * from './role.controller';
+export * from './tool-command.controller';
+export * from './tool-execute-result.controller';
+export * from './tool-explain-result.controller';
