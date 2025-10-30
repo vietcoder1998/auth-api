@@ -7,8 +7,12 @@ export class AgentRepository extends BaseRepository<AgentModel, AgentDto, AgentD
         super(agentDelegate);
     }
 
+    get agentModel() {
+        return this.model as AgentModel;
+    }
+
     async findByIdWithRelations(id: string) {
-        return this.model.findUnique({
+        return this.agentModel.findUnique({
             where: { id },
             include: {
                 user: {
@@ -45,7 +49,7 @@ export class AgentRepository extends BaseRepository<AgentModel, AgentDto, AgentD
             ];
         }
 
-        return this.model.findMany({
+        return this.agentModel.findMany({
             where,
             skip,
             take,
@@ -95,11 +99,11 @@ export class AgentRepository extends BaseRepository<AgentModel, AgentDto, AgentD
                 { description: { contains: search, mode: 'insensitive' } },
             ];
         }
-        return this.model.count({ where });
+        return this.agentModel.count({ where });
     }
 
     async createWithRelations(data: any) {
-        return this.model.create({
+        return this.agentModel.create({
             data,
             include: {
                 user: {
@@ -119,7 +123,7 @@ export class AgentRepository extends BaseRepository<AgentModel, AgentDto, AgentD
     }
 
     async updateWithRelations(id: string, data: any) {
-        return this.model.update({
+        return this.agentModel.update({
             where: { id },
             data,
             include: {
