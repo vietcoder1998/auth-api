@@ -1,5 +1,8 @@
 // 🚀 Auto-generated exports for all services
-
+export * from './base.service';
+export * from './message.service';
+export * from './conversation.service';
+export * from './permission.service';
 export * from './agent.service';
 export * from './aiKey.service';
 export * from './aiModel.service';

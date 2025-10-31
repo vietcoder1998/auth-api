@@ -1,14 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../env';
-import { TokenDro, TokenDto, TokenModel } from '../interfaces';
+import { TokenDro, TokenDto, TokenModel, JwtPayload } from '../interfaces';
 import { TokenRepository, tokenRepository } from '../repositories';
 import { BaseService } from './index';
-
-export interface JwtPayload {
-  userId: string;
-  email?: string;
-  role?: string;
-}
 
 export class AuthService extends BaseService<TokenModel, TokenDto, TokenDro> {
   public constructor(repo: TokenRepository = tokenRepository) {

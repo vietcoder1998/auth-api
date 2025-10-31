@@ -11,3 +11,8 @@ export * from './role.controller';
 export * from './tool-command.controller';
 export * from './tool-execute-result.controller';
 export * from './tool-explain-result.controller';
+export * from './token.controller';
+export * from './aiKey.controller';
+export * from './aiModel.controller';
+export * from './conversation.controller';
+export * from './user.controller';

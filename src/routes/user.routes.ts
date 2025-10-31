@@ -1,20 +1,13 @@
-import { Router } from 'express';
-import {
-  getUsers,
-  createUser,
-  updateUser,
-  searchUsers,
-  loginAsUser,
-  deleteUser,
-} from '../controllers/user.controller';
+import { BaseRouter } from './base.route';
+import { userController } from '../controllers';
+import { UserModel, UserDto, UserDro } from '../interfaces';
 
-const router = Router();
+// Extend BaseRouter for user routes
+class UserRouter extends BaseRouter<UserModel, UserDto, UserDro> {
+  constructor() {
+    super('users', userController);
+  }
+}
 
-router.get('/', getUsers);
-router.get('/search', searchUsers);
-router.post('/', createUser);
-router.put('/:id', updateUser);
-router.delete('/:email', deleteUser);
-router.post('/login-as', loginAsUser);
-
-export default router;
+const userRouter = new UserRouter();
+export default userRouter.routes;

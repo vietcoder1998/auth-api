@@ -1,4 +1,9 @@
-import { PrismaClient, Token as PrismaToken } from '@prisma/client';
+// Token-related interfaces
+export interface JwtPayload {
+  userId: string;
+  email?: string;
+  role?: string;
+}import { PrismaClient, Token as PrismaToken } from '@prisma/client';
 
 export type TokenModel = PrismaClient['token'];
 
