@@ -35,3 +35,4 @@ export * from './command.repository';
 export * from './commandExecution.repository';
 export * from './message.repository';
 export * from './conversation.repository';
+export * from './token.repository';

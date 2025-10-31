@@ -1,25 +1,31 @@
 import { Request, Response } from 'express';
-import { client } from '../setup';
+import { TokenDro, TokenDto, TokenModel, UserDro } from '../interfaces';
 import {
   authService,
   AuthService,
-  logicHistoryService,
+  historyService,
+  HistoryService,
   TokenService,
   tokenService,
+  UserService,
 } from '../services';
+import { client } from '../setup';
 import { BaseController } from './base.controller';
-import { TokenModel, TokenDto, TokenDro } from '../interfaces';
+import { cacheMiddleware, CacheMiddleware } from '../middlewares';
 
 export class TokenController extends BaseController<TokenModel, TokenDto, TokenDro> {
   private tokenService: TokenService;
   private authService: AuthService;
-  private logicHistoryService: typeof logicHistoryService;
+  private historyService: HistoryService;
+  private userService: UserService = new UserService();
+  private cacheMiddleware: CacheMiddleware = cacheMiddleware;
 
-  constructor(tokenService: TokenService = tokenService) {
-    super(tokenService);
-    this.tokenService = tokenService;
+  constructor(tokenServiceParam?: TokenService) {
+    const svc = tokenServiceParam || tokenService;
+    super(svc);
+    this.tokenService = svc;
     this.authService = authService;
-    this.logicHistoryService = logicHistoryService;
+    this.historyService = historyService;
   }
 
   public async revokeToken(req: Request, res: Response) {
@@ -75,7 +81,7 @@ export class TokenController extends BaseController<TokenModel, TokenDto, TokenD
       });
 
       // Get total count
-      const total = await this.tokenService.count({ where: whereClause });
+      const total: number = await this.tokenService.count({ where: whereClause });
 
       res.json({
         data: tokens,
@@ -114,12 +120,12 @@ export class TokenController extends BaseController<TokenModel, TokenDto, TokenD
       }
 
       // Check if token is expired
-      const isExpired = token.expiresAt < new Date();
+      const isExpired = token?.expiresAt ? token.expiresAt < new Date() : undefined;
 
       res.json({
         ...token,
         isExpired,
-        status: isExpired ? 'expired' : 'active',
+        status: isExpired === undefined ? 'unknown' : isExpired ? 'expired' : 'active',
       });
     } catch (err) {
       console.error('Get token error:', err);
@@ -130,15 +136,18 @@ export class TokenController extends BaseController<TokenModel, TokenDto, TokenD
   public async grantToken(req: Request, res: Response) {
     const { userId } = req.body;
     try {
-      // Use userRepository for user lookup if available, else fallback to prisma
-      const user = await this.tokenService.findUnique({
+      // Fetch user entity to get email and role
+      const user = await this.userService.findUnique({
         where: { id: userId },
       });
+
       if (!user) return res.status(404).json({ error: 'User not found' });
+
       const accessToken = this.authService.generateToken(
         { userId: user.id, email: user.email, role: user.roleId || undefined },
         '1h',
       );
+
       const refreshToken = this.authService.generateRefreshToken({ userId: user.id }, '7d');
       await this.tokenService.create({
         userId: user.id,
@@ -158,7 +167,7 @@ export class TokenController extends BaseController<TokenModel, TokenDto, TokenD
 
     try {
       // Validate user exists
-      const user = await this.tokenService.findUnique({
+      const user: UserDro | null = await this.userService.findUnique({
         where: { id: userId },
         include: {
           role: {
@@ -185,33 +194,35 @@ export class TokenController extends BaseController<TokenModel, TokenDto, TokenD
       // Generate tokens
       const accessToken = this.authService.generateToken(
         {
-          userId: user.id,
+          userId: user?.id ?? '',
           email: user.email,
           role: user.roleId || undefined,
         },
         expiresIn,
       );
 
-      const refreshToken = this.authService.generateRefreshToken({ userId: user.id }, '7d');
+      const refreshToken = this.authService.generateRefreshToken({ userId: user?.id ?? '' }, '7d');
 
       // Create token record
       const tokenRecord = await this.tokenService.create({
-        userId: user.id,
+        userId: user?.id ?? '',
         accessToken,
         refreshToken,
         expiresAt: new Date(Date.now() + expirationMs),
       } as any);
 
-      // Store in Redis for fast lookup
-      await client.set(`token:${accessToken}`, user.id, {
-        EX: Math.floor(expirationMs / 1000),
-      });
+      // Store in cache for fast lookup
+      await this.cacheMiddleware.cacheToken(
+        accessToken,
+        user?.id ?? '',
+        Math.floor(expirationMs / 1000),
+      );
 
       // If SSO context, create login history entry
       if (ssoId) {
         try {
-          await this.logicHistoryService.create({
-            userId: user.id,
+          await this.historyService.create({
+            userId: user?.id ?? '',
             ssoId: ssoId,
             deviceIP: deviceIP || req.ip || 'Unknown',
             userAgent: userAgent || req.get('User-Agent') || 'Unknown',

@@ -1,35 +1,29 @@
-import { Router } from 'express';
-import {
-  handoverUserStatus,
-  login,
-  register,
-  validate,
-  getMe,
-} from '../controllers/auth.controller';
+import { Request, Response, NextFunction, Router } from 'express';
+import { authController } from '../controllers/auth.controller';
 import { loggerMiddleware } from '../middlewares/logger.middle';
 import { client } from '../setup';
-import { NextFunction, Request, Response } from 'express';
+import { BaseRouter } from './base.route';
 
-const router = Router();
-router.use(loggerMiddleware);
-// Health check endpoint
-router.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Auth API is healthy' });
-});
 
-async function tokenCacheMiddleware(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers['authorization']?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'No token provided' });
-  const userId = await client.get(`token:${token}`);
-  if (!userId) return res.status(401).json({ error: 'Invalid or expired token' });
-  req.headers['x-user-id'] = userId;
-  next();
+class AuthRoutes extends BaseRouter<any, any, any> {
+  constructor() {
+    super('/auth', authController);
+    this.initializeRoutes();
+  }
+
+  protected initializeRoutes() {
+    // Health check endpoint
+    this.routes.get('/health', (req: Request, res: Response) => {
+      res.status(200).json({ status: 'ok', message: 'Auth API is healthy' });
+    });
+
+    this.routes.post('/login', authController.login.bind(authController));
+    this.routes.post('/register', authController.register.bind(authController));
+    this.routes.post('/validate', authController.validate.bind(authController));
+    this.routes.get('/me', authController.getMe.bind(authController));
+    this.routes.post('/handover-user-status', authController.handoverUserStatus.bind(authController));
+  }
 }
 
-router.post('/login', login);
-router.post('/register', register);
-router.post('/validate', validate);
-router.get('/me', tokenCacheMiddleware, getMe);
-router.post('/handover-user-status', tokenCacheMiddleware, handoverUserStatus);
-
-export default router;
+const authRoutes = new AuthRoutes();
+export default authRoutes.routes;

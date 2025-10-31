@@ -1,12 +1,13 @@
-import { Router } from 'express';
+import { BaseRouter } from './index';
+import { TokenDro, TokenDto, TokenModel } from '../interfaces';
+import { TokenController, tokenController } from '../controllers/token.controller';
 
-import { getTokens, grantToken, revokeToken, createToken } from '../controllers/token.controller';
+export class TokenRouter extends BaseRouter<TokenModel, TokenDto, TokenDro> {
+	constructor(path: string, tokenController: TokenController) {
+		super(path, tokenController);
+		this.routes.post('/revoke', tokenController.revokeToken);
+		this.routes.post('/grant', tokenController.grantToken);
+	}
+}
 
-const router = Router();
-
-router.get('', getTokens);
-router.post('', createToken);
-router.post('/revoke', revokeToken);
-router.post('/grant', grantToken);
-
-export default router;
+export const router = new TokenRouter('/tokens', tokenController).routes;

@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { CreateUserData, TokenDto, UpdateUserData, UserDto, UserModel, UserWithoutTokenDto, UserDro } from '../interfaces';
 import { AgentRepository, ConversationRepository, TokenRepository, UserRepository, userRepository } from '../repositories';
 import { BaseService } from './index';
+import { prisma } from '../setup';
 
 
 export class UserService extends BaseService<UserModel, UserDto, UserDro> {
@@ -18,7 +19,7 @@ export class UserService extends BaseService<UserModel, UserDto, UserDro> {
     this.userRepository = repo;
     this.agentRepository = new AgentRepository();
     this.conversationRepository = new ConversationRepository();
-    this.tokenRepository = new TokenRepository();
+    this.tokenRepository = new TokenRepository(prisma.token);
   }  /**
    * Create a new user
    */

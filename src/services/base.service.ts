@@ -187,8 +187,8 @@ export class BaseService<T, Dto, Dro> {
      * });
      * ```
      */
-    async create(data: Dto): Promise<Dro> {
-        return this.repository.create<Dto, Dro>(data);
+    async create<T>(data: T): Promise<Dro> {
+        return this.repository.create<T, Dro>(data);
     }
 
     /**

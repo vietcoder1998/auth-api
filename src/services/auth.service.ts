@@ -5,8 +5,8 @@ import { TokenRepository, tokenRepository } from '../repositories';
 import { BaseService } from './index';
 
 export class AuthService extends BaseService<TokenModel, TokenDto, TokenDro> {
-  public constructor(repo: TokenRepository = tokenRepository) {
-    super(repo);
+  public constructor(tokenRepository: TokenRepository) {
+    super(tokenRepository);
   }
 
   public generateToken(payload: JwtPayload, expiresIn: jwt.SignOptions['expiresIn'] = '1h') {
