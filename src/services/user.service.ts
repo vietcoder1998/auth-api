@@ -1,43 +1,28 @@
+
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { BaseService } from './base.service';
-import { UserRepository } from '../repositories/user.repository';
-import { AgentRepository } from '../repositories/agent.repository';
-import { ConversationRepository } from '../repositories/conversation.repository';
-import { UserDto } from '../interfaces';
+import { CreateUserData, TokenDto, UpdateUserData, UserDto, UserModel, UserWithoutTokenDto, UserDro } from '../interfaces';
+import { AgentRepository, ConversationRepository, TokenRepository, UserRepository, userRepository } from '../repositories';
+import { BaseService } from './index';
 
-const prisma = new PrismaClient();
 
-export interface CreateUserData {
-  email: string;
-  password: string;
-  nickname?: string;
-  roleId?: string;
-}
-
-export interface UpdateUserData {
-  email?: string;
-  password?: string;
-  nickname?: string;
-  roleId?: string;
-  status?: string;
-}
-
-export class UserService extends BaseService<any, UserDto, UserDto> {
+export class UserService extends BaseService<UserModel, UserDto, UserDro> {
   private userRepository: UserRepository;
   private agentRepository: AgentRepository;
   private conversationRepository: ConversationRepository;
+  private tokenRepository: TokenRepository;
 
-  constructor() {
-    const userRepository = new UserRepository();
-    super(userRepository);
-    this.userRepository = userRepository;
+  constructor(repo = userRepository) {
+    super(repo);
+    this.userRepository = repo;
     this.agentRepository = new AgentRepository();
     this.conversationRepository = new ConversationRepository();
+    this.tokenRepository = new TokenRepository();
   }  /**
    * Create a new user
    */
-  async createUser(data: CreateUserData) {
+  public async createUser(data: CreateUserData) {
     const { email, password, nickname, roleId } = data;
 
     // Check if user already exists
@@ -64,7 +49,7 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
   /**
    * Get user by ID
    */
-  async getUserById(id: string) {
+  public async getUserById(id: string) {
     const user = await this.userRepository.findWithRole(id);
 
     if (!user) {
@@ -77,13 +62,13 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
   /**
    * Get user by email
    */
-  async getUserByEmail(email: string) {
+  public async getUserByEmail(email: string) {
     return await this.userRepository.findByEmail(email);
   }
   /**
    * Update user
    */
-  async updateUser(id: string, data: UpdateUserData) {
+  public async updateUser(id: string, data: UpdateUserData) {
     const updateData: any = { ...data };
 
     // Hash password if provided
@@ -91,27 +76,26 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
       updateData.password = await bcrypt.hash(data.password, 12);
     }
 
-    const user = await this.userRepository.updateWithRole(id, updateData);
+    const user = await this.userRepository.update(id, updateData);
 
-    const { password: _, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return user;
   }
   /**
    * Delete user
    */
-  async deleteUser(id: string) {
+  public async deleteUser(id: string) {
     return await this.repository.delete(id);
   }
   /**
    * Get all users with pagination
    */
-  async getUsers(page: number = 1, limit: number = 20, search?: string) {
+  public async getUsers(page: number = 1, limit: number = 20, search?: string) {
     const skip = (page - 1) * limit;
 
     const where = search
       ? {
-          OR: [{ email: { contains: search } }, { nickname: { contains: search } }],
-        }
+        OR: [{ email: { contains: search } }, { nickname: { contains: search } }],
+      }
       : {};
 
     const [users, total] = await Promise.all([
@@ -128,7 +112,7 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count({ where }),
+      this.userRepository.count({ where }),
     ]);
 
     // Remove passwords from response
@@ -145,7 +129,7 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
   /**
    * Verify user password
    */
-  async verifyPassword(id: string, password: string) {
+  public async verifyPassword(id: string, password: string) {
     const user: any = await this.repository.findById(id);
 
     if (!user) {
@@ -157,7 +141,7 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
   /**
    * Change user password
    */
-  async changePassword(id: string, oldPassword: string, newPassword: string) {
+  public async changePassword(id: string, oldPassword: string, newPassword: string) {
     const user: any = await this.repository.findById(id);
 
     if (!user) {
@@ -176,7 +160,7 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
   /**
    * Get user's agents
    */
-  async getUserAgents(userId: string) {
+  public async getUserAgents(userId: string) {
     return await this.agentRepository.search({
       where: { userId },
       include: {
@@ -194,7 +178,7 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
   /**
    * Get user's conversations
    */
-  async getUserConversations(userId: string, page: number = 1, limit: number = 20) {
+  public async getUserConversations(userId: string, page: number = 1, limit: number = 20) {
     const skip = (page - 1) * limit;
 
     const [conversations, total] = await Promise.all([
@@ -212,7 +196,7 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
         },
         orderBy: { updatedAt: 'desc' },
       }),
-      prisma.conversation.count({ where: { userId } }),
+      this.conversationRepository.count({ where: { userId } }),
     ]);
 
     return {
@@ -222,6 +206,71 @@ export class UserService extends BaseService<any, UserDto, UserDto> {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  /**
+  * Count users by criteria
+  */
+  public async count(where: any): Promise<number> {
+    return this.userRepository.count({ where });
+  }
+
+  /**
+   * Save a token for a user (for compatibility; should use tokenService in future)
+   */
+  public async saveToken(data: TokenDto): Promise<any> {
+    // Save token using tokenRepository
+    return this.tokenRepository.create({ data });
+  }
+
+  /**
+   * Delete all tokens for a user by userId (for compatibility; should use tokenService in future)
+   */
+  public async deleteTokensByUserId(userId: string): Promise<any> {
+    return this.tokenRepository.deleteMany({ where: { userId } });
+  }
+
+  /**
+   * Delete a user by email
+   */
+  public async deleteByEmail(email: string): Promise<any> {
+    return this.userRepository.deleteMany({ where: { email } });
+  }
+
+  /**
+   * Create user (controller compatibility)
+   */
+  public async create(data: any): Promise<UserDto> {
+    // Accepts plain object, hashes password if present
+    const userData = { ...data };
+    if (userData.password) {
+      userData.password = await bcrypt.hash(userData.password, 12);
+    }
+    const user = await this.userRepository.createWithRole(userData);
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword as UserDto
+  }
+
+  /**
+   * Update user (controller compatibility)
+   */
+  public override async update(id: string, data: UpdateUserData): Promise<UserWithoutTokenDto | null> {
+    const updateData = { ...data };
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 12);
+    }
+
+    const userWithoutPassword: UserWithoutTokenDto | null = await this.userRepository.update(id, updateData);
+
+    return userWithoutPassword;
+  }
+
+  public async findFirst(args: any): Promise<UserDto | null> {
+    return this.userRepository.findFirst(args);
+  }
+
+  public async findUnique(args: any): Promise<UserDto | null> {
+    return this.userRepository.findUnique(args);
   }
 }
 

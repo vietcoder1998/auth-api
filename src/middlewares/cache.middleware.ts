@@ -1,27 +1,26 @@
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
-import { setup } from '../setup';
-import { logger } from './logger.middle';
-import { 
-  CACHE_TTL, 
-  CACHE_PREFIX, 
-  CACHE_URL_PREFIX, 
-  CACHE_USE_URL_BASED_KEYS, 
+import {
   CACHE_HASH_LENGTH,
-  CACHE_HEADER_STATUS,
   CACHE_HEADER_KEY,
+  CACHE_HEADER_STATUS,
+  CACHE_PREFIX,
   CACHE_STATUS_HIT,
-  CACHE_STATUS_MISS
+  CACHE_STATUS_MISS,
+  CACHE_TTL,
+  CACHE_URL_PREFIX,
+  CACHE_USE_URL_BASED_KEYS
 } from '../env';
-import { 
-  CacheOptions, 
-  CacheStats, 
-  CachedResponse, 
-  CacheKey, 
-  WriteMethods, 
-  InvalidationPaths 
+import {
+  CachedResponse,
+  CacheKey,
+  CacheOptions,
+  CacheStats,
+  InvalidationPaths,
+  WriteMethods
 } from '../interfaces/cache.interface';
-const client = setup.redis;
+import { logger } from './logger.middle';
+import { client } from '../setup';
 // Cache middleware class
 export class CacheMiddleware {
   private readonly ttl: number;
@@ -55,7 +54,7 @@ export class CacheMiddleware {
       .digest('hex')
       .substring(0, CACHE_HASH_LENGTH);
 
-    const querySuffix = queryString 
+    const querySuffix = queryString
       ? ':' + Buffer.from(queryString).toString('base64').substring(0, CACHE_HASH_LENGTH)
       : '';
 
@@ -72,11 +71,11 @@ export class CacheMiddleware {
     try {
       const [cleanPath] = urlPath.split('?');
       const pathParts = cleanPath.split('/').filter(Boolean);
-      
+
       // Build all patterns to check (current path + all parent paths)
       const patterns = new Set<string>();
       patterns.add(`${CACHE_URL_PREFIX}:${cleanPath.replace(/\//g, ':')}*`);
-      
+
       for (let i = 1; i < pathParts.length; i++) {
         const parentPath = '/' + pathParts.slice(0, i).join('/');
         patterns.add(`${CACHE_URL_PREFIX}:${parentPath.replace(/\//g, ':')}*`);
@@ -149,7 +148,7 @@ export class CacheMiddleware {
   private generateInvalidationPaths(urlPath: string): InvalidationPaths {
     const [cleanPath] = urlPath.split('?');
     const pathParts = cleanPath.split('/').filter(Boolean);
-    
+
     // Generate all parent paths in one pass
     return pathParts.reduce<string[]>((paths, _, index) => {
       paths.push('/' + pathParts.slice(0, index + 1).join('/'));
@@ -160,10 +159,10 @@ export class CacheMiddleware {
   // Handle write operations and invalidate cache
   private async handleCacheInvalidation(req: Request): Promise<void> {
     const invalidationPaths = this.generateInvalidationPaths(req.originalUrl);
-    
+
     await Promise.all(
-      invalidationPaths.map(path => 
-        this.invalidateCacheByUrlPattern(path).catch(err => 
+      invalidationPaths.map(path =>
+        this.invalidateCacheByUrlPattern(path).catch(err =>
           logger.error(`Failed to invalidate cache for ${path}:`, err)
         )
       )
@@ -182,8 +181,8 @@ export class CacheMiddleware {
     try {
       const parsedData = JSON.parse(data);
       // Only return parsed data if it's a plain object (not array, not null)
-      return (typeof parsedData === 'object' && parsedData !== null && !Array.isArray(parsedData)) 
-        ? parsedData 
+      return (typeof parsedData === 'object' && parsedData !== null && !Array.isArray(parsedData))
+        ? parsedData
         : data;
     } catch {
       return data;
@@ -201,12 +200,12 @@ export class CacheMiddleware {
       [CACHE_HEADER_KEY]: cacheKey,
     };
 
-    Object.entries(cacheHeaders).forEach(([key, value]) => 
+    Object.entries(cacheHeaders).forEach(([key, value]) =>
       res.set(key, value as string)
     );
 
     logger.info('Cache HIT for:', res.req.originalUrl);
-    
+
     return res.status(statusCode).json(this.processResponseData(data));
   }
 
@@ -266,11 +265,11 @@ export class CacheMiddleware {
         if (CacheMiddleware.WRITE_METHODS.includes(method as WriteMethods)) {
           await this.handleCacheInvalidation(req);
         }
-        
+
         if (!client.isOpen) {
           logger.warn('Redis not connected, skipping cache');
         }
-        
+
         return next();
       }
 
@@ -283,15 +282,15 @@ export class CacheMiddleware {
 
         if (cachedData) {
           const { statusCode, data, headers }: CachedResponse = JSON.parse(cachedData);
-          
+
           // Set headers in batch
           const cacheHeaders = {
             ...headers,
             [CACHE_HEADER_STATUS]: CACHE_STATUS_HIT,
             [CACHE_HEADER_KEY]: cacheKey,
           };
-          
-          Object.entries(cacheHeaders).forEach(([key, value]) => 
+
+          Object.entries(cacheHeaders).forEach(([key, value]) =>
             res.set(key, value as string)
           );
 
@@ -307,6 +306,20 @@ export class CacheMiddleware {
         next();
       }
     };
+  }
+
+  async cacheToken(token: string, userId: string, ttl: number = CACHE_TTL): Promise<void> {
+    if (!client.isOpen) {
+      logger.warn('Redis not connected, skipping token cache');
+      return;
+    }
+    const key = `${CACHE_PREFIX}:token:${token}`;
+    try {
+      await client.setEx(key, ttl, userId);
+      logger.info(`Cached token for user ${userId} with key ${key} (ttl: ${ttl})`);
+    } catch (error) {
+      logger.error('Failed to cache token:', error);
+    }
   }
 }
 

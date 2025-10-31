@@ -36,3 +36,6 @@ export * from './cache.interface';
 export * from './conversation.interface'
 export * from './prompthistory.interface'
 export * from './message.interface'
+export * from './command.interface'
+export * from './token.interface'
+export * from './role.interface'

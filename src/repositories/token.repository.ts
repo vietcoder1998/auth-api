@@ -33,3 +33,5 @@ export class TokenRepository extends BaseRepository<TokenModel, TokenDto, TokenD
         });
     }
 }
+
+export const tokenRepository = new TokenRepository();

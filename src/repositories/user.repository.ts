@@ -1,14 +1,18 @@
+import { UserDto, UserModel, UserDro, UpdateUserData } from '../interfaces';
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
-import { UserDto, UserModel } from '../interfaces';
 
-export class UserRepository extends BaseRepository<UserModel, UserDto, UserDto> {
+export class UserRepository extends BaseRepository<UserModel, UserDto, UserDro> {
     constructor(userDelegate = prisma.user) {
         super(userDelegate);
     }
 
-    async findByEmail(email: string) {
-        return this.model.findUnique({ 
+    get userModel(): UserModel {
+        return this.model as UserModel;
+    }
+
+    public async findByEmail(email: string) {
+        return this.userModel.findUnique({
             where: { email },
             include: {
                 role: {
@@ -20,8 +24,8 @@ export class UserRepository extends BaseRepository<UserModel, UserDto, UserDto> 
         });
     }
 
-    async findWithRole(id: string) {
-        return this.model.findUnique({
+    public async findWithRole(id: string) {
+        return this.userModel.findUnique({
             where: { id },
             include: {
                 role: {
@@ -33,15 +37,15 @@ export class UserRepository extends BaseRepository<UserModel, UserDto, UserDto> 
         });
     }
 
-    async findByStatus(status: string) {
-        return this.model.findMany({ 
+    public async findByStatus(status: string) {
+        return this.userModel.findMany({
             where: { status },
             include: { role: true }
         });
     }
 
-    async createWithRole(data: any) {
-        return this.model.create({
+    public async createWithRole(data: any) {
+        return this.userModel.create({
             data,
             include: {
                 role: {
@@ -53,18 +57,52 @@ export class UserRepository extends BaseRepository<UserModel, UserDto, UserDto> 
         });
     }
 
-    async updateWithRole(id: string, data: any) {
-        return this.model.update({
-            where: { id },
-            data,
+    public async findFirst(args: any): Promise<UserDto | null> {
+        const user = await this.userModel.findFirst({
+            ...args,
             include: {
-                role: {
-                    include: {
-                        permissions: true
-                    }
-                }
+                role: true
+            }
+        }) as (UserDto & { role?: any }) | null;
+
+        if (user) {
+            const userDto: UserDto = { ...user, role: user.role || null };
+
+            return userDto;
+        }
+
+        return null;
+    }
+
+    public async findUnique(args: any): Promise<UserDto | null> {
+        const user = await this.userModel.findUnique({
+            ...args,
+            include: {
+                role: true
+            }
+        }) as (UserDto & { role?: any }) | null;
+
+        if (user) {
+            const userDto: UserDto = { ...user, role: user.role || null };
+            return userDto;
+        }
+        return null;
+    }
+
+    public override async update<Dto = UserDto, Dro = UserDro>(id: string, data: Partial<Dto>): Promise<Dro> {
+        const user = await this.userModel.update({
+            where: { id },
+            data: {
+                ...data
+            },
+            include: {
+                role: true
             }
         });
+        // Remove password from response for UserWithoutTokenDto
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword as Dro;
     }
 }
 
+export const userRepository = new UserRepository();
