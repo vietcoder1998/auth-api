@@ -18,7 +18,7 @@
 
 ### 3. **API Enhancements**
 
-- ✅ Updated `admin.api.ts` with `simulateSSOLogin` method
+- ✅ Updated `admin/index.ts` with `simulateSSOLogin` method
 - ✅ Enhanced SSO controller to handle ssoKey field
 - ✅ Updated SSO middleware (prepared for ssoKey validation)
 
