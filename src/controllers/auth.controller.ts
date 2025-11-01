@@ -47,7 +47,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
             notificationTemplateName: 'security_alert',
           });
         }
-        return res.status(401).json({ error: 'Invalid credentials' });
+        throw new Error('Invalid credentials');
       }
 
       // Generate JWT tokens
@@ -76,6 +76,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
 
       // Cache access token in Redis
       await this.cacheMiddleware.cacheToken(accessToken, user.id, 3600);
+
       // Cache refresh token in Redis
       if (refreshTokenExpiresAt) {
         const ttl = Math.floor((refreshTokenExpiresAt.getTime() - Date.now()) / 1000);
@@ -105,6 +106,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
         refreshToken,
         refreshTokenExpiresAt,
         loginHistoryId: loginHistory?.id, // Return for potential logout tracking
+        user,
       });
     } catch (error) {
       console.error('Login error:', error);
@@ -118,7 +120,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       const { refreshToken } = req.body;
       const result = this.authService.generateAccessTokenFromRefreshToken(refreshToken);
       if (!result) {
-        return res.status(401).json({ error: 'Invalid refresh token' });
+        throw new Error('Invalid refresh token');
       }
       res.json(result);
     } catch (error) {
@@ -134,7 +136,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       // Check if user already exists
       const existingUser = await this.userService.findUnique({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ error: 'User already exists' });
+        throw new Error('User already exists');
       }
 
       const user = await this.userService.create({ email, password, nickname });
@@ -164,7 +166,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   const userId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!userId) {
-        return res.status(401).json({ error: 'User ID not found in request' });
+        throw new Error('User ID not found in request');
       }
 
       // Get the authorization header to find the token
@@ -239,7 +241,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   const userId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!userId) {
-        return res.status(401).json({ error: 'User ID not found in request' });
+        throw new Error('User ID not found in request');
       }
 
       const user = await this.userService.findUnique({
@@ -269,7 +271,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       });
 
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        throw new Error('User not found');
       }
 
       // Record profile access (optional, for audit purposes)
@@ -302,7 +304,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   const requesterId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!requesterId) {
-        return res.status(401).json({ error: 'User ID not found in request' });
+        throw new Error('User ID not found in request');
       }
 
       // Get requester info
@@ -312,7 +314,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       });
 
       if (!requester || requester.role?.name !== 'superadmin') {
-        return res.status(403).json({ error: 'Forbidden' });
+        throw new Error('Forbidden');
       }
 
       // Get current user status before update
@@ -322,7 +324,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       });
 
       if (!currentUser) {
-        return res.status(404).json({ error: 'User not found' });
+        throw new Error('User not found');
       }
 
       // Update user status
@@ -381,7 +383,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       // Find token record
       const tokenRecord = await this.tokenService.findUnique({ where: { id: tokenId } });
       if (!tokenRecord) {
-        return res.status(404).json({ error: 'Token not found' });
+        throw new Error('Token not found');
       }
       // Invalidate refresh token in DB
       await this.tokenService.update(tokenId, {
@@ -408,7 +410,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
         !tokenRecord.refreshExpiresAt ||
         new Date(tokenRecord.refreshExpiresAt) < new Date()
       ) {
-        return res.status(401).json({ error: 'Invalid or expired refresh token' });
+        throw new Error('Invalid or expired refresh token');
       }
 
       // Generate new access token
