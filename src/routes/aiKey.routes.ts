@@ -1,35 +1,36 @@
+import { AIKeyController, aiKeyController } from '../controllers';
+import { AIKeyDto, AIKeyModel } from '../interfaces';
 import { BaseRouter } from './base.route';
-import { aiKeyController } from '../controllers/aiKey.controller';
-import { AIKeyModel, AIKeyDto } from '../interfaces';
 
 /**
  * AIKeyRouter - Routes for AI key management
- * 
+ *
  * Extends BaseRouter to provide standard CRUD routes
  * plus custom routes for AI key specific functionality.
  */
 export class AIKeyRouter extends BaseRouter<AIKeyModel, AIKeyDto, AIKeyDto> {
   constructor() {
     super('ai-keys', aiKeyController);
+    this.initializeRoutes(aiKeyController);
     this.initializeCustomRoutes();
   }
 
-  protected initializeRoutes(controller: typeof aiKeyController): void {
+  protected initializeRoutes(aiKeyController: AIKeyController): void {
     // Override base routes to use our custom methods where needed
-    this.routes.get('/', controller.findAll.bind(controller)); // Use findAll instead of search for includes
-    this.routes.post('/', controller.create.bind(controller));
-    this.routes.get('/:id', controller.findOne.bind(controller));
-    this.routes.put('/:id', controller.update.bind(controller));
-    this.routes.delete('/:id', controller.delete.bind(controller));
-    
+    this.routes.get('/', aiKeyController.findAll.bind(aiKeyController)); // Use findAll instead of search for includes
+    this.routes.post('/', aiKeyController.create.bind(aiKeyController));
+    this.routes.get('/:id', aiKeyController.findOne.bind(aiKeyController));
+    this.routes.put('/:id', aiKeyController.update.bind(aiKeyController));
+    this.routes.delete('/:id', aiKeyController.delete.bind(aiKeyController));
+
     // Additional standard routes
-    this.routes.delete('/:id/soft', controller.softDelete.bind(controller));
-    this.routes.post('/batch', controller.createMany.bind(controller));
-    this.routes.put('/batch', controller.updateMany.bind(controller));
-    this.routes.delete('/batch', controller.deleteMany.bind(controller));
-    this.routes.post('/batch/soft-delete', controller.softDeleteMany.bind(controller));
-    this.routes.post('/search', controller.search.bind(controller));
-    this.routes.get('/count', controller.count.bind(controller));
+    this.routes.delete('/:id/soft', aiKeyController.softDelete.bind(aiKeyController));
+    this.routes.post('/batch', aiKeyController.createMany.bind(aiKeyController));
+    this.routes.put('/batch', aiKeyController.updateMany.bind(aiKeyController));
+    this.routes.delete('/batch', aiKeyController.deleteMany.bind(aiKeyController));
+    this.routes.post('/batch/soft-delete', aiKeyController.softDeleteMany.bind(aiKeyController));
+    this.routes.post('/search', aiKeyController.search.bind(aiKeyController));
+    this.routes.get('/count', aiKeyController.count.bind(aiKeyController));
   }
 
   /**
