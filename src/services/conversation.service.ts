@@ -27,12 +27,14 @@ import { MemoryService } from './memory.service';
 export class ConversationService extends BaseService<ConversationModel, ConversationDto, ConversationDto> {
   private conversationRepository: ConversationRepository;
   private messageRepository: MessageRepository;
+  private memoryService: MemoryService;
 
   constructor() {
     const conversationRepository = new ConversationRepository();
     super(conversationRepository);
     this.conversationRepository = conversationRepository;
     this.messageRepository = new MessageRepository();
+    this.memoryService = new MemoryService();
   }
   /**
    * Create a new prompt history for a conversation
@@ -46,11 +48,7 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
       data: { conversationId, prompt },
     });
     // Invalidate cache for conversations after prompt
-    try {
-      await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
-    } catch (err) {
-      console.error('Failed to invalidate cache after prompt:', err);
-    }
+    await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
     return promptHistory;
   }
 
@@ -419,30 +417,22 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     });
 
     // Also add a promptHistory for this message
-    try {
-      await prisma.promptHistory.create({
-        data: {
-          conversationId,
-          prompt: content,
-        },
-      });
-    } catch (err) {
-      console.error('Failed to create promptHistory for message:', err);
-    }
+    await prisma.promptHistory.create({
+      data: {
+        conversationId,
+        prompt: content,
+      },
+    });
 
     // Invalidate cache for conversations after message
-    try {
-      await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
-    } catch (err) {
-      console.error('Failed to invalidate cache after message:', err);
-    }
+    await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
 
     // Get agentId from conversation
     const conversation: ConversationDto | null = await this.conversationRepository.findById(conversationId);
     const agentId = conversation?.agentId || metadata?.agentId || '';
 
     // Save user message as memory
-    const memory = await MemoryService.create({
+    const memory = await this.memoryService.create({
       agentId,
       conversationId,
       messageId: message.id,
@@ -456,40 +446,22 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     let llmMessage = null;
     let answerMemory = null;
 
-    let llmResponse;
-    try {
-      llmResponse = await llmService.processAndSaveConversation(conversationId, content, agentId);
+    const llmResponse = await llmService.processAndSaveConversation(conversationId, content, agentId);
 
-      // Save agent reply as message
-      llmMessage = await this.messageRepository.create({
-        agentId,
-        conversationId,
-        sender: 'agent',
-        content: llmResponse.content,
-        tokens: llmResponse.tokens,
-        metadata: JSON.stringify({
-          model: llmResponse.model,
-          processingTime: llmResponse.processingTime,
-          ...llmResponse.metadata,
-          relatedUserMessageId: message.id, // link to prompt
-        }),
-      });
-
-    } catch (err) {
-      // If error, push an error message as answer (not linked to question)
-      llmMessage = await this.messageRepository.create({
-        agentId,
-        conversationId,
-        sender: 'agent',
-        content: `Error: ${err instanceof Error ? err.message : String(err)}`,
-        tokens: 0,
-        metadata: JSON.stringify({
-          error: true,
-          model: 'error',
-          processingTime: 0,
-        }),
-      });
-    }
+    // Save agent reply as message
+    llmMessage = await this.messageRepository.create({
+      agentId,
+      conversationId,
+      sender: 'agent',
+      content: llmResponse.content,
+      tokens: llmResponse.tokens,
+      metadata: JSON.stringify({
+        model: llmResponse.model,
+        processingTime: llmResponse.processingTime,
+        ...llmResponse.metadata,
+        relatedUserMessageId: message.id, // link to prompt
+      }),
+    });
 
     return {
       id: message.id,
@@ -550,11 +522,7 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     // Parse metadata which may be stored as JSON string or already as object
     let parsedMetadata: any = null;
     if (typeof message.metadata === 'string') {
-      try {
-        parsedMetadata = JSON.parse(message.metadata);
-      } catch (e) {
-        parsedMetadata = message.metadata;
-      }
+      parsedMetadata = JSON.parse(message.metadata);
     } else {
       parsedMetadata = message.metadata ?? null;
     }

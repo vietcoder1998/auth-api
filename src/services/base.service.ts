@@ -332,4 +332,62 @@ export class BaseService<T, Dto, Dro> {
   async findMany(where?: Record<string, any>): Promise<Dro[]> {
     return this.repository.findMany<Dro>(where);
   }
+
+  // ==================== HEALTH CHECK ====================
+
+  /**
+   * Perform a health check on the service and its repository
+   * @returns Health status object containing service and repository status
+   * @example
+   * ```typescript
+   * const health = await userService.healthCheck();
+   * console.log(health); // { status: 'healthy', repository: 'connected', timestamp: '2025-11-01T...' }
+   * ```
+   */
+  async healthCheck(): Promise<{
+    status: 'healthy' | 'unhealthy';
+    repository: 'connected' | 'disconnected' | 'error';
+    timestamp: string;
+    error?: string;
+  }> {
+    try {
+      const timestamp = new Date().toISOString();
+      
+      // Check if repository is available
+      if (!this.repository) {
+        return {
+          status: 'unhealthy',
+          repository: 'disconnected',
+          timestamp,
+          error: 'Repository not initialized'
+        };
+      }
+
+      // Try to perform a basic repository operation (count records)
+      try {
+        // Attempt to count records - this will test database connectivity
+        await this.repository.search({});
+        
+        return {
+          status: 'healthy',
+          repository: 'connected',
+          timestamp
+        };
+      } catch (repositoryError: any) {
+        return {
+          status: 'unhealthy',
+          repository: 'error',
+          timestamp,
+          error: `Repository error: ${repositoryError.message}`
+        };
+      }
+    } catch (error: any) {
+      return {
+        status: 'unhealthy',
+        repository: 'error',
+        timestamp: new Date().toISOString(),
+        error: `Health check failed: ${error.message}`
+      };
+    }
+  }
 }

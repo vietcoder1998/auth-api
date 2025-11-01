@@ -44,6 +44,7 @@ export interface LLMResponseWithVectors extends LLMResponse {
 
 export class LLMService {
   private readonly messageRepository = new MessageRepository();
+  private readonly memoryService = new MemoryService();
   
   constructor() {
     // Optionally, you can fetch enabled Gemini models here and store if needed
@@ -388,7 +389,7 @@ export class LLMService {
     // 4. Save to memory (link answer to question) only if not error
     let memory = null;
     if (llmResponse.model !== 'error') {
-      memory = await MemoryService.create({
+      memory = await this.memoryService.create({
         agentId,
         content: llmResponse.content,
         type: 'long_term',

@@ -16,3 +16,5 @@ export * from './aiKey.controller';
 export * from './aiModel.controller';
 export * from './conversation.controller';
 export * from './user.controller';
+export * from './memory.controller';
+export * from './search.controller';

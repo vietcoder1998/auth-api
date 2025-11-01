@@ -1,12 +1,21 @@
-import { Router } from 'express';
-import { MemoryController } from '../controllers/memory.controller';
+import { MemoryController, memoryController } from '../controllers/memory.controller';
+import {
+  AgentMemoryDro,
+  AgentMemoryDto,
+  AgentMemoryModel,
+} from '../interfaces/agentmemory.interface';
+import { BaseRouter } from './base.route';
 
-const router = Router();
+export class MemoryRouter extends BaseRouter<AgentMemoryModel, AgentMemoryDto, AgentMemoryDro> {
+  constructor() {
+    super('/memories', memoryController);
+  }
 
-router.post('/', MemoryController.create);
-router.get('/', MemoryController.getAll);
-router.get('/:id', MemoryController.getById);
-router.put('/:id', MemoryController.update);
-router.delete('/:id', MemoryController.delete);
+  protected initializeRoutes(controller: MemoryController) {
+    // Use BaseRouter's default routes that work with BaseController
+    super.initializeRoutes(controller);
+  }
+}
 
-export default router;
+// Export an instance for use in the application
+export const memoryRoutes = new MemoryRouter();
