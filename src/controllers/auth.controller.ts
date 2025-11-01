@@ -110,7 +110,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  this.handleError(res, error);
     }
   }
 
@@ -124,7 +124,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       }
       res.json(result);
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+  this.handleError(res, error);
     }
   }
 
@@ -155,7 +155,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json({ user });
     } catch (error) {
       console.error('Registration error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  this.handleError(res, error);
     }
   }
 
@@ -208,7 +208,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json({ message: 'Logged out successfully' });
     } catch (error) {
       console.error('Logout error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  this.handleError(res, error);
     }
   }
 
@@ -293,7 +293,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json(user);
     } catch (error) {
       console.error('Get me error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  this.handleError(res, error);
     }
   }
 
@@ -372,7 +372,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json({ user });
     } catch (error) {
       console.error('Handover user status error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  this.handleError(res, error);
     }
   }
 
@@ -394,7 +394,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json({ message: 'Refresh token revoked successfully' });
     } catch (error) {
       console.error('Revoke refresh token error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      this.handleError(res, error);
     }
   }
 
@@ -426,7 +426,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json({ accessToken, accessTokenExpiresAt });
     } catch (error) {
       console.error('Generate access token from refresh error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      this.handleError(res, error);
     }
   }
 }
