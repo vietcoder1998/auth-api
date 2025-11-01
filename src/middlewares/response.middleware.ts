@@ -58,12 +58,13 @@ export class ResponseMiddleware {
       ) {
         return oldJson.call(this, {
           data: body.data,
-          message: body.message ?? 'Success',
-          total: body.total,
-          page: body.page,
-          limit: body.limit,
-          totalPages: body.totalPages || Math.ceil(body.total / body.limit),
-          success: true,
+          pagination: {
+            total: body.total,
+            page: body.page,
+            limit: body.limit,
+            totalPages: body.totalPages || Math.ceil(body.total / body.limit),
+            success: true,
+          },
         });
       }
 
@@ -95,16 +96,17 @@ export class ResponseMiddleware {
         const { data, pagination, total, ...rest } = body;
         return oldJson.call(this, {
           data: data,
-          message: 'Success',
-          total: total || pagination?.total || (Array.isArray(data) ? data.length : 0),
-          page: pagination?.page || req.meta?.page || 1,
-          limit: pagination?.limit || pagination?.pageSize || req.meta?.pageSize || 10,
-          totalPages:
-            pagination?.totalPages ||
-            Math.ceil(
-              (pagination?.total || total || 0) / (pagination?.limit || req.meta?.pageSize || 10),
-            ),
-          success: true,
+          pagination: {
+            total: pagination.total || total || (Array.isArray(data) ? data.length : 0),
+            page: pagination.page || req.meta?.page || 1,
+            limit: pagination.limit || pagination.pageSize || req.meta?.pageSize || 10,
+            totalPages:
+              pagination.totalPages ||
+              Math.ceil(
+                (pagination.total || total || 0) /
+                  (pagination.limit || req.meta?.pageSize || 10),
+              ),
+          },
           ...rest,
         });
       }
@@ -117,12 +119,10 @@ export class ResponseMiddleware {
 
         return oldJson.call(this, {
           data: body,
-          message: 'Success',
-          total,
           pagination: {
+            total,
             page: currentPage,
             limit: currentPageSize,
-            total,
             totalPages: Math.ceil(total / currentPageSize),
           },
           success: true,
@@ -132,8 +132,9 @@ export class ResponseMiddleware {
       // Default: wrap single object in { data, message }
       return oldJson.call(this, {
         data: body,
-        message: 'Success',
+        message: body.message || 'Operation successful',
         success: true,
+        type: "object",
       });
     };
 

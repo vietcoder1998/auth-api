@@ -70,7 +70,19 @@ export class BaseController<T, Dto, Dro> {
     message?: string,
     statusCode: number = 200
   ): void {
-    res.status(statusCode).json({ data: pureData, message: message ?? "Success", success: true });
+    const data = pureData?.data ?? pureData;
+    res.status(statusCode).json(this.toResponse(data, message));
+  }
+
+  protected toResponse(pureData: any, message: string="Operation successful"): Record<string, any> {
+    const {data, ...rest} = pureData || {};
+    const responseMetadata = {...rest};
+    return {
+      data: data || pureData,
+      success: true,
+      message,
+      ...responseMetadata,
+    };
   }
 
   // ==================== CRUD OPERATIONS ====================
