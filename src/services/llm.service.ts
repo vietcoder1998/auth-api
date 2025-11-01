@@ -1,7 +1,7 @@
 import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
 import { AgentMemoryDro, AIKeyDro } from '../interfaces';
 import { logger } from '../middlewares/logger.middle';
-import { AgentRepository, AIKeyRepository, MessageRepository } from '../repositories';
+import { AgentRepository, AIKeyRepository, MessageRepository, AgentMemoryRepository } from '../repositories';
 import { CloudService } from './cloude.service';
 import { GeminiService } from './gemini.service';
 import { GPTService } from './gpt.service';
@@ -44,6 +44,7 @@ export class LLMService {
   private readonly agentRepository = new AgentRepository();
   private readonly aiKeyRepository = new AIKeyRepository();
   private readonly memoryService = new MemoryService();
+  private readonly memoryRepository = new AgentMemoryRepository();
 
   constructor() {
     // Optionally, you can fetch enabled Gemini models here and store if needed
@@ -363,19 +364,12 @@ export class LLMService {
 
     // 2. Save question embedding
     const questionVector = await vectorService.saveMessage(userMessage);
-    if (!questionVector) {
-      throw new Error('Failed to save question vector embedding');
-    }
-
     const answerVector = await vectorService.saveMessage(llmResponse.content);
-    if (!answerVector) {
-      throw new Error('Failed to save answer vector embedding');
-    }
 
     let memory = null;
 
     if (llmResponse.model !== 'error') {
-      memory = await this.memoryService.create({
+      memory = await this.memoryRepository.create({
         agentId,
         content: llmResponse.content,
         type: 'long_term',
