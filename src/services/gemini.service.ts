@@ -15,8 +15,10 @@ export class GeminiService {
         console.log('Available Gemini models:', models);
         this.availableModels = models;
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Failed to ping Gemini models:', error);
         this.availableModels = [];
+        throw new Error(`Failed to initialize Gemini service: ${error.message}`);
       });
   }
   /**
@@ -46,6 +48,15 @@ export class GeminiService {
   static async callGemini(messages: any[], agentConfig: any, geminiConfig: any, aiKey?: string | null): Promise<any> {
     const startTime = Date.now();
     try {
+      // Validate required parameters
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        throw new Error('Messages array is required and cannot be empty');
+      }
+      
+      if (!agentConfig || !geminiConfig) {
+        throw new Error('Agent config and Gemini config are required');
+      }
+      
       const url = GeminiService.getGeminiUrl(agentConfig, geminiConfig);
       const adaptedConfig = agentConfig; // Optionally adapt config if needed
       const requestPayload = GeminiService.generateGeminiBody(messages, adaptedConfig);
@@ -53,9 +64,14 @@ export class GeminiService {
         ...geminiConfig.headers,
         // Optionally add Authorization if needed
       };
+      
+      if (!url) {
+        throw new Error('Failed to generate Gemini API URL');
+      }
+      
       const response = await axios.post(url, requestPayload, {
         headers: requestHeaders,
-        timeout: geminiConfig.timeout,
+        timeout: geminiConfig.timeout || 30000, // Default 30 second timeout
       });
       const content = GeminiService.extractContent(
         response.data?.candidates || response.data?.data || response.data,
@@ -82,7 +98,8 @@ export class GeminiService {
       if (error?.response?.data?.error?.message) {
         message = error.response.data.error.message;
       }
-      return {
+      
+      const errorResponse = {
         content: message,
         model: 'error',
         tokens: 0,
@@ -93,6 +110,11 @@ export class GeminiService {
           llmServiceModel: 'gemini',
         },
       };
+      
+      // Throw the error with the response data for proper error handling
+      const geminiError = new Error(`Gemini API call failed: ${message}`);
+      (geminiError as any).response = errorResponse;
+      throw geminiError;
     }
   }
 
@@ -121,6 +143,15 @@ export class GeminiService {
       // Example endpoint: GET https://generativelanguage.googleapis.com/v1/models?key={API_KEY}
       const baseUrl = geminiConfig.apiUrl;
       const token = geminiConfig.apiKey;
+      
+      if (!baseUrl) {
+        throw new Error('Gemini API URL is not configured');
+      }
+      
+      if (!token) {
+        throw new Error('Gemini API key is not configured');
+      }
+      
       // Remove trailing path to get base
       const modelsUrl =
         baseUrl.replace(/\/v1\/chat$/, '/v1/models') +
@@ -131,9 +162,10 @@ export class GeminiService {
         return response.data.models.map((m: any) => m.name);
       }
       return [];
-    } catch (error) {
-      // Optionally log error
-      return [];
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Failed to ping Gemini models:', message);
+      throw new Error(`Failed to fetch Gemini models: ${message}`);
     }
   }
 
