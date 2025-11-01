@@ -10,8 +10,7 @@ import { BaseRouter } from './base.route';
  */
 export class AIKeyRouter extends BaseRouter<AIKeyModel, AIKeyDto, AIKeyDto> {
   constructor() {
-    super('ai-keys', aiKeyController);
-    this.initializeRoutes(aiKeyController);
+    super('/ai-keys', aiKeyController);
     this.initializeCustomRoutes();
   }
 
