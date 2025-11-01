@@ -361,10 +361,6 @@ export class LLMService {
       throw new Error('Failed to generate LLM response');
     }
 
-    if (llmResponse.model === 'error') {
-      throw new Error(`LLM generation failed: ${llmResponse.content}`);
-    }
-
     // 2. Save question embedding
     const questionVector = await vectorService.saveMessage(userMessage);
     if (!questionVector) {

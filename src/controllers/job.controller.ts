@@ -29,12 +29,12 @@ export async function createJob(req: Request, res: Response): Promise<void> {
 
 export async function listJobs(req: Request, res: Response): Promise<void> {
   const jobs = await jobQueue.getJobs();
-  res.json({ success: true, data: jobs });
+  res.json({ success: true, jobs });
 }
 
 export async function getJob(req: Request, res: Response): Promise<void> {
   const job = await jobQueue.getJob(req.params.id);
-  res.json({ success: true, data: job });
+  res.json({ success: true, job });
 }
 
 export async function deleteJob(req: Request, res: Response): Promise<void> {
