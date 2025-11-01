@@ -6,16 +6,8 @@ import {
   ConversationStats,
   DeleteResponse,
 } from '../dto/conversation.dto';
-import {
-  CreateMessageData,
-  MessageListResponse,
-  MessageResponse,
-} from '../dto/message.dto';
-import {
-  ConversationDto,
-  MessageDto,
-  ConversationModel,
-} from '../interfaces';
+import { CreateMessageData, MessageListResponse, MessageResponse } from '../dto/message.dto';
+import { ConversationDro, ConversationDto, ConversationModel, MessageDto } from '../interfaces';
 import { cacheMiddleware } from '../middlewares/cache.middleware';
 import { ConversationRepository } from '../repositories/conversation.repository';
 import { MessageRepository } from '../repositories/message.repository';
@@ -24,7 +16,11 @@ import { BaseService } from './base.service';
 import { llmService } from './llm.service';
 import { MemoryService } from './memory.service';
 
-export class ConversationService extends BaseService<ConversationModel, ConversationDto, ConversationDto> {
+export class ConversationService extends BaseService<
+  ConversationModel,
+  ConversationDto,
+  ConversationDro
+> {
   private conversationRepository: ConversationRepository;
   private messageRepository: MessageRepository;
   private memoryService: MemoryService;
@@ -39,7 +35,11 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
   /**
    * Create a new prompt history for a conversation
    */
-  async createPromptHistory(userId: string, conversationId: string, prompt: string): Promise<ConversationPromptHistory> {
+  async createPromptHistory(
+    userId: string,
+    conversationId: string,
+    prompt: string,
+  ): Promise<ConversationPromptHistory> {
     const conversation = await prisma.conversation.findFirst({
       where: { id: conversationId, userId },
     });
@@ -55,7 +55,10 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
   /**
    * Get all prompt histories for a conversation
    */
-  async getPromptHistories(userId: string, conversationId: string): Promise<ConversationPromptHistory[]> {
+  async getPromptHistories(
+    userId: string,
+    conversationId: string,
+  ): Promise<ConversationPromptHistory[]> {
     const conversation = await prisma.conversation.findFirst({
       where: { id: conversationId, userId },
     });
@@ -69,7 +72,11 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
   /**
    * Update a prompt history
    */
-  async updatePromptHistory(userId: string, id: string, prompt: string): Promise<ConversationPromptHistory> {
+  async updatePromptHistory(
+    userId: string,
+    id: string,
+    prompt: string,
+  ): Promise<ConversationPromptHistory> {
     const existing = await prisma.promptHistory.findUnique({ where: { id } });
     if (!existing) throw new Error('Prompt not found');
     return await prisma.promptHistory.update({
@@ -176,7 +183,12 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
       limit: currentLimit,
       totalPages: Math.ceil(total / currentLimit),
     };
-  } async createConversation(userId: string, agentId: string, title?: string): Promise<ConversationListItem> {
+  }
+  async createConversation(
+    userId: string,
+    agentId: string,
+    title?: string,
+  ): Promise<ConversationListItem> {
     const agent = await prisma.agent.findFirst({
       where: { id: agentId, userId },
     });
@@ -207,7 +219,12 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     };
   }
 
-  async getConversation(userId: string, id: string, page: number = 1, limit: number = 50): Promise<ConversationDetail> {
+  async getConversation(
+    userId: string,
+    id: string,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<ConversationDetail> {
     const conversation = await prisma.conversation.findFirst({
       where: { id, userId },
       include: {
@@ -245,7 +262,11 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     };
   }
 
-  async updateConversation(userId: string, id: string, updateData: any): Promise<ConversationListItem> {
+  async updateConversation(
+    userId: string,
+    id: string,
+    updateData: any,
+  ): Promise<ConversationListItem> {
     const existingConversation = await prisma.conversation.findFirst({
       where: { id, userId },
     });
@@ -323,9 +344,9 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
       messages: {
         data: Array.isArray(parsedConversation.messages)
           ? parsedConversation.messages.map((msg) => ({
-            ...msg,
-            tokens: msg.tokens ?? -1,
-          }))
+              ...msg,
+              tokens: msg.tokens ?? -1,
+            }))
           : [],
         total: Array.isArray(parsedConversation.messages) ? parsedConversation.messages.length : 0,
         page: 1,
@@ -428,7 +449,8 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
 
     // Get agentId from conversation
-    const conversation: ConversationDto | null = await this.conversationRepository.findById(conversationId);
+    const conversation: ConversationDto | null =
+      await this.conversationRepository.findById(conversationId);
     const agentId = conversation?.agentId || metadata?.agentId || '';
 
     // Save user message as memory
@@ -446,7 +468,11 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     let llmMessage = null;
     let answerMemory = null;
 
-    const llmResponse = await llmService.processAndSaveConversation(conversationId, content, agentId);
+    const llmResponse = await llmService.processAndSaveConversation(
+      conversationId,
+      content,
+      agentId,
+    );
 
     // Save agent reply as message
     llmMessage = await this.messageRepository.create({
@@ -466,7 +492,10 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     return {
       id: message.id,
       conversationId: message.conversationId,
-      sender: (['user', 'agent', 'system'].includes(message.sender) ? message.sender : 'user') as 'user' | 'agent' | 'system',
+      sender: (['user', 'agent', 'system'].includes(message.sender) ? message.sender : 'user') as
+        | 'user'
+        | 'agent'
+        | 'system',
       content: message.content,
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
       tokens: message.tokens ?? -1,
@@ -478,7 +507,11 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     };
   }
 
-  async getConversationMessages(conversationId: string, page: number = 1, limit: number = 50): Promise<MessageListResponse> {
+  async getConversationMessages(
+    conversationId: string,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<MessageListResponse> {
     const skip = (page - 1) * limit;
 
     const [messages, total] = await Promise.all([
@@ -506,7 +539,11 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     };
   }
 
-  async updateMessage(messageId: string, content: string, metadata?: any): Promise<MessageResponse> {
+  async updateMessage(
+    messageId: string,
+    content: string,
+    metadata?: any,
+  ): Promise<MessageResponse> {
     const updateData: any = { content };
 
     if (metadata) {
@@ -515,9 +552,10 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
 
     const message: MessageDto = await this.messageRepository.update(messageId, updateData);
 
-    const sender = message && (['user', 'agent', 'system'] as const).includes(message.sender as any)
-      ? (message.sender as 'user' | 'agent' | 'system')
-      : 'user';
+    const sender =
+      message && (['user', 'agent', 'system'] as const).includes(message.sender as any)
+        ? (message.sender as 'user' | 'agent' | 'system')
+        : 'user';
 
     // Parse metadata which may be stored as JSON string or already as object
     let parsedMetadata: any = null;
@@ -560,9 +598,7 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     });
 
     // Delete each message using repository
-    await Promise.all(
-      messages.map((message: any) => this.messageRepository.delete(message.id))
-    );
+    await Promise.all(messages.map((message: any) => this.messageRepository.delete(message.id)));
 
     return { deleted: messages.length };
   }
@@ -581,11 +617,14 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     if (msgs.length === 0) return 'Empty conversation';
 
     // Simple summary - count messages by sender
-    const messageCounts = msgs.reduce((acc: Record<string, number>, msg: MessageDto) => {
-      const key = (msg.sender as string) || (msg as any).role || 'user';
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const messageCounts = msgs.reduce(
+      (acc: Record<string, number>, msg: MessageDto) => {
+        const key = (msg.sender as string) || (msg as any).role || 'user';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     const summary = `Conversation with ${messageCounts['user'] || 0} user messages, ${messageCounts['agent'] || 0} agent responses, and ${messageCounts['system'] || 0} system messages.`;
 
@@ -611,18 +650,24 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
     const stats = {
       totalMessages: msgs2.length,
       totalTokens: msgs2.reduce((sum: number, msg: MessageDto) => sum + (msg.tokens || 0), 0),
-      messagesBySender: msgs2.reduce((acc: Record<string, number>, msg: MessageDto) => {
-        const key = (msg.sender as string) || (msg as any).role || 'user';
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      tokensBySender: msgs2.reduce((acc: Record<string, number>, msg: MessageDto) => {
-        const key = (msg.sender as string) || (msg as any).role || 'user';
-        acc[key] = (acc[key] || 0) + (msg.tokens || 0);
-        return acc;
-      }, {} as Record<string, number>),
-      firstMessage: msgs2.length > 0 ? msgs2[0].createdAt ?? null : null,
-      lastMessage: msgs2.length > 0 ? msgs2[msgs2.length - 1].createdAt ?? null : null,
+      messagesBySender: msgs2.reduce(
+        (acc: Record<string, number>, msg: MessageDto) => {
+          const key = (msg.sender as string) || (msg as any).role || 'user';
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+      tokensBySender: msgs2.reduce(
+        (acc: Record<string, number>, msg: MessageDto) => {
+          const key = (msg.sender as string) || (msg as any).role || 'user';
+          acc[key] = (acc[key] || 0) + (msg.tokens || 0);
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+      firstMessage: msgs2.length > 0 ? (msgs2[0].createdAt ?? null) : null,
+      lastMessage: msgs2.length > 0 ? (msgs2[msgs2.length - 1].createdAt ?? null) : null,
     };
 
     return stats;
@@ -693,7 +738,7 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
       type,
       parameters,
     });
-    await prisma.message.create({
+    const message = await prisma.message.create({
       data: {
         conversationId,
         sender: 'system',
@@ -705,6 +750,9 @@ export class ConversationService extends BaseService<ConversationModel, Conversa
         }),
       },
     });
+
+    if (!message) throw new Error('Message not found');
+
     return result;
   }
 }

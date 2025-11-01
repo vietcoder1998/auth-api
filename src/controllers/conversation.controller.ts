@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ConversationDto, ConversationModel } from '../interfaces';
+import { ConversationDro, ConversationDto, ConversationModel } from '../interfaces';
 import { CommandService } from '../services/command.service';
 import { conversationService } from '../services/conversation.service';
 import { llmService } from '../services/llm.service';
@@ -11,7 +11,7 @@ const commandService = new CommandService();
 export class ConversationController extends BaseController<
   ConversationModel,
   ConversationDto,
-  ConversationDto
+  ConversationDro
 > {
   constructor() {
     super(conversationService);
@@ -206,6 +206,8 @@ export class ConversationController extends BaseController<
       const { type, parameters } = req.body;
       if (!userId) return this.handleError(res, 'User not authenticated', 401);
       if (!type) return this.handleError(res, 'Command type is required', 400);
+      if (!parameters) return this.handleError(res, 'Command parameters are required', 400);
+      
       const result = await conversationService.executeCommand(
         userId,
         conversationId,
