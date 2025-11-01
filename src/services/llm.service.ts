@@ -1,12 +1,11 @@
+import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
+import { logger } from '../middlewares/logger.middle';
+import { AgentRepository, AIKeyRepository, MessageRepository } from '../repositories';
+import { CloudService } from './cloude.service';
+import { GeminiService } from './gemini.service';
+import { GPTService } from './gpt.service';
 import { MemoryService } from './memory.service';
 import { vectorService } from './vector.service';
-import { MessageRepository } from '../repositories';
-import { PrismaClient } from '@prisma/client';
-import { GPTService } from './gpt.service';
-import { CloudService } from './cloude.service';
-import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
-import { logger, logInfo } from '../middlewares/logger.middle';
-import { GeminiService } from './gemini.service';
 
 export interface AgentConfig {
   model?: string;
@@ -18,9 +17,6 @@ export interface AgentConfig {
   geminiApiUrl?: string;
   [key: string]: any;
 }
-
-
-const prisma = new PrismaClient();
 
 export interface LLMResponse {
   content: string;
@@ -44,8 +40,10 @@ export interface LLMResponseWithVectors extends LLMResponse {
 
 export class LLMService {
   private readonly messageRepository = new MessageRepository();
+  private readonly agentRepository = new AgentRepository();
+  private readonly aiKeyRepository = new AIKeyRepository();
   private readonly memoryService = new MemoryService();
-  
+
   constructor() {
     // Optionally, you can fetch enabled Gemini models here and store if needed
     // Example:
@@ -74,7 +72,7 @@ export class LLMService {
   private readonly geminiConfig = {
     apiUrl: GEMINI_API_URL || 'https://api.gemini.example.com/v1/chat',
     apiKey: GEMINI_API_KEY || '',
-    timeout:20000, // ms
+    timeout: 20000, // ms
     headers: {
       'Content-Type': 'application/json',
       // You can add Authorization or other headers here
@@ -127,10 +125,7 @@ export class LLMService {
     try {
       // Find key and model for agent
       const aiKey = await this.getApiKeyByAgentId(agentId);
-      const agent = await prisma.agent.findUnique({
-        where: { id: agentId },
-        include: { model: true },
-      });
+      const agent = await this.agentRepository.findByIdWithRelations(agentId);
       const model =
         typeof agent?.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo';
       const modelType = agent?.model?.type || 'gpt';
@@ -159,25 +154,9 @@ export class LLMService {
    * Fetch API key for agent by agentId
    */
   async getApiKeyByAgentId(agentId: string): Promise<string | null> {
-    try {
-      // Find the first active AIKey linked to the agent via AIKeyAgent
-      const aiKeyAgent = await prisma.aIKeyAgent.findFirst({
-        where: {
-          agentId,
-          aiKey: {
-            isActive: true,
-          },
-        },
-        include: {
-          aiKey: true,
-        },
-      });
-      return aiKeyAgent?.aiKey ? aiKeyAgent.aiKey.key : null;
-    } catch (error) {
-      // Improved error typing: always return null, but log error
-      logInfo('Error fetching API key for agent:', error);
-      return null;
-    }
+    // Find the first active AIKey linked to the agent via AIKeyAgent
+    const aiKey = await this.aiKeyRepository.findByAgentId(agentId);
+    return aiKey?.key || null;
   }
 
   // F
@@ -224,28 +203,17 @@ export class LLMService {
   ): Promise<LLMResponse> {
     try {
       const aiKey = await this.getApiKeyByAgentId(agentId);
-      const agent = await prisma.agent.findUnique({
-        where: { id: agentId },
-        include: {
-          memories: {
-            where: { type: 'long_term' },
-            orderBy: { importance: 'desc' },
-            take: 5,
-          },
-          model: true,
-        },
-      });
+      const agent = await this.agentRepository.findByIdWithRelations(agentId);
 
       if (!agent) {
         throw new Error('Agent not found');
       }
 
       // Get recent conversation history
-      const recentMessages = await prisma.message.findMany({
-        where: { conversationId },
-        orderBy: { createdAt: 'desc' },
-        take: 10, // Last 10 messages
-      });
+      const recentMessages = await this.messageRepository.getRecentMessagesInConversation(
+        conversationId,
+        10,
+      );
 
       // Parse agent config
       const config = agent.config ? JSON.parse(agent.config) : {};
@@ -259,7 +227,7 @@ export class LLMService {
       }
 
       if (agent.memories.length > 0) {
-        const memoryContext = agent.memories.map((m) => m.content).join('\n');
+        const memoryContext = agent.memories.map((m: any) => m.content).join('\n');
         systemPrompt += `\n\nRelevant memories:\n${memoryContext}`;
       }
 
@@ -267,7 +235,7 @@ export class LLMService {
       const messages: LLMMessage[] = [];
 
       // Add recent conversation history (reverse to get chronological order)
-      recentMessages.reverse().forEach((msg) => {
+      recentMessages.reverse().forEach((msg: any) => {
         if (msg.sender === 'user') {
           messages.push({ role: 'user', content: msg.content });
         } else if (msg.sender === 'agent') {
@@ -331,16 +299,15 @@ export class LLMService {
    */
   async summarizeConversation(conversationId: string): Promise<string> {
     try {
-      const messages = await prisma.message.findMany({
-        where: { conversationId },
-        orderBy: { createdAt: 'asc' },
-      });
+      const messages = await this.messageRepository.findByConversationId(conversationId);
 
       if (messages.length === 0) {
         return '';
       }
 
-      const conversationText = messages.map((msg) => `${msg.sender}: ${msg.content}`).join('\n');
+      const conversationText = messages
+        .map((msg: any) => `${msg.sender}: ${msg.content}`)
+        .join('\n');
 
       const summaryResponse = await this.generateResponse(
         [
@@ -382,12 +349,29 @@ export class LLMService {
       userMessage,
       agentId,
     );
+
+    // Validate LLM response
+    if (!llmResponse) {
+      throw new Error('Failed to generate LLM response');
+    }
+
+    if (llmResponse.model === 'error') {
+      throw new Error(`LLM generation failed: ${llmResponse.content}`);
+    }
+
     // 2. Save question embedding
     const questionVector = await vectorService.saveMessage(userMessage);
-    // 3. Save answer embedding
+    if (!questionVector) {
+      throw new Error('Failed to save question vector embedding');
+    }
+
     const answerVector = await vectorService.saveMessage(llmResponse.content);
-    // 4. Save to memory (link answer to question) only if not error
+    if (!answerVector) {
+      throw new Error('Failed to save answer vector embedding');
+    }
+
     let memory = null;
+
     if (llmResponse.model !== 'error') {
       memory = await this.memoryService.create({
         agentId,
@@ -396,15 +380,11 @@ export class LLMService {
         vectorId: answerVector?.vectorId,
         conversationId,
       });
+
+      if (!memory) {
+        throw new Error('Failed to create memory record');
+      }
     }
-    // 5. Save answer message and link to question using MessageRepository
-    const message = await this.messageRepository.create({
-      conversationId,
-      content: llmResponse.content,
-      sender: 'agent',
-      agentId,
-      metadata: questionVector?.vectorId ? JSON.stringify({ linkedQuestionVectorId: questionVector.vectorId }) : null,
-    });
     return {
       ...llmResponse,
       questionVector,

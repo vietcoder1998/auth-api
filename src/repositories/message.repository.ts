@@ -1,10 +1,22 @@
-import { MessageDro, MessageDto, MessageModel, MessageFilters } from '../interfaces/message.interface';
-import { prisma } from '../setup';
+import {
+  MessageDro,
+  MessageDto,
+  MessageFilters,
+  MessageModel,
+} from '../interfaces/message.interface';
+import { prisma } from './../setup';
 import { BaseRepository } from './base.repository';
 
-export class MessageRepository extends BaseRepository<any, MessageDto, MessageDro> {
+export class MessageRepository extends BaseRepository<MessageModel, MessageDto, MessageDro> {
   constructor(messageDelegate = prisma.message) {
     super(messageDelegate);
+  }
+
+  get messageModel(): MessageModel {
+    if (!this.model) {
+      throw new Error('Message model is not defined');
+    }
+    return this.model as MessageModel;
   }
 
   /**
@@ -14,28 +26,33 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
    * @returns Array of messages for the conversation
    */
   async findByConversationId(conversationId: string, includeRelations: boolean = false) {
-    return this.model.findMany({
+    return this.messageModel.findMany({
       where: { conversationId },
-      include: includeRelations ? {
-        user: true,
-        conversation: true,
-      } : undefined,
+      include: includeRelations
+        ? {
+            conversation: true,
+            promptHistory: true,
+            faq: true,
+          }
+        : undefined,
       orderBy: { createdAt: 'asc' },
     });
   }
 
   /**
-   * Find messages by user ID
-   * @param userId - The user ID
+   * Find messages by sender
+   * @param sender - The sender (user, agent, system)
    * @param includeRelations - Whether to include conversation relation
-   * @returns Array of messages for the user
+   * @returns Array of messages for the sender
    */
-  async findByUserId(userId: string, includeRelations: boolean = false) {
-    return this.model.findMany({
-      where: { userId },
-      include: includeRelations ? {
-        conversation: true,
-      } : undefined,
+  async findBySender(sender: string, includeRelations: boolean = false) {
+    return this.messageModel.findMany({
+      where: { sender },
+      include: includeRelations
+        ? {
+            conversation: true,
+          }
+        : undefined,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -46,7 +63,7 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
    * @returns Array of messages for the agent
    */
   async findByAgentId(agentId: string) {
-    return this.model.findMany({
+    return this.messageModel.findMany({
       where: { agentId },
       orderBy: { createdAt: 'desc' },
     });
@@ -65,6 +82,10 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
       where.conversationId = filters.conversationId;
     }
 
+    if (filters.sender) {
+      where.sender = filters.sender;
+    }
+
     if (filters.userId) {
       where.userId = filters.userId;
     }
@@ -79,12 +100,14 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
       }
     }
 
-    return this.model.findMany({
+    return this.messageModel.findMany({
       where,
-      include: includeRelations ? {
-        user: true,
-        conversation: true,
-      } : undefined,
+      include: includeRelations
+        ? {
+            conversation: true,
+            promptHistory: true,
+          }
+        : undefined,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -95,7 +118,7 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
    * @returns Message count for the conversation
    */
   async countByConversationId(conversationId: string): Promise<number> {
-    return this.model.count({
+    return this.messageModel.count({
       where: { conversationId },
     });
   }
@@ -106,12 +129,26 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
    * @returns Latest message or null
    */
   async getLatestMessageInConversation(conversationId: string) {
-    return this.model.findFirst({
+    return this.messageModel.findFirst({
       where: { conversationId },
       orderBy: { createdAt: 'desc' },
       include: {
-        user: true,
+        conversation: true,
       },
+    });
+  }
+
+  /**
+   * Get recent messages in conversation
+   * @param conversationId - The conversation ID
+   * @param take - Number of messages to fetch (default: 10)
+   * @returns Recent messages in descending order
+   */
+  async getRecentMessagesInConversation(conversationId: string, take: number = 10) {
+    return this.messageModel.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' },
+      take,
     });
   }
 
@@ -121,19 +158,56 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
    * @returns Delete result with count
    */
   async deleteByConversationId(conversationId: string): Promise<{ count: number }> {
-    return this.model.deleteMany({
+    return this.messageModel.deleteMany({
       where: { conversationId },
     });
   }
 
   /**
-   * Delete all messages by user
+   * Delete all messages by sender
+   * @param sender - The sender identifier
+   * @returns Delete result with count
+   */
+  async deleteBySender(sender: string): Promise<{ count: number }> {
+    return this.messageModel.deleteMany({
+      where: { sender },
+    });
+  }
+
+  /**
+   * Find messages by user ID (through conversation relationship)
+   * @param userId - The user ID
+   * @param includeRelations - Whether to include conversation relation
+   * @returns Array of messages for the user
+   */
+  async findByUserId(userId: string, includeRelations: boolean = false) {
+    return (this.model as any).findMany({
+      where: {
+        conversation: {
+          userId: userId,
+        },
+      },
+      include: includeRelations ? {
+        conversation: true,
+        promptHistory: true,
+        faq: true,
+      } : undefined,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Delete all messages by user ID (through conversation relationship)
    * @param userId - The user ID
    * @returns Delete result with count
    */
   async deleteByUserId(userId: string): Promise<{ count: number }> {
-    return this.model.deleteMany({
-      where: { userId },
+    return (this.model as any).deleteMany({
+      where: {
+        conversation: {
+          userId: userId,
+        },
+      },
     });
   }
 
@@ -148,22 +222,21 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
     const skip = (page - 1) * limit;
 
     const [messages, total] = await Promise.all([
-      this.model.findMany({
+      this.messageModel.findMany({
         where: { conversationId },
         skip,
         take: limit,
         orderBy: { createdAt: 'asc' },
         include: {
-          user: {
+          conversation: {
             select: {
               id: true,
-              name: true,
-              email: true,
+              title: true,
             },
           },
         },
       }),
-      this.model.count({
+      this.messageModel.count({
         where: { conversationId },
       }),
     ]);
@@ -184,7 +257,7 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
    * @returns Updated message
    */
   async updateMetadata(id: string, metadata: Record<string, any>) {
-    return this.model.update({
+    return this.messageModel.update({
       where: { id },
       data: {
         metadata: JSON.stringify(metadata),
@@ -210,22 +283,17 @@ export class MessageRepository extends BaseRepository<any, MessageDto, MessageDr
       where.conversationId = conversationId;
     }
 
-    return this.model.findMany({
+    return this.messageModel.findMany({
       where,
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
         conversation: {
           select: {
             id: true,
             title: true,
           },
         },
+        promptHistory: true,
+        faq: true,
       },
       orderBy: { createdAt: 'desc' },
     });

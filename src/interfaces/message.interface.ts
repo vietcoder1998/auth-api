@@ -1,9 +1,10 @@
-import { Message } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Message Model - Represents the database model structure
  */
-export interface MessageModel extends Partial<Message> {
+export type MessageModel = PrismaClient['message'];
+export interface Message extends Partial<MessageModel> {
   id: string;
   content: string;
   /** canonical sender field used in the codebase */
@@ -46,7 +47,6 @@ export interface MessageDro extends Partial<MessageDto> {
   userId?: string | null;
   metadata?: Record<string, any> | null;
   createdAt: Date;
-  updatedAt: Date;
   // Optional relations
   conversation?: any;
   user?: any;

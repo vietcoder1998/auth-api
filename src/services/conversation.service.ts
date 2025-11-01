@@ -464,14 +464,15 @@ export class ConversationService extends BaseService<
     });
 
     // If sender is user, call LLM and save response as agent message and memory
-    let answerMemory = null;
-
     const llmResponse = await llmService.processAndSaveConversation(
       conversationId,
       content,
       agentId,
     );
 
+    if (!llmResponse) {
+      throw new Error('LLM service failed to generate a response');
+    }
     // Save agent reply as message
     const llmMessage = await this.messageRepository.create({
       agentId,
@@ -485,8 +486,14 @@ export class ConversationService extends BaseService<
         ...llmResponse.metadata,
         relatedUserMessageId: message.id, // link to prompt
       }),
+      promptId: prompt.id,
     });
 
+    if (!llmMessage) {
+      throw new Error('Failed to save LLM message');
+    }
+
+    // Save agent message as memory
     return {
       id: message.id,
       conversationId: message.conversationId,

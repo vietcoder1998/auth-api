@@ -30,4 +30,17 @@ export class AIKeyRepository extends BaseRepository<AIKeyModel, AIKeyDto, AIKeyD
             where: { platformId, isActive: true }
         });
     }
+
+    async findByAgentId(agentId: string) {
+        return (this.model as any).findFirst({
+            where: {
+                agents: {
+                    some: {
+                        agentId: agentId,
+                    },
+                },
+                isActive: true,
+            },
+        });
+    }
 }

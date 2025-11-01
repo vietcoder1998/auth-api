@@ -28,8 +28,6 @@ import { BaseService } from './base.service';
  */
 
 export class MessageService extends BaseService<MessageModel, MessageDto, MessageDro> {
-  private _messageRepository: MessageRepository;
-
   /**
    * Creates a new MessageService instance
    * Initializes with MessageRepository for data access
@@ -37,11 +35,11 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
   constructor() {
     const messageRepository = new MessageRepository();
     super(messageRepository);
-    this._messageRepository = messageRepository;
+    this.repository = messageRepository;
   }
 
   get messageRepository(): MessageRepository {
-    return this._messageRepository;
+    return this.repository as MessageRepository;
   }
 
   /**
@@ -61,9 +59,8 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
   async createMessage(input: MessageCreateInput): Promise<MessageDro> {
     const messageData: any = {
       content: input.content,
-      role: input.role,
+      sender: input.role, // Map role to sender
       conversationId: input.conversationId,
-      userId: input.userId,
     };
 
     // Stringify metadata if provided
@@ -71,14 +68,13 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
       messageData.metadata = JSON.stringify(input.metadata);
     }
 
-    const message = await this._messageRepository.create(messageData) as any;
+    const message = await this.messageRepository.create(messageData) as any;
     
-    // Parse metadata back to object for response
-    if (message.metadata) {
-      message.metadata = JSON.parse(message.metadata as string);
-    }
-
-    return message as MessageDro;
+    return {
+      ...message,
+      sender: message.sender as "user" | "agent" | "system",
+      metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
+    } as MessageDro;
   }
 
   /**
@@ -101,21 +97,20 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
     }
     
     if (input.role !== undefined) {
-      updateData.role = input.role;
+      updateData.sender = input.role; // Map role to sender
     }
 
     if (input.metadata !== undefined) {
       updateData.metadata = JSON.stringify(input.metadata);
     }
 
-    const message = await this._messageRepository.update(id, updateData) as any;
+    const message = await this.messageRepository.update(id, updateData) as any;
     
-    // Parse metadata back to object for response
-    if (message.metadata) {
-      message.metadata = JSON.parse(message.metadata as string);
-    }
-
-    return message as MessageDro;
+    return {
+      ...message,
+      sender: message.sender as "user" | "agent" | "system",
+      metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
+    } as MessageDro;
   }
 
   /**
@@ -129,10 +124,11 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async getConversationMessages(conversationId: string, includeRelations: boolean = false): Promise<MessageDro[]> {
-    const messages = await this._messageRepository.findByConversationId(conversationId, includeRelations) as any[];
+    const messages = await this.messageRepository.findByConversationId(conversationId, includeRelations) as any[];
     
     return messages.map((message: any) => ({
       ...message,
+      sender: message.sender as "user" | "agent" | "system",
       metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
     }));
   }
@@ -148,10 +144,11 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async getUserMessages(userId: string, includeRelations: boolean = false): Promise<MessageDro[]> {
-    const messages = await this._messageRepository.findByUserId(userId, includeRelations) as any[];
+    const messages = await this.messageRepository.findByUserId(userId, includeRelations) as any[];
     
     return messages.map((message: any) => ({
       ...message,
+      sender: message.sender as "user" | "agent" | "system",
       metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
     }));
   }
@@ -166,10 +163,11 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async getAgentMessages(agentId: string): Promise<MessageDro[]> {
-    const messages = await this._messageRepository.findByAgentId(agentId) as any[];
+    const messages = await this.messageRepository.findByAgentId(agentId) as any[];
     
     return messages.map((message: any) => ({
       ...message,
+      sender: message.sender as "user" | "agent" | "system",
       metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
     }));
   }
@@ -188,10 +186,11 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async findMessagesWithFilters(filters: MessageFilters, includeRelations: boolean = false): Promise<MessageDro[]> {
-    const messages = await this._messageRepository.findWithFilters(filters, includeRelations) as any[];
+    const messages = await this.messageRepository.findWithFilters(filters, includeRelations) as any[];
     
     return messages.map((message: any) => ({
       ...message,
+      sender: message.sender as "user" | "agent" | "system",
       metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
     }));
   }
@@ -209,12 +208,13 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async getPaginatedConversationMessages(conversationId: string, page: number = 1, limit: number = 50) {
-    const result = await this._messageRepository.getPaginatedMessages(conversationId, page, limit);
+    const result = await this.messageRepository.getPaginatedMessages(conversationId, page, limit);
     
     return {
       ...result,
       messages: result.messages.map((message: any) => ({
         ...message,
+        sender: message.sender as "user" | "agent" | "system",
         metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
       })),
     };
@@ -230,7 +230,7 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async getConversationMessageCount(conversationId: string): Promise<number> {
-    return this._messageRepository.countByConversationId(conversationId);
+    return this.messageRepository.countByConversationId(conversationId);
   }
 
   /**
@@ -243,14 +243,15 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async getLatestConversationMessage(conversationId: string): Promise<MessageDro | null> {
-    const message = await this._messageRepository.getLatestMessageInConversation(conversationId);
+    const message = await this.messageRepository.getLatestMessageInConversation(conversationId);
     
     if (!message) return null;
     
     return {
       ...message,
+      sender: message.sender as "user" | "agent" | "system",
       metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
-    };
+    } as MessageDro;
   }
 
   /**
@@ -264,10 +265,11 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async searchMessages(searchText: string, conversationId?: string): Promise<MessageDro[]> {
-    const messages = await this._messageRepository.searchMessages(searchText, conversationId) as any[];
+    const messages = await this.messageRepository.searchMessages(searchText, conversationId) as any[];
     
     return messages.map((message: any) => ({
       ...message,
+      sender: message.sender as "user" | "agent" | "system",
       metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
     }));
   }
@@ -286,12 +288,13 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async updateMessageMetadata(id: string, metadata: Record<string, any>): Promise<MessageDro> {
-    const message = await this._messageRepository.updateMetadata(id, metadata);
-    
+    const message = await this.messageRepository.updateMetadata(id, metadata);
+
     return {
       ...message,
+      sender: message.sender as "user" | "agent" | "system",
       metadata: message.metadata ? JSON.parse(message.metadata as string) : null,
-    };
+    } as MessageDro;
   }
 
   /**
@@ -305,7 +308,7 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async deleteConversationMessages(conversationId: string): Promise<{ count: number }> {
-    return this._messageRepository.deleteByConversationId(conversationId);
+    return this.messageRepository.deleteByConversationId(conversationId);
   }
 
   /**
@@ -319,7 +322,7 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
    * ```
    */
   async deleteUserMessages(userId: string): Promise<{ count: number }> {
-    return this._messageRepository.deleteByUserId(userId);
+    return this.messageRepository.deleteByUserId(userId);
   }
 
   /**
@@ -337,16 +340,16 @@ export class MessageService extends BaseService<MessageModel, MessageDto, Messag
   async createBatchMessages(messages: MessageCreateInput[]): Promise<MessageDro[]> {
     const createData = messages.map(msg => ({
       content: msg.content,
-      role: msg.role,
+      sender: msg.role, // Map role to sender
       conversationId: msg.conversationId,
-      userId: msg.userId,
       metadata: msg.metadata ? JSON.stringify(msg.metadata) : undefined,
     }));
 
-    const created = await this._messageRepository.createMany(createData) as any[];
+    const created = await this.messageRepository.createMany(createData) as any[];
     
     return created.map((message: any) => ({
       ...message,
+      sender: message.sender as "user" | "agent" | "system",
       metadata: message.metadata ? JSON.parse(message.metadata) : null,
     }));
   }
