@@ -2,9 +2,7 @@ import { PrismaClient, AIKey as PrismaAIKey } from '@prisma/client';
 
 export type AIKeyModel = PrismaClient['aIKey'];
 
-export interface AIKeyDro extends Omit<PrismaAIKey, 'id' | 'createdAt' | 'updatedAt'> {}
-export interface AIKeyDto extends AIKeyDro {
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
+export interface AIKeyDto extends Partial<Omit<AIKeyModel, 'id' | 'createdAt' | 'updatedAt'>> {}
+export interface AIKeyDro extends Partial<AIKeyDto> {
+    key: string;
 }

@@ -1,15 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { AIKeyDto, AIKeyModel } from '../interfaces';
+import { AIKeyRepository, aiKeyRepository } from '../repositories/aikey.repository';
 import { BaseService } from './base.service';
-import { AIKeyRepository } from '../repositories/aikey.repository';
-import { AIKeyDto } from '../interfaces';
 
-const prisma = new PrismaClient();
-
-class AIKeyService extends BaseService<any, AIKeyDto, AIKeyDto> {
-  private aiKeyRepository: AIKeyRepository;
+class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
+  private readonly aiKeyRepository: AIKeyRepository;
 
   constructor() {
-    const aiKeyRepository = new AIKeyRepository();
     super(aiKeyRepository);
     this.aiKeyRepository = aiKeyRepository;
   }
@@ -35,10 +31,12 @@ class AIKeyService extends BaseService<any, AIKeyDto, AIKeyDto> {
   }
 
   async getAIKeyById(id: string) {
-    return this.aiKeyRepository.search({
-      where: { id },
-      include: { platform: true, billing: true },
-    }).then(results => results[0] || null);
+    return this.aiKeyRepository
+      .search({
+        where: { id },
+        include: { platform: true, billing: true },
+      })
+      .then((results) => results[0] || null);
   }
 
   async updateAIKey(id: string, data: any) {
@@ -63,10 +61,3 @@ class AIKeyService extends BaseService<any, AIKeyDto, AIKeyDto> {
 }
 
 export const aiKeyService = new AIKeyService();
-
-// Export individual functions for backward compatibility
-export const createAIKey = (data: any) => aiKeyService.createAIKey(data);
-export const getAIKeys = () => aiKeyService.getAIKeys();
-export const getAIKeyById = (id: string) => aiKeyService.getAIKeyById(id);
-export const updateAIKey = (id: string, data: any) => aiKeyService.updateAIKey(id, data);
-export const deleteAIKey = (id: string) => aiKeyService.deleteAIKey(id);

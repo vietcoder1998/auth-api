@@ -1,43 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
-import { BaseService } from './base.service';
+import { ApiKeyDto, ApiUsageLogData, CreateApiKeyData, UpdateApiKeyData } from '../interfaces';
 import { ApiKeyRepository } from '../repositories/apikey.repository';
-import { ApiKeyDto } from '../interfaces';
+import { BaseService } from './base.service';
 
 const prisma = new PrismaClient();
-
-export interface CreateApiKeyData {
-  name: string;
-  description?: string;
-  userId?: string;
-  permissions?: string[];
-  allowedIPs?: string[];
-  rateLimit?: number;
-  expiresAt?: Date;
-  createdBy?: string;
-}
-
-export interface UpdateApiKeyData {
-  name?: string;
-  description?: string;
-  permissions?: string[];
-  allowedIPs?: string[];
-  rateLimit?: number;
-  isActive?: boolean;
-  expiresAt?: Date;
-}
-
-export interface ApiUsageLogData {
-  apiKeyId: string;
-  endpoint: string;
-  method: string;
-  ipAddress?: string;
-  userAgent?: string;
-  statusCode: number;
-  responseTime?: number;
-  requestBody?: string;
-  responseBody?: string;
-}
 
 export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
   private apiKeyRepository: ApiKeyRepository;
@@ -53,7 +20,8 @@ export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
   }
 
   async createApiKey(data: CreateApiKeyData) {
-    const { name, description, userId, permissions, allowedIPs, rateLimit, expiresAt, createdBy } = data;
+    const { name, description, userId, permissions, allowedIPs, rateLimit, expiresAt, createdBy } =
+      data;
     const key = this.generateApiKey();
 
     const apiKey = await prisma.apiKey.create({
@@ -84,18 +52,24 @@ export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
     const apiKey = await this.apiKeyRepository.findById(id);
     if (!apiKey) throw new Error('API key not found');
 
-    return prisma.apiKey.findUnique({
-      where: { id },
-      include: {
-        user: { select: { id: true, email: true, nickname: true } },
-        _count: { select: { apiUsageLogs: true } },
-      },
-    }).then(key => key ? {
-      ...key,
-      key: `${key.key.substring(0, 8)}...`,
-      permissions: key.permissions ? JSON.parse(key.permissions) : null,
-      allowedIPs: key.allowedIPs ? JSON.parse(key.allowedIPs) : null,
-    } : null);
+    return prisma.apiKey
+      .findUnique({
+        where: { id },
+        include: {
+          user: { select: { id: true, email: true, nickname: true } },
+          _count: { select: { apiUsageLogs: true } },
+        },
+      })
+      .then((key) =>
+        key
+          ? {
+              ...key,
+              key: `${key.key.substring(0, 8)}...`,
+              permissions: key.permissions ? JSON.parse(key.permissions) : null,
+              allowedIPs: key.allowedIPs ? JSON.parse(key.allowedIPs) : null,
+            }
+          : null,
+      );
   }
 
   async getApiKeyByKey(key: string) {
@@ -115,23 +89,35 @@ export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
     if (data.allowedIPs) updateData.allowedIPs = JSON.stringify(data.allowedIPs);
 
     const apiKey = await this.apiKeyRepository.update(id, updateData);
-    
-    return prisma.apiKey.findUnique({
-      where: { id },
-      include: { user: { select: { id: true, email: true, nickname: true } } },
-    }).then(key => key ? {
-      ...key,
-      key: `${key.key.substring(0, 8)}...`,
-      permissions: key.permissions ? JSON.parse(key.permissions) : null,
-      allowedIPs: key.allowedIPs ? JSON.parse(key.allowedIPs) : null,
-    } : null);
+
+    return prisma.apiKey
+      .findUnique({
+        where: { id },
+        include: { user: { select: { id: true, email: true, nickname: true } } },
+      })
+      .then((key) =>
+        key
+          ? {
+              ...key,
+              key: `${key.key.substring(0, 8)}...`,
+              permissions: key.permissions ? JSON.parse(key.permissions) : null,
+              allowedIPs: key.allowedIPs ? JSON.parse(key.allowedIPs) : null,
+            }
+          : null,
+      );
   }
 
   async deleteApiKey(id: string) {
     return await this.apiKeyRepository.delete(id);
   }
 
-  async getApiKeys(page: number = 1, limit: number = 20, userId?: string, search?: string, isActive?: boolean) {
+  async getApiKeys(
+    page: number = 1,
+    limit: number = 20,
+    userId?: string,
+    search?: string,
+    isActive?: boolean,
+  ) {
     const skip = (page - 1) * limit;
     const where: any = {};
     if (userId) where.userId = userId;
@@ -153,7 +139,7 @@ export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
     ]);
 
     return {
-      data: apiKeys.map(key => ({
+      data: apiKeys.map((key) => ({
         ...key,
         key: `${key.key.substring(0, 8)}...`,
         permissions: key.permissions ? JSON.parse(key.permissions) : null,
@@ -166,7 +152,12 @@ export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
     };
   }
 
-  async validateApiKey(key: string, endpoint?: string, method?: string, ipAddress?: string): Promise<{
+  async validateApiKey(
+    key: string,
+    endpoint?: string,
+    method?: string,
+    ipAddress?: string,
+  ): Promise<{
     isValid: boolean;
     apiKey?: any;
     reason?: string;
@@ -174,14 +165,18 @@ export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
     const apiKey = await this.getApiKeyByKey(key);
     if (!apiKey) return { isValid: false, reason: 'Invalid API key' };
     if (!apiKey.isActive) return { isValid: false, reason: 'API key is inactive' };
-    if (apiKey.expiresAt && new Date() > apiKey.expiresAt) return { isValid: false, reason: 'API key has expired' };
+    if (apiKey.expiresAt && new Date() > apiKey.expiresAt)
+      return { isValid: false, reason: 'API key has expired' };
 
     if (apiKey.allowedIPs && apiKey.allowedIPs.length > 0 && ipAddress) {
-      if (!apiKey.allowedIPs.includes(ipAddress)) return { isValid: false, reason: 'IP address not allowed' };
+      if (!apiKey.allowedIPs.includes(ipAddress))
+        return { isValid: false, reason: 'IP address not allowed' };
     }
 
     if (endpoint && apiKey.permissions && apiKey.permissions.length > 0) {
-      const hasPermission = apiKey.permissions.some((permission: string) => endpoint.includes(permission) || permission === '*');
+      const hasPermission = apiKey.permissions.some(
+        (permission: string) => endpoint.includes(permission) || permission === '*',
+      );
       if (!hasPermission) return { isValid: false, reason: 'Insufficient permissions' };
     }
 
@@ -200,7 +195,12 @@ export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
     return await prisma.apiUsageLog.create({ data });
   }
 
-  async getApiUsageLogs(apiKeyId?: string, page: number = 1, limit: number = 50, endpoint?: string) {
+  async getApiUsageLogs(
+    apiKeyId?: string,
+    page: number = 1,
+    limit: number = 50,
+    endpoint?: string,
+  ) {
     const skip = (page - 1) * limit;
     const where: any = {};
     if (apiKeyId) where.apiKeyId = apiKeyId;
@@ -248,8 +248,14 @@ export class ApiKeyService extends BaseService<any, ApiKeyDto, ApiKeyDto> {
 
     return {
       totalRequests,
-      statusStats: statusStats.map(stat => ({ statusCode: stat.statusCode, count: stat._count.statusCode })),
-      topEndpoints: endpointStats.map(stat => ({ endpoint: stat.endpoint, count: stat._count.endpoint })),
+      statusStats: statusStats.map((stat) => ({
+        statusCode: stat.statusCode,
+        count: stat._count.statusCode,
+      })),
+      topEndpoints: endpointStats.map((stat) => ({
+        endpoint: stat.endpoint,
+        count: stat._count.endpoint,
+      })),
       recentActivity,
     };
   }

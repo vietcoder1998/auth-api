@@ -1,5 +1,5 @@
 import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
-import { AgentMemoryDro } from '../interfaces';
+import { AgentMemoryDro, AIKeyDro } from '../interfaces';
 import { logger } from '../middlewares/logger.middle';
 import { AgentRepository, AIKeyRepository, MessageRepository } from '../repositories';
 import { CloudService } from './cloude.service';
@@ -125,7 +125,7 @@ export class LLMService {
   ): Promise<LLMResponse> {
     try {
       // Find key and model for agent
-      const aiKey = await this.getApiKeyByAgentId(agentId);
+      const aiKey: AIKeyDro | null = await this.aiKeyRepository.findByAgentId(agentId);
       const agent = await this.agentRepository.findByIdWithRelations(agentId);
       const model =
         typeof agent?.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo';
@@ -139,7 +139,7 @@ export class LLMService {
           systemPrompt: options.systemPrompt,
           modelType,
         },
-        aiKey,
+        aiKey?.key,
       );
     } catch (error) {
       return {
@@ -154,11 +154,6 @@ export class LLMService {
   /**
    * Fetch API key for agent by agentId
    */
-  async getApiKeyByAgentId(agentId: string): Promise<string | null> {
-    // Find the first active AIKey linked to the agent via AIKeyAgent
-    const aiKey = await this.aiKeyRepository.findByAgentId(agentId);
-    return aiKey?.key || null;
-  }
 
   // Fetch memory for user question
   async fetchMemoryForQuestion(question: string): Promise<AgentMemoryDro | null> {
@@ -202,13 +197,13 @@ export class LLMService {
   /**
    * Generate response for conversation with context
    */
-  async generateConversationResponse(
+  async pushLLMResponseIntoConversation(
     conversationId: string,
     userMessage: string,
     agentId: string,
   ): Promise<LLMResponse> {
     try {
-      const aiKey = await this.getApiKeyByAgentId(agentId);
+      const aiKey: AIKeyDro | null = await this.aiKeyRepository.findByAgentId(agentId);
 
       if (!aiKey) {
         throw new Error(`No active API key found for agent: ${agentId}`);
@@ -225,7 +220,6 @@ export class LLMService {
         conversationId,
         10,
       );
-
 
       // Parse agent config
       const config = agent.config ? JSON.parse(agent.config) : {};
@@ -271,7 +265,7 @@ export class LLMService {
           systemPrompt,
           modelType,
         },
-        aiKey,
+        aiKey.key,
       );
     } catch (error) {
       console.error('Generate conversation response error:', error);
@@ -356,7 +350,7 @@ export class LLMService {
     agentId: string,
   ): Promise<LLMResponseWithVectors> {
     // 1. Generate answer
-    const llmResponse = await this.generateConversationResponse(
+    const llmResponse = await this.pushLLMResponseIntoConversation(
       conversationId,
       userMessage,
       agentId,
