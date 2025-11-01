@@ -420,7 +420,7 @@ export class ConversationService extends BaseService<
     };
   }
 
-  async addMessage(data: CreateMessageData): Promise<MessageResponse> {
+  async addNewMessageToConversation(data: CreateMessageData): Promise<MessageResponse> {
     const { conversationId, sender, content, metadata, tokens } = data;
 
     // Save user message (prompt)
@@ -445,10 +445,6 @@ export class ConversationService extends BaseService<
       prompt: content,
     });
 
-    // Invalidate cache for conversations after message
-    await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
-
-
     const agentId = conversation?.agentId || metadata?.agentId || '';
 
     // Save user message as memory
@@ -461,7 +457,11 @@ export class ConversationService extends BaseService<
       metadata: metadata ? JSON.stringify(metadata) : null,
       importance: 1,
       promptId: prompt.id,
-    });
+    })
+
+    if (!memory) {
+      throw new Error('Failed to save message memory');
+    }
 
     // If sender is user, call LLM and save response as agent message and memory
     const llmResponse = await llmService.processAndSaveConversation(

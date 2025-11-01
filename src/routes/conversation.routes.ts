@@ -31,7 +31,7 @@ export class ConversationRouter extends BaseRouter<
 
     // Message operations
     this.routes.get('/:id/messages', controller.getMessages.bind(controller));
-    this.routes.post('/:id/messages', controller.addMessage.bind(controller));
+    this.routes.post('/:id/messages', controller.addNewMessageToConversation.bind(controller));
 
     // Command operations
     this.routes.post('/:id/command', controller.executeCommand.bind(controller));

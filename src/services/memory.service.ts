@@ -54,33 +54,6 @@ export class MemoryService extends BaseService<AgentMemoryModel, AgentMemoryDto,
       throw new Error('Memory content is required');
     }
 
-    // If type is 'long_term', call LLMService to generate a prompt
-    if (memoryData.type === 'long_term') {
-      // Prepare prompt message
-      const agentId = memoryData.agentId;
-      const promptMessage =
-        typeof memoryData.content === 'string'
-          ? memoryData.content
-          : JSON.stringify(memoryData.content);
-
-      // Call LLMService to generate response
-      const llmResponse = await this.llmService.generateResponse(
-        [{ role: 'user', content: promptMessage }],
-        {
-          agentId,
-          modelType: memoryData.modelType || 'gpt',
-        },
-      );
-
-      // Validate LLM response
-      if (!llmResponse || !llmResponse.content) {
-        throw new Error('Failed to generate LLM response for user memory');
-      }
-
-      // Save the generated prompt as content
-      memoryData.content = llmResponse.content;
-    }
-
     if (memoryData.content) {
       // Ensure content is a string for Prisma
       if (typeof memoryData.content === 'object') {

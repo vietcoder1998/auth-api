@@ -1,4 +1,5 @@
 import { GEMINI_API_KEY, GEMINI_API_URL, LLM_CLOUD_API_KEY, LLM_CLOUD_API_URL } from '../env';
+import { AgentMemoryDro } from '../interfaces';
 import { logger } from '../middlewares/logger.middle';
 import { AgentRepository, AIKeyRepository, MessageRepository } from '../repositories';
 import { CloudService } from './cloude.service';
@@ -129,7 +130,7 @@ export class LLMService {
       const model =
         typeof agent?.model === 'string' ? agent.model : agent?.model?.name || 'gpt-3.5-turbo';
       const modelType = agent?.model?.type || 'gpt';
-      return await this.generateResponse(
+      return await this.generateLLMResponse(
         messages,
         {
           model,
@@ -159,9 +160,14 @@ export class LLMService {
     return aiKey?.key || null;
   }
 
-  // F
+  // Fetch memory for user question
+  async fetchMemoryForQuestion(question: string): Promise<AgentMemoryDro | null> {
+    const memories = await this.memoryService.getAll();
+    const relevantMemory = memories.find((mem) => mem.content.includes(question));
+    return relevantMemory || null;
+  }
 
-  async generateResponse(
+  async generateLLMResponse(
     messages: LLMMessage[],
     agentConfig: AgentConfig = {},
     aiKey?: string | null,
@@ -203,7 +209,7 @@ export class LLMService {
   ): Promise<LLMResponse> {
     try {
       const aiKey = await this.getApiKeyByAgentId(agentId);
-      
+
       if (!aiKey) {
         throw new Error(`No active API key found for agent: ${agentId}`);
       }
@@ -219,6 +225,7 @@ export class LLMService {
         conversationId,
         10,
       );
+
 
       // Parse agent config
       const config = agent.config ? JSON.parse(agent.config) : {};
@@ -254,7 +261,7 @@ export class LLMService {
       // Generate response
       // Pass modelType from agent.model.type if available
       const modelType = (agent.model?.type || 'gpt')?.toLowerCase();
-      return await this.generateResponse(
+      return await this.generateLLMResponse(
         messages,
         {
           model:
@@ -314,7 +321,7 @@ export class LLMService {
         .map((msg: any) => `${msg.sender}: ${msg.content}`)
         .join('\n');
 
-      const summaryResponse = await this.generateResponse(
+      const summaryResponse = await this.generateLLMResponse(
         [
           {
             role: 'user',
@@ -390,12 +397,21 @@ export class LLMService {
         throw new Error('Failed to create memory record');
       }
     }
+
+    const llmMessage: LLMResponse = await this.generateLLMResponse(
+      [
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: llmResponse.content },
+      ],
+      {
+        model: llmResponse.model,
+      },
+    );
     return {
       ...llmResponse,
       questionVector,
       answerVector,
       memory,
-      // message,
     };
   }
 }

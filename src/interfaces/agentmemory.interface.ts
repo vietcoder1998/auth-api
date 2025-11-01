@@ -10,6 +10,7 @@ export interface AgentMemoryDro extends AgentMemoryDto {
     id: string;
     createdAt: Date;
     updatedAt: Date;
+    content: string
 }
 
 

@@ -213,7 +213,7 @@ All services follow a consistent pattern:
 **Key Methods**:
 
 - `createConversation(data)` - Start new conversation
-- `addMessage(data)` - Add message to conversation
+- `addNewMessageToConversation(data)` - Add message to conversation
 - `searchMessages(conversationId, query)` - Search message content
 - `getConversationStats(conversationId)` - Get conversation analytics
 

@@ -147,14 +147,17 @@ export class ConversationController extends BaseController<
     }
   }
 
-  async addMessage(req: Request, res: Response) {
+  async addNewMessageToConversation(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
       const { id } = req.params;
       const { content, sender = 'user', metadata } = req.body;
+
       if (!userId) throw new Error('User not authenticated');
       if (!content) throw new Error('Message content is required');
-      const result = await conversationService.addMessage({
+      if (!sender) throw new Error('Message sender is required');
+
+      const result = await conversationService.addNewMessageToConversation({
         conversationId: id,
         sender,
         content,
