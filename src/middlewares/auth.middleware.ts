@@ -90,12 +90,9 @@ export class AuthMiddleware {
       };
 
       next();
-    } catch (error) {
-      if (error && typeof error === 'object' && 'status' in error && 'error' in error) {
-        return response.status((error as any).status).json({ error: (error as any).error });
-      }
+    } catch (error: any) {
       // fallback for unexpected errors
-      return response.status(500).json({ error: 'Authentication service error' });
+      return response.status(error?.status ?? 500).json({ error: 'Authentication service error' + String(error) });
     }
   }
 }
