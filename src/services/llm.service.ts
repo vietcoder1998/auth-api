@@ -203,6 +203,11 @@ export class LLMService {
   ): Promise<LLMResponse> {
     try {
       const aiKey = await this.getApiKeyByAgentId(agentId);
+      
+      if (!aiKey) {
+        throw new Error(`No active API key found for agent: ${agentId}`);
+      }
+
       const agent = await this.agentRepository.findByIdWithRelations(agentId);
 
       if (!agent) {
