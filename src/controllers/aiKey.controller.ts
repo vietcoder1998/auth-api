@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
+import { AIKeyDto, AIKeyModel } from '../interfaces';
+import { aiKeyService, AIKeyService } from './../services';
 import { BaseController } from './base.controller';
-import { aiKeyService } from '../services/aiKey.service';
-import { AIKeyModel, AIKeyDto } from '../interfaces';
 
 /**
  * AIKeyController - Handles API key management endpoints
- * 
+ *
  * Extends BaseController to provide standard CRUD operations
  * plus custom endpoints for AI key specific functionality.
  */
@@ -14,50 +14,54 @@ export class AIKeyController extends BaseController<AIKeyModel, AIKeyDto, AIKeyD
     super(aiKeyService);
   }
 
+  get aiKeyService(): AIKeyService {
+    return this.service as AIKeyService;
+  }
+
   /**
-   * GET /ai-keys/user/:userId - Get AI keys by user ID
+   * GET /ai-apiKeys/user/:userId - Get AI apiKeys by user ID
    */
-  async getAIKeysByUserId(req: Request, res: Response): Promise<void> {
+  async getAIKeysByUserId(request: Request, response: Response): Promise<void> {
     try {
-      const { userId } = req.params;
-      const keys = await aiKeyService.getAIKeysByUserId(userId);
-      this.sendSuccess(res, keys);
+      const { userId } = request.params;
+      const apiKeys = await this.aiKeyService.getAIKeysByUserId(userId);
+      this.sendSuccess(response, apiKeys);
     } catch (error) {
-      this.handleError(res, error);
+      this.handleError(response, error);
     }
   }
 
   /**
-   * GET /ai-keys/active - Get all active AI keys
+   * GET /ai-apiKeys/active - Get all active AI apiKeys
    */
-  async getActiveAIKeys(req: Request, res: Response): Promise<void> {
+  async getActiveAIKeys(request: Request, response: Response): Promise<void> {
     try {
-      const keys = await aiKeyService.getActiveAIKeys();
-      this.sendSuccess(res, keys);
+      const apiKeys = await this.aiKeyService.getActiveAIKeys();
+      this.sendSuccess(response, apiKeys);
     } catch (error) {
-      this.handleError(res, error);
+      this.handleError(response, error);
     }
   }
 
   /**
-   * GET /ai-keys/by-key/:key - Find AI key by key value
+   * GET /ai-apiKeys/by-key/:key - Find AI key by key value
    */
-  async findByKey(req: Request, res: Response): Promise<void> {
+  async findByKey(request: Request, response: Response): Promise<void> {
     try {
-      const { key } = req.params;
-      const aiKey = await aiKeyService.findByKey(key);
-      
+      const { key } = request.params;
+      const aiKey = await this.aiKeyService.findByKey(key);
+
       if (!aiKey) {
-        res.status(404).json({
+        response.status(404).json({
           success: false,
           error: 'AI Key not found',
         });
         return;
       }
-      
-      this.sendSuccess(res, aiKey);
+
+      this.sendSuccess(response, aiKey);
     } catch (error) {
-      this.handleError(res, error);
+      this.handleError(response, error);
     }
   }
 
@@ -65,12 +69,12 @@ export class AIKeyController extends BaseController<AIKeyModel, AIKeyDto, AIKeyD
    * Override findAll to use the service's custom getAIKeys method
    * which includes related data (platform, billing, agents, user)
    */
-  async findAll(req: Request, res: Response): Promise<void> {
+  async findAll(request: Request, response: Response): Promise<void> {
     try {
-      const keys = await aiKeyService.getAIKeys();
-      this.sendSuccess(res, keys);
+      const apiKeys = await this.aiKeyService.getAIKeys();
+      this.sendSuccess(response, apiKeys);
     } catch (error) {
-      this.handleError(res, error);
+      this.handleError(response, error);
     }
   }
 
@@ -78,22 +82,41 @@ export class AIKeyController extends BaseController<AIKeyModel, AIKeyDto, AIKeyD
    * Override findOne to use the service's custom getAIKeyById method
    * which includes related data
    */
-  async findOne(req: Request, res: Response): Promise<void> {
+  async findOne(request: Request, response: Response): Promise<void> {
     try {
-      const { id } = req.params;
-      const key = await aiKeyService.getAIKeyById(id);
-      
+      const { id } = request.params;
+      const key = await this.aiKeyService.getAIKeyById(id);
+
       if (!key) {
-        res.status(404).json({
+        response.status(404).json({
           success: false,
           error: 'AI Key not found',
         });
         return;
       }
-      
-      this.sendSuccess(res, key);
+
+      this.sendSuccess(response, key);
     } catch (error) {
-      this.handleError(res, error);
+      this.handleError(response, error);
+    }
+  }
+
+  public override async update(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const payload = req.body;
+      const data = await this.aiKeyService.updateAIKey(id, payload);
+      
+      if (!data) {
+        res.status(404).json({
+          success: false,
+          error: 'Record not found',
+        });
+        return;
+      }
+      this.sendSuccess(res, data);
+    } catch (error) {
+      this.handleError(res, error, 400);
     }
   }
 }

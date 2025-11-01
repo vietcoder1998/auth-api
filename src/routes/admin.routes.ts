@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { searchAllEntities } from '../controllers/search.controller';
 import agentRouter from './agent.routes';
-import aiKeyRouter from './aiKey.routes';
+import { aiKeyRouter } from './aiKey.routes';
 import { aiModelRoutes } from './aiModel.routes';
 import aiPlatformRouter from './aiPlatform.routes';
 import apiKeyRouter from './apiKey.routes';
@@ -43,7 +43,7 @@ const router = Router();
 router.use('/users', userRouter);
 router.use('/ai-models', aiModelRoutes);
 router.use('/ai-platforms', aiPlatformRouter);
-router.use('/ai-keys', aiKeyRouter);
+router.use(aiKeyRouter.path, aiKeyRouter.routes);
 router.use('/billings', billingRouter);
 router.use('/roles', roleRouter);
 router.use('/permissions', permissionRouter);

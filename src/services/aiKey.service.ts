@@ -2,7 +2,7 @@ import { AIKeyDto, AIKeyModel } from '../interfaces';
 import { AIKeyRepository, aiKeyRepository } from '../repositories/aikey.repository';
 import { BaseService } from './base.service';
 
-class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
+export class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
   private readonly aiKeyRepository: AIKeyRepository;
 
   constructor() {

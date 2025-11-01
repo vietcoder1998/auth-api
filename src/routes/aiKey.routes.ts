@@ -15,7 +15,7 @@ export class AIKeyRouter extends BaseRouter<AIKeyModel, AIKeyDto, AIKeyDto> {
     this.initializeCustomRoutes();
   }
 
-  protected initializeRoutes(aiKeyController: AIKeyController): void {
+  protected override initializeRoutes(aiKeyController: AIKeyController): void {
     // Override base routes to use our custom methods where needed
     this.routes.get('/', aiKeyController.findAll.bind(aiKeyController)); // Use findAll instead of search for includes
     this.routes.post('/', aiKeyController.create.bind(aiKeyController));
@@ -46,4 +46,3 @@ export class AIKeyRouter extends BaseRouter<AIKeyModel, AIKeyDto, AIKeyDto> {
 
 // Export an instance of the router
 export const aiKeyRouter = new AIKeyRouter();
-export default aiKeyRouter.routes;
