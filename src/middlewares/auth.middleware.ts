@@ -9,13 +9,13 @@ export class AuthMiddleware {
   private cacheMiddleware: CacheMiddleware;
   private userService: UserService;
   private tokenService: TokenService;
-  private authService: AuthService;
+  public authService: AuthService;
 
   constructor() {
     this.cacheMiddleware = cacheMiddleware;
     this.userService = userService;
     this.tokenService = tokenService;
-    this.authService = new AuthService();
+    this.authService = authService;
   }
   async redisTokenValidation(request: Request, response: Response, next: NextFunction) {
     const token = request.headers[HEADER_AUTHORIZATION]?.toString().replace('Bearer ', '');
@@ -27,7 +27,6 @@ export class AuthMiddleware {
   }
 
   async jwtTokenValidation(request: Request, response: Response, next: NextFunction) {
-    console.log(this.authService)
     try {
       if (
         request.originalUrl?.includes('/api/auth') &&
@@ -47,14 +46,14 @@ export class AuthMiddleware {
         throw { status: 401, error: 'No token provided' };
       }
 
-      const decoded = this.authService.validateToken(token);
+      const decoded = authService.validateToken(token);
 
       if (!decoded?.userId) {
         throw { status: 401, error: 'Invalid token format' };
       }
 
       // Check if token exists in database and is not expired
-      const tokenRecord = await this.tokenService.findUnique({
+      const tokenRecord = await tokenService.findUnique({
         where: { accessToken: token },
         include: { user: true },
       });
@@ -75,7 +74,7 @@ export class AuthMiddleware {
       request.headers[HEADER_X_USER_ID] = decoded.userId;
 
       // Load full user data with roles and permissions
-      const fullUser = await this.userService.findUnique({
+      const fullUser = await userService.findUnique({
         where: { id: decoded.userId },
         include: {
           role: {
@@ -96,9 +95,11 @@ export class AuthMiddleware {
       next();
     } catch (error: any) {
       // fallback for unexpected errors
-      return response
+      response
         .status(error?.status ?? 500)
         .json({ error: 'Authentication service error' + String(error) });
+
+      return;
     }
   }
 }

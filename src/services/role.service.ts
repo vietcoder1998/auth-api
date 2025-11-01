@@ -11,6 +11,7 @@ import {
   RoleWithRelations,
   PermissionDro,
   RoleDro,
+  PermissionDto,
 } from '../interfaces';
 import { RoleRepository } from '../repositories/role.repository';
 import { UserRepository } from '../repositories/user.repository';
@@ -189,7 +190,7 @@ export class RoleService extends BaseService<RoleModel, RoleDto, RoleDro> {
     const skip = (page - 1) * limit;
 
     // First, get the role to ensure it exists
-    const role: RoleWithRelations | null = await this.roleRepository.findById(roleId, {
+    const role: RoleDto | null = await this.roleRepository.findById(roleId, {
       include: { permissions: { select: { id: true } } },
     });
 

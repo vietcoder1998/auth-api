@@ -5,14 +5,14 @@ import { UserDto } from './user.interface';
 export type RoleModel = PrismaClient['role'];
 
 export interface RoleDto extends Omit<Role, 'createdAt' | 'updatedAt'> {
-  permissions?: PermissionDto[];
+  _count?: number;
+  permissions?: PermissionDro[];
 }
 export interface RoleDro extends RoleDto {
   id: string;
   createdAt: Date;
   updatedAt: Date;
 }
-
 
 export interface CreateRoleData {
   name: string;
@@ -26,7 +26,7 @@ export interface UpdateRoleData {
   permissionIds?: string[];
 }
 
-export interface RoleWithRelations extends RoleDro {
+export interface RoleWithRelations extends Partial<Omit<RoleDto, '_count'>> {
   permissions?: PermissionDro[];
   users?: UserDto[];
   _count?: {

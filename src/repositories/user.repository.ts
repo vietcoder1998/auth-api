@@ -1,4 +1,4 @@
-import { UserDto, UserModel, UserDro, UpdateUserData } from '../interfaces';
+import { UserDro, UserDto, UserModel } from '../interfaces';
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
 
@@ -79,9 +79,22 @@ export class UserRepository extends BaseRepository<UserModel, UserDto, UserDro> 
     const { select, ...restArgs } = args || {};
     let user: (UserDto & { role?: any }) | null;
     if (select) {
-      user = (await this.userModel.findUnique({ select, ...restArgs })) as (UserDto & { role?: any }) | null;
+      user = (await this.userModel.findUnique({ select, ...restArgs })) as
+        | (UserDto & { role?: any })
+        | null;
     } else {
-      user = (await this.userModel.findUnique({ ...restArgs, include: { role: true } })) as (UserDto & { role?: any }) | null;
+      user = (await this.userModel.findUnique({
+        ...restArgs,
+        include: {
+          role: {
+            select: { name: true, description: true, id: true },
+            include: {
+              permissions: true,
+              _count: true,
+            },
+          },
+        },
+      })) as (UserDto & { role?: any }) | null;
     }
 
     if (!user) {

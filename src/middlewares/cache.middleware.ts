@@ -23,8 +23,8 @@ import { client } from '../setup';
 import { logger } from './logger.middle';
 export class CacheMiddleware {
   private readonly ttl: number;
-  private readonly skipCache: (req: Request) => boolean;
-  private readonly keyGenerator: (req: Request) => CacheKey;
+  private readonly skipCache: (request: Request) => boolean;
+  private readonly keyGenerator: (request: Request) => CacheKey;
   private readonly useUrlBasedKeys: boolean;
   private static readonly WRITE_METHODS: ReadonlyArray<WriteMethods> = [
     'PUT',
@@ -43,18 +43,18 @@ export class CacheMiddleware {
   }
 
   // Generate cache key from request
-  static generateCacheKey(req: Request): CacheKey {
-    const { method, originalUrl, body, query } = req;
+  static generateCacheKey(request: Request): CacheKey {
+    const { method, originalUrl, body, query } = request;
     const data = JSON.stringify({ method, url: originalUrl, body, query });
     return `${CACHE_PREFIX}:${crypto.createHash('md5').update(data).digest('hex')}`;
   }
 
   // Generate a URL-based cache key for easier pattern matching
-  static generateUrlBasedCacheKey(req: Request): CacheKey {
-    const [cleanUrl, queryString = ''] = req.originalUrl.split('?');
+  static generateUrlBasedCacheKey(request: Request): CacheKey {
+    const [cleanUrl, queryString = ''] = request.originalUrl.split('?');
     const hash = crypto
       .createHash('md5')
-      .update(JSON.stringify({ method: req.method, body: req.body, query: req.query }))
+      .update(JSON.stringify({ method: request.method, body: request.body, query: request.query }))
       .digest('hex')
       .substring(0, CACHE_HASH_LENGTH);
 
@@ -163,8 +163,8 @@ export class CacheMiddleware {
   }
 
   // Handle write operations and invalidate cache
-  private async handleCacheInvalidation(req: Request): Promise<void> {
-    const invalidationPaths = this.generateInvalidationPaths(req.originalUrl);
+  private async handleCacheInvalidation(request: Request): Promise<void> {
+    const invalidationPaths = this.generateInvalidationPaths(request.originalUrl);
 
     await Promise.all(
       invalidationPaths.map((path) =>
@@ -196,7 +196,7 @@ export class CacheMiddleware {
   }
 
   // Handle cache hit scenario
-  private handleCacheHit(res: Response, cachedResponse: string, cacheKey: CacheKey): Response {
+  private handleCacheHit(response: Response, cachedResponse: string, cacheKey: CacheKey): Response {
     const { statusCode, data, headers }: CachedResponse = JSON.parse(cachedResponse);
 
     // Set headers efficiently in one batch
@@ -206,36 +206,34 @@ export class CacheMiddleware {
       [CACHE_HEADER_KEY]: cacheKey,
     };
 
-    Object.entries(cacheHeaders).forEach(([key, value]) => res.set(key, value as string));
+    Object.entries(cacheHeaders).forEach(([key, value]) => response.set(key, value as string));
 
-    logger.info('Cache HIT for:', res.req.originalUrl);
-
-    return res.status(statusCode).json(this.processResponseData(data));
+    return response.status(statusCode).json(this.processResponseData(data));
   }
 
   // Handle cache miss - intercept response and cache it
   private async handleCacheMiss(
-    req: Request,
-    res: Response,
+    request: Request,
+    response: Response,
     next: NextFunction,
     cacheKey: CacheKey,
   ): Promise<void> {
-    const originalJson = res.json;
+    const originalJson = response.json;
 
-    // Override res.json to intercept the response
-    res.json = (body: any) => {
+    // Override response.json to intercept the response
+    response.json = (body: any) => {
       // Only cache successful responses (2xx status codes)
       if (
-        res.statusCode >= CacheMiddleware.SUCCESS_STATUS_MIN &&
-        res.statusCode < CacheMiddleware.SUCCESS_STATUS_MAX
+        response.statusCode >= CacheMiddleware.SUCCESS_STATUS_MIN &&
+        response.statusCode < CacheMiddleware.SUCCESS_STATUS_MAX
       ) {
         // Use background caching to avoid blocking the response
         setImmediate(() => {
           try {
             const cachedResponse: CachedResponse = {
-              statusCode: res.statusCode,
+              statusCode: response.statusCode,
               data: body?.data ?? body,
-              headers: res.getHeaders(),
+              headers: response.getHeaders(),
             };
 
             (
@@ -247,67 +245,65 @@ export class CacheMiddleware {
         });
       }
 
-      res.set(CACHE_HEADER_STATUS, CACHE_STATUS_MISS).set(CACHE_HEADER_KEY, cacheKey);
-      return originalJson.call(res, body);
+      response.set(CACHE_HEADER_STATUS, CACHE_STATUS_MISS).set(CACHE_HEADER_KEY, cacheKey);
+      return originalJson.call(response, body);
     };
 
     next();
   }
 
-  public getMiddleware(): (req: Request, res: Response, next: NextFunction) => Promise<void> {
-    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      const { method } = req;
+  public async getMiddleware(request: Request, response: Response, next: NextFunction) {
+    const { method } = request;
 
-      // Skip caching: write operations, non-GET requests, explicit skip, or Redis disconnected
-      if (
-        CacheMiddleware.WRITE_METHODS.includes(method as WriteMethods) ||
-        method !== 'GET' ||
-        this.skipCache(req) ||
-        !client.isOpen
-      ) {
-        // Handle cache invalidation for write operations
-        if (CacheMiddleware.WRITE_METHODS.includes(method as WriteMethods)) {
-          await this.handleCacheInvalidation(req);
-        }
-
-        if (!client.isOpen) {
-          logger.warn('Redis not connected, skipping cache');
-        }
-
-        return next();
+    // Skip caching: write operations, non-GET requests, explicit skip, or Redis disconnected
+    if (
+      CacheMiddleware.WRITE_METHODS.includes(method as WriteMethods) ||
+      method !== 'GET' ||
+      this.skipCache(request) ||
+      !client.isOpen
+    ) {
+      // Handle cache invalidation for write operations
+      if (CacheMiddleware.WRITE_METHODS.includes(method as WriteMethods)) {
+        await this.handleCacheInvalidation(request);
       }
 
-      try {
-        const cacheKey = this.useUrlBasedKeys
-          ? CacheMiddleware.generateUrlBasedCacheKey(req)
-          : this.keyGenerator(req);
-
-        const cachedData = await client.get(cacheKey);
-
-        if (cachedData) {
-          const { statusCode, data, headers }: CachedResponse = JSON.parse(cachedData);
-
-          // Set headers in batch
-          const cacheHeaders = {
-            ...headers,
-            [CACHE_HEADER_STATUS]: CACHE_STATUS_HIT,
-            [CACHE_HEADER_KEY]: cacheKey,
-          };
-
-          Object.entries(cacheHeaders).forEach(([key, value]) => res.set(key, value as string));
-
-          logger.info(`Cache HIT: ${cacheKey}`);
-          res.status(statusCode).json(this.processResponseData(data));
-          return;
-        }
-
-        // Cache MISS - store response
-        await this.handleCacheMiss(req, res, next, cacheKey);
-      } catch (error) {
-        logger.error('Cache middleware error:', error);
-        next();
+      if (!client.isOpen) {
+        logger.warn('Redis not connected, skipping cache');
       }
-    };
+
+      return next();
+    }
+
+    try {
+      const cacheKey = this.useUrlBasedKeys
+        ? CacheMiddleware.generateUrlBasedCacheKey(request)
+        : this.keyGenerator(request);
+
+      const cachedData = await client.get(cacheKey);
+
+      if (cachedData) {
+        const { statusCode, data, headers }: CachedResponse = JSON.parse(cachedData);
+
+        // Set headers in batch
+        const cacheHeaders = {
+          ...headers,
+          [CACHE_HEADER_STATUS]: CACHE_STATUS_HIT,
+          [CACHE_HEADER_KEY]: cacheKey,
+        };
+
+        Object.entries(cacheHeaders).forEach(([key, value]) => response.set(key, value as string));
+
+        logger.info(`Cache HIT: ${cacheKey}`);
+        response.status(statusCode).json(this.processResponseData(data));
+        return;
+      }
+
+      // Cache MISS - store response
+      await this.handleCacheMiss(request, response, next, cacheKey);
+    } catch (error) {
+      logger.error('Cache middleware error:', error);
+      next();
+    }
   }
 
   async cacheToken(token: string, userId: string, ttl: number = CACHE_TTL): Promise<void> {

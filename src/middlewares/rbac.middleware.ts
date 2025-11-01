@@ -1,32 +1,31 @@
+import { UserDto } from './../interfaces/user.interface';
 import { NextFunction, Request, Response } from 'express';
 import { logInfo, logError, logWarn } from './logger.middle';
+import { userService } from '../services';
+import { PermissionDto } from '../interfaces';
 
 // Extend Express Request interface to include 'user'
 declare global {
   namespace Express {
-    interface User {
+    interface UserDto {
       id?: string;
       email?: string;
       role?: string;
       roles?: string[];
-      permissions?: Array<{
-        name: string;
-        route?: string;
-        method?: string;
-      }>;
+      permissions?: PermissionDto[];
       impersonatedBy?: string;
       impersonatedAt?: string;
       // add other user properties if needed
     }
     interface Request {
-      user?: User;
+      user?: UserDto;
     }
   }
 }
 
 // Usage: rbac(['admin', 'superadmin']) or rbac(['manage_users'])
 // For route-based: rbac([]) - will check permissions based on current route and method
-export const rbac = async (req: Request, res: Response, next: NextFunction) => {
+export const rbacMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   const user = req.user;
   const sso = req.sso;
 
@@ -46,9 +45,7 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
   // If SSO authentication but no user permissions loaded, load them
   if (sso && (!user || !user.permissions)) {
     try {
-      const userWithPermissions = await require('@prisma/client')
-        .PrismaClient()
-        .user.findUnique({
+      const userWithPermissions = await userService.findUnique({
           where: { id: sso.userId },
           include: {
             role: {
@@ -62,17 +59,13 @@ export const rbac = async (req: Request, res: Response, next: NextFunction) => {
       if (userWithPermissions?.role) {
         req.user = {
           ...req.user,
-          roles: [userWithPermissions.role.name],
-          permissions: userWithPermissions.role.permissions.map((p: any) => ({
-            name: p.name,
-            route: p.route,
-            method: p.method,
-          })),
+          roles: [userWithPermissions?.role?.name],
+          permissions: userWithPermissions?.role?.permissions
         };
         logInfo('RBAC SSO user permissions loaded', {
           userId: sso.userId,
           roleName: userWithPermissions.role.name,
-          permissionCount: userWithPermissions.role.permissions.length,
+          permissionCount: userWithPermissions?.role?._count ?? 0,
         });
       }
     } catch (error) {

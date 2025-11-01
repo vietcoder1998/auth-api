@@ -8,7 +8,7 @@ import { ResponseMiddleware } from './middlewares';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
 import { CacheMiddleware } from './middlewares/cache.middleware';
 import { logError, loggerMiddleware, logInfo } from './middlewares/logger.middle';
-import { rbac } from './middlewares/rbac.middleware';
+import { rbacMiddleware } from './middlewares/rbac.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
 import adminRouter from './routes/admin.routes';
 import authRouter from './routes/auth.routes';
@@ -117,7 +117,7 @@ app.use('/api/sso', ssoAuthRouter);
 app.use(ssoKeyValidation);
 app.use(apiKeyValidation); // Check for API key authentication
 app.use(authMiddleware.jwtTokenValidation.bind(authMiddleware)); // Fallback to JWT if no API key
-app.use(rbac);
+app.use(rbacMiddleware);
 app.use('/api/config', configRouter);
 const cacheMiddlewareInstance = new CacheMiddleware({
   ttl: 600, // 10 minutes cache
@@ -159,7 +159,7 @@ const cacheMiddlewareInstance = new CacheMiddleware({
   },
 });
 
-app.use('/api/admin', cacheMiddlewareInstance.getMiddleware(), adminRouter);
+app.use('/api/admin', cacheMiddlewareInstance.getMiddleware.bind(cacheMiddlewareInstance), adminRouter);
 // Serve admin GUI at /admin
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
 app.get('/', (req: express.Request, res: express.Response) => res.json({ status: 'ok' }));

@@ -70,7 +70,7 @@ export class ConversationController extends BaseController<
 
   async updatePromptHistory(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      const userId = req?.user?.id;
       const { id } = req.params;
       const { prompt } = req.body;
       if (!userId) return this.handleError(res, 'Unauthorized', 401);

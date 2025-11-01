@@ -112,7 +112,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       });
     } catch (error) {
       console.error('Login error:', error);
-  this.handleError(res, error);
+      this.handleError(res, error);
     }
   }
 
@@ -126,7 +126,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       }
       res.json(result);
     } catch (error) {
-  this.handleError(res, error);
+      this.handleError(res, error);
     }
   }
 
@@ -157,7 +157,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json({ user });
     } catch (error) {
       console.error('Registration error:', error);
-  this.handleError(res, error);
+      this.handleError(res, error);
     }
   }
 
@@ -165,7 +165,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   public async logout(req: Request, res: Response) {
     try {
       const { loginHistoryId } = req.body;
-  const userId = req.headers[HEADER_X_USER_ID] as string;
+      const userId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!userId) {
         throw new Error('User ID not found in request');
@@ -180,11 +180,12 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
         await client.del(`token:${token}`);
 
         // Invalidate token in database
-        await this.tokenService.updateMany({  accessToken: token,
-            userId: userId,},{
-       
+        await this.tokenService.updateMany(
+          { accessToken: token, userId: userId },
+          {
             expiresAt: new Date(),
-        });
+          },
+        );
       }
       // Update login history if provided
       if (loginHistoryId) {
@@ -210,13 +211,14 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json({ message: 'Logged out successfully' });
     } catch (error) {
       console.error('Logout error:', error);
-  this.handleError(res, error);
+      this.handleError(res, error);
     }
   }
 
   // POST /validate
   public async validate(req: Request, res: Response) {
     const { token } = req.body;
+    
     // Validate JWT
     const payload = this.authService.validateToken(token);
     if (!payload) {
@@ -240,7 +242,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   // GET /me
   public async getMe(req: Request, res: Response) {
     try {
-  const userId = req.headers[HEADER_X_USER_ID] as string;
+      const userId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!userId) {
         throw new Error('User ID not found in request');
@@ -295,7 +297,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json(user);
     } catch (error) {
       console.error('Get me error:', error);
-  this.handleError(res, error);
+      this.handleError(res, error);
     }
   }
 
@@ -303,7 +305,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   public async handoverUserStatus(req: Request, res: Response) {
     try {
       const { userId, newStatus } = req.body;
-  const requesterId = req.headers[HEADER_X_USER_ID] as string;
+      const requesterId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!requesterId) {
         throw new Error('User ID not found in request');
@@ -331,7 +333,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
 
       // Update user status
       const user = await this.userService.update(userId, {
-        status: newStatus 
+        status: newStatus,
       });
       // Record status change in history
       await this.historyService.recordUserAction(requesterId, 'user_status_changed', req, {
@@ -374,7 +376,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
       res.json({ user });
     } catch (error) {
       console.error('Handover user status error:', error);
-  this.handleError(res, error);
+      this.handleError(res, error);
     }
   }
 
@@ -405,7 +407,9 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
     try {
       const { refreshToken } = req.body;
       // Validate refresh token
-      const tokenRecord: TokenDro | null = await this.tokenService.findUnique({ where: { refreshToken } });
+      const tokenRecord: TokenDro | null = await this.tokenService.findUnique({
+        where: { refreshToken },
+      });
 
       if (
         !tokenRecord ||

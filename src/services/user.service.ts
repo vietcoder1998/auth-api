@@ -271,7 +271,12 @@ export class UserService extends BaseService<UserModel, UserDto, UserDro> {
   }
 
   public async findUnique(args: any): Promise<UserDto | null> {
-    return this.userRepository.findUnique(args);
+    return this.userRepository.findUnique({
+      ...args,
+      includes: {
+        
+      }
+    });
   }
 }
 
