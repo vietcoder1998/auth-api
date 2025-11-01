@@ -1,12 +1,21 @@
-
-
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { CreateUserData, TokenDto, UpdateUserData, UserDto, UserModel, UserWithoutTokenDto, UserDro } from '../interfaces';
-import { AgentRepository, ConversationRepository, TokenRepository, UserRepository, userRepository } from '../repositories';
+import {
+  CreateUserData,
+  TokenDto,
+  UpdateUserData,
+  UserDro,
+  UserDto,
+  UserModel,
+  UserWithoutTokenDto,
+} from '../interfaces';
+import {
+  AgentRepository,
+  ConversationRepository,
+  TokenRepository,
+  UserRepository,
+  userRepository,
+} from '../repositories';
 import { BaseService } from './index';
-import { prisma } from '../setup';
-
 
 export class UserService extends BaseService<UserModel, UserDto, UserDro> {
   private userRepository: UserRepository;
@@ -20,7 +29,7 @@ export class UserService extends BaseService<UserModel, UserDto, UserDro> {
     this.agentRepository = new AgentRepository();
     this.conversationRepository = new ConversationRepository();
     this.tokenRepository = new TokenRepository();
-  }  /**
+  } /**
    * Create a new user
    */
   public async createUser(data: CreateUserData) {
@@ -95,8 +104,8 @@ export class UserService extends BaseService<UserModel, UserDto, UserDro> {
 
     const where = search
       ? {
-        OR: [{ email: { contains: search } }, { nickname: { contains: search } }],
-      }
+          OR: [{ email: { contains: search } }, { nickname: { contains: search } }],
+        }
       : {};
 
     const [users, total] = await Promise.all([
@@ -210,8 +219,8 @@ export class UserService extends BaseService<UserModel, UserDto, UserDro> {
   }
 
   /**
-  * Count users by criteria
-  */
+   * Count users by criteria
+   */
   public async count(where: any): Promise<number> {
     return this.userRepository.count({ where });
   }
@@ -249,19 +258,25 @@ export class UserService extends BaseService<UserModel, UserDto, UserDro> {
     }
     const user = await this.userRepository.createWithRole(userData);
     const { password: _, ...userWithoutPassword } = user;
-    return userWithoutPassword as UserDto
+    return userWithoutPassword as UserDto;
   }
 
   /**
    * Update user (controller compatibility)
    */
-  public override async update(id: string, data: UpdateUserData): Promise<UserWithoutTokenDto | null> {
+  public override async update(
+    id: string,
+    data: UpdateUserData,
+  ): Promise<UserWithoutTokenDto | null> {
     const updateData = { ...data };
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 12);
     }
 
-    const userWithoutPassword: UserWithoutTokenDto | null = await this.userRepository.update(id, updateData);
+    const userWithoutPassword: UserWithoutTokenDto | null = await this.userRepository.update(
+      id,
+      updateData,
+    );
 
     return userWithoutPassword;
   }
@@ -273,9 +288,6 @@ export class UserService extends BaseService<UserModel, UserDto, UserDro> {
   public async findUnique(args: any): Promise<UserDto | null> {
     return this.userRepository.findUnique({
       ...args,
-      includes: {
-        
-      }
     });
   }
 }

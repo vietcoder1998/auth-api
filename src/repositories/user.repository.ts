@@ -3,8 +3,8 @@ import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
 
 export class UserRepository extends BaseRepository<UserModel, UserDto, UserDro> {
-  constructor(userDelegate = prisma.user) {
-    super(userDelegate);
+  constructor() {
+    super(prisma.user);
   }
 
   get userModel(): UserModel {
@@ -77,30 +77,21 @@ export class UserRepository extends BaseRepository<UserModel, UserDto, UserDro> 
   public async findUnique(args: any): Promise<UserDto | null> {
     // Prisma does not allow both 'select' and 'include' at the same time
     const { select, ...restArgs } = args || {};
-    let user: (UserDto & { role?: any }) | null;
-    if (select) {
-      user = (await this.userModel.findUnique({ select, ...restArgs })) as
-        | (UserDto & { role?: any })
-        | null;
-    } else {
-      user = (await this.userModel.findUnique({
-        ...restArgs,
-        include: {
-          role: {
-            select: { name: true, description: true, id: true },
-            include: {
-              permissions: true,
-              _count: true,
-            },
+    const userDto: UserDto | null = await this.userModel.findUnique({
+      ...restArgs,
+      include: {
+        role: {
+          include: {
+            permissions: true,
+            _count: true,
           },
         },
-      })) as (UserDto & { role?: any }) | null;
-    }
+      },
+    }) as UserDto
 
-    if (!user) {
+    if (!userDto) {
       throw new Error('User not found');
     }
-    const userDto: UserDto = { ...user, role: user.role || null };
     return userDto;
   }
 
