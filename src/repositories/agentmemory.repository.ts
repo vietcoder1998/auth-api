@@ -3,8 +3,8 @@ import { BaseRepository } from './base.repository';
 import { AgentMemoryDto, AgentMemoryModel } from '../interfaces';
 
 export class AgentMemoryRepository extends BaseRepository<AgentMemoryModel, AgentMemoryDto, AgentMemoryDto> {
-    constructor(agentMemoryDelegate = prisma.agentMemory) {
-        super(agentMemoryDelegate);
+    constructor() {
+        super(prisma.agentMemory);
     }
 
     async findByAgentId(agentId: string) {

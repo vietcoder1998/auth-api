@@ -16,6 +16,7 @@ import { prisma } from '../setup';
 import { BaseService } from './base.service';
 import { llmService } from './llm.service';
 import { MemoryService } from './memory.service';
+import { AgentMemoryRepository } from '../repositories/agentmemory.repository';
 
 export class ConversationService extends BaseService<
   ConversationModel,
@@ -26,6 +27,7 @@ export class ConversationService extends BaseService<
   private messageRepository: MessageRepository;
   private memoryService: MemoryService;
   private promptHistoryRepository: PromptHistoryRepository;
+  memoryRepository: AgentMemoryRepository;
 
   constructor() {
     const conversationRepository = new ConversationRepository();
@@ -34,6 +36,7 @@ export class ConversationService extends BaseService<
     this.messageRepository = new MessageRepository();
     this.memoryService = new MemoryService();
     this.promptHistoryRepository = new PromptHistoryRepository();
+    this.memoryRepository = new AgentMemoryRepository();
   }
   /**
    * Create a new prompt history for a conversation
@@ -448,11 +451,11 @@ export class ConversationService extends BaseService<
     const agentId = conversation?.agentId || metadata?.agentId || '';
 
     // Save user message as memory
-    const memory = await this.memoryService.create({
+    const memory = await this.memoryRepository.create({
       agentId,
       conversationId,
       messageId: message.id,
-      type: sender === 'user' ? 'short_term' : 'answer',
+      type: sender === 'user' ? 'short_term' : 'long_term',
       content,
       metadata: metadata ? JSON.stringify(metadata) : null,
       importance: 1,
