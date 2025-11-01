@@ -1,48 +1,102 @@
 import { Request, Response } from 'express';
-import * as aiKeyService from '../services/aiKey.service';
+import { BaseController } from './base.controller';
+import { aiKeyService } from '../services/aiKey.service';
+import { AIKeyModel, AIKeyDto } from '../interfaces';
 
-export const createAIKey = async (req: Request, res: Response) => {
-  try {
-    const key = await aiKeyService.createAIKey(req.body);
-    res.status(201).json(key);
-  } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+/**
+ * AIKeyController - Handles API key management endpoints
+ * 
+ * Extends BaseController to provide standard CRUD operations
+ * plus custom endpoints for AI key specific functionality.
+ */
+export class AIKeyController extends BaseController<AIKeyModel, AIKeyDto, AIKeyDto> {
+  constructor() {
+    super(aiKeyService);
   }
-};
 
-export const getAIKeys = async (_: Request, res: Response) => {
-  try {
-    const keys = await aiKeyService.getAIKeys();
-    res.json(keys);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
+  /**
+   * GET /ai-keys/user/:userId - Get AI keys by user ID
+   */
+  async getAIKeysByUserId(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const keys = await aiKeyService.getAIKeysByUserId(userId);
+      this.sendSuccess(res, keys);
+    } catch (error) {
+      this.handleError(res, error);
+    }
   }
-};
 
-export const getAIKeyById = async (req: Request, res: Response) => {
-  try {
-    const key = await aiKeyService.getAIKeyById(req.params.id);
-    if (!key) return res.status(404).json({ error: 'Not found' });
-    res.json(key);
-  } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
+  /**
+   * GET /ai-keys/active - Get all active AI keys
+   */
+  async getActiveAIKeys(req: Request, res: Response): Promise<void> {
+    try {
+      const keys = await aiKeyService.getActiveAIKeys();
+      this.sendSuccess(res, keys);
+    } catch (error) {
+      this.handleError(res, error);
+    }
   }
-};
 
-export const updateAIKey = async (req: Request, res: Response) => {
-  try {
-    const key = await aiKeyService.updateAIKey(req.params.id, req.body);
-    res.json(key);
-  } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+  /**
+   * GET /ai-keys/by-key/:key - Find AI key by key value
+   */
+  async findByKey(req: Request, res: Response): Promise<void> {
+    try {
+      const { key } = req.params;
+      const aiKey = await aiKeyService.findByKey(key);
+      
+      if (!aiKey) {
+        res.status(404).json({
+          success: false,
+          error: 'AI Key not found',
+        });
+        return;
+      }
+      
+      this.sendSuccess(res, aiKey);
+    } catch (error) {
+      this.handleError(res, error);
+    }
   }
-};
 
-export const deleteAIKey = async (req: Request, res: Response) => {
-  try {
-    await aiKeyService.deleteAIKey(req.params.id);
-    res.status(204).end();
-  } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+  /**
+   * Override findAll to use the service's custom getAIKeys method
+   * which includes related data (platform, billing, agents, user)
+   */
+  async findAll(req: Request, res: Response): Promise<void> {
+    try {
+      const keys = await aiKeyService.getAIKeys();
+      this.sendSuccess(res, keys);
+    } catch (error) {
+      this.handleError(res, error);
+    }
   }
-};
+
+  /**
+   * Override findOne to use the service's custom getAIKeyById method
+   * which includes related data
+   */
+  async findOne(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const key = await aiKeyService.getAIKeyById(id);
+      
+      if (!key) {
+        res.status(404).json({
+          success: false,
+          error: 'AI Key not found',
+        });
+        return;
+      }
+      
+      this.sendSuccess(res, key);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+}
+
+// Export an instance of the controller
+export const aiKeyController = new AIKeyController();

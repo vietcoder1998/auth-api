@@ -24,7 +24,6 @@ class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
             agent: true,
           },
         },
-        Conversation: true,
         user: true,
       },
     });
@@ -34,7 +33,7 @@ class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
     return this.aiKeyRepository
       .search({
         where: { id },
-        include: { platform: true, billing: true },
+        include: { platform: true, billing: true, agents: true, Conversation: true, user: true },
       })
       .then((results) => results[0] || null);
   }
