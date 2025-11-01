@@ -106,6 +106,8 @@ export class ConversationService extends BaseService<
       sortBy = 'updatedAt',
       sortOrder = 'desc',
     } = query;
+
+    console.log(query)
     const currentPage = Math.max(1, parseInt(page as string, 10));
     const currentLimit = Math.max(1, Math.min(100, parseInt(pageSize as string, 10)));
     const skip = (currentPage - 1) * currentLimit;

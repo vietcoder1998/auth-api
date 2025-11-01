@@ -22,9 +22,9 @@ export class ConversationController extends BaseController<
     try {
       const userId = req.user?.id;
       const { conversationId, userMessage, agentId } = req.body;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
+      if (!userId) throw new Error('User not authenticated');
       if (!conversationId || !userMessage || !agentId) {
-        return this.handleError(res, 'conversationId, userMessage, and agentId are required', 400);
+        throw new Error('conversationId, userMessage, and agentId are required');
       }
       const result = await llmService.processAndSaveConversation(
         conversationId,
@@ -42,9 +42,9 @@ export class ConversationController extends BaseController<
     try {
       const userId = req.user?.id;
       const { conversationId, prompt } = req.body;
-      if (!userId) return this.handleError(res, 'Unauthorized', 401);
+      if (!userId) throw new Error('Unauthorized');
       if (!conversationId || !prompt)
-        return this.handleError(res, 'conversationId and prompt required', 400);
+        throw new Error('conversationId and prompt required');
       const promptHistory = await conversationService.createPromptHistory(
         userId,
         conversationId,
@@ -60,7 +60,7 @@ export class ConversationController extends BaseController<
     try {
       const userId = req.user?.id;
       const { conversationId } = req.params;
-      if (!userId) return this.handleError(res, 'Unauthorized', 401);
+      if (!userId) throw new Error('Unauthorized');
       const prompts = await conversationService.getPromptHistories(userId, conversationId);
       this.sendSuccess(res, prompts);
     } catch (err) {
@@ -73,7 +73,7 @@ export class ConversationController extends BaseController<
       const userId = req?.user?.id;
       const { id } = req.params;
       const { prompt } = req.body;
-      if (!userId) return this.handleError(res, 'Unauthorized', 401);
+      if (!userId) throw new Error('Unauthorized');
       const updated = await conversationService.updatePromptHistory(userId, id, prompt);
       this.sendSuccess(res, updated);
     } catch (err) {
@@ -85,7 +85,7 @@ export class ConversationController extends BaseController<
     try {
       const userId = req.user?.id;
       const { id } = req.params;
-      if (!userId) return this.handleError(res, 'Unauthorized', 401);
+      if (!userId) throw new Error('Unauthorized');
       await conversationService.deletePromptHistory(userId, id);
       this.sendSuccess(res, null, 'Prompt deleted');
     } catch (err) {
@@ -96,7 +96,7 @@ export class ConversationController extends BaseController<
   async getConversations(req: Request, res: Response) {
     try {
       const userId = req.user?.id;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
+      if (!userId) throw new Error('User not authenticated');
       const result = await conversationService.getConversations(userId, req.query);
       this.sendSuccess(res, result);
     } catch (err) {
@@ -108,8 +108,8 @@ export class ConversationController extends BaseController<
     try {
       const userId = req.user?.id;
       const { agentId, title } = req.body;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
-      if (!agentId) return this.handleError(res, 'Agent ID is required', 400);
+      if (!userId) throw new Error('User not authenticated');
+      if (!agentId) throw new Error('Agent ID is required');
       const conversation = await conversationService.createConversation(userId, agentId, title);
       this.sendSuccess(res, conversation, 'Conversation created', 201);
     } catch (err) {
@@ -122,7 +122,7 @@ export class ConversationController extends BaseController<
       const userId = req.user?.id;
       const { id } = req.params;
       const { page = 1, limit = 50 } = req.query;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
+      if (!userId) throw new Error('User not authenticated');
       const pageNum = parseInt(page as string);
       const limitNum = parseInt(limit as string);
       const result = await conversationService.getConversation(userId, id, pageNum, limitNum);
@@ -137,7 +137,7 @@ export class ConversationController extends BaseController<
       const userId = req.user?.id;
       const { id } = req.params;
       const { page = 1, limit = 100, sortOrder = 'asc' } = req.query;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
+      if (!userId) throw new Error('User not authenticated');
       const pageNum = parseInt(page as string);
       const limitNum = parseInt(limit as string);
       const result = await conversationService.getConversationMessages(id, pageNum, limitNum);
@@ -152,8 +152,8 @@ export class ConversationController extends BaseController<
       const userId = req.user?.id;
       const { id } = req.params;
       const { content, sender = 'user', metadata } = req.body;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
-      if (!content) return this.handleError(res, 'Message content is required', 400);
+      if (!userId) throw new Error('User not authenticated');
+      if (!content) throw new Error('Message content is required');
       const result = await conversationService.addMessage({
         conversationId: id,
         sender,
@@ -171,7 +171,7 @@ export class ConversationController extends BaseController<
       const userId = req.user?.id;
       const { id } = req.params;
       const { title, summary, isActive } = req.body;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
+      if (!userId) throw new Error('User not authenticated');
       const updateData: any = {};
       if (title !== undefined) updateData.title = title;
       if (summary !== undefined) updateData.summary = summary;
@@ -191,7 +191,7 @@ export class ConversationController extends BaseController<
     try {
       const userId = req.user?.id;
       const { id } = req.params;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
+      if (!userId) throw new Error('User not authenticated');
       const result = await conversationService.deleteConversation(userId, id);
       this.sendSuccess(res, result);
     } catch (err) {
@@ -204,9 +204,9 @@ export class ConversationController extends BaseController<
       const userId = req.user?.id;
       const { id: conversationId } = req.params;
       const { type, parameters } = req.body;
-      if (!userId) return this.handleError(res, 'User not authenticated', 401);
-      if (!type) return this.handleError(res, 'Command type is required', 400);
-      if (!parameters) return this.handleError(res, 'Command parameters are required', 400);
+      if (!userId) throw new Error('User not authenticated');
+      if (!type) throw new Error('Command type is required');
+      if (!parameters) throw new Error('Command parameters are required');
       
       const result = await conversationService.executeCommand(
         userId,

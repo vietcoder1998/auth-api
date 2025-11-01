@@ -11,7 +11,7 @@ export class ConversationRouter extends BaseRouter<
   ConversationDro
 > {
   constructor() {
-    super('/conversations', conversationController);
+    super('/conversations');
     this.initializeRoutes(conversationController);
   }
 
