@@ -10,11 +10,12 @@ export class AuthMiddleware {
   private userService: UserService;
   private tokenService: TokenService;
   private authService: AuthService;
+
   constructor() {
     this.cacheMiddleware = cacheMiddleware;
     this.userService = userService;
     this.tokenService = tokenService;
-    this.authService = authService;
+    this.authService = new AuthService();
   }
   async redisTokenValidation(request: Request, response: Response, next: NextFunction) {
     const token = request.headers[HEADER_AUTHORIZATION]?.toString().replace('Bearer ', '');
@@ -26,6 +27,7 @@ export class AuthMiddleware {
   }
 
   async jwtTokenValidation(request: Request, response: Response, next: NextFunction) {
+    console.log(this.authService)
     try {
       if (
         request.originalUrl?.includes('/api/auth') &&

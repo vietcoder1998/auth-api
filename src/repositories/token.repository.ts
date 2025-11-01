@@ -3,8 +3,8 @@ import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
 
 export class TokenRepository extends BaseRepository<TokenModel, TokenDto, TokenDro> {
-  constructor(tokenDelegate: TokenModel) {
-    super(tokenDelegate);
+  constructor() {
+    super(prisma.token);
   }
 
   public get tokenModel(): TokenModel {
@@ -59,4 +59,4 @@ export class TokenRepository extends BaseRepository<TokenModel, TokenDto, TokenD
   }
 }
 
-export const tokenRepository = new TokenRepository(prisma.token);
+export const tokenRepository = new TokenRepository();

@@ -19,7 +19,7 @@ export class UserService extends BaseService<UserModel, UserDto, UserDro> {
     this.userRepository = repo;
     this.agentRepository = new AgentRepository();
     this.conversationRepository = new ConversationRepository();
-    this.tokenRepository = new TokenRepository(prisma.token);
+    this.tokenRepository = new TokenRepository();
   }  /**
    * Create a new user
    */

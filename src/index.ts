@@ -116,7 +116,7 @@ app.use('/api/sso', ssoAuthRouter);
 // Apply authentication middleware chain (order matters)
 app.use(ssoKeyValidation);
 app.use(apiKeyValidation); // Check for API key authentication
-app.use(authMiddleware.jwtTokenValidation); // Fallback to JWT if no API key
+app.use(authMiddleware.jwtTokenValidation.bind(authMiddleware)); // Fallback to JWT if no API key
 app.use(rbac);
 app.use('/api/config', configRouter);
 const cacheMiddlewareInstance = new CacheMiddleware({

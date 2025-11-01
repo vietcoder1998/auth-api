@@ -1,12 +1,16 @@
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../env';
-import { TokenDro, TokenDto, TokenModel, JwtPayload } from '../interfaces';
-import { TokenRepository, tokenRepository } from '../repositories';
+import { JwtPayload, TokenDro, TokenDto, TokenModel } from '../interfaces';
+import { tokenRepository, TokenRepository } from '../repositories';
 import { BaseService } from './index';
 
 export class AuthService extends BaseService<TokenModel, TokenDto, TokenDro> {
-  public constructor(tokenRepository: TokenRepository) {
+  public constructor() {
     super(tokenRepository);
+  }
+
+  get tokenRepository(): TokenRepository {
+    return this.repository as TokenRepository;
   }
 
   public generateToken(payload: JwtPayload, expiresIn: jwt.SignOptions['expiresIn'] = '1h') {
@@ -45,10 +49,7 @@ export class AuthService extends BaseService<TokenModel, TokenDto, TokenDro> {
     }
   }
 
-  public generateRefreshToken(
-    payload: JwtPayload,
-    expiresIn: jwt.SignOptions['expiresIn'] = '7d',
-  ) {
+  public generateRefreshToken(payload: JwtPayload, expiresIn: jwt.SignOptions['expiresIn'] = '7d') {
     return jwt.sign(payload, JWT_SECRET, { expiresIn });
   }
 
@@ -61,4 +62,4 @@ export class AuthService extends BaseService<TokenModel, TokenDto, TokenDro> {
   }
 }
 // Exporting a singleton instance of AuthService
-export const authService = new AuthService(tokenRepository);
+export const authService = new AuthService();

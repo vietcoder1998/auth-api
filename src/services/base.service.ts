@@ -1,15 +1,15 @@
-import { BaseRepository } from "../repositories";
+import { BaseRepository } from '../repositories';
 
 /**
  * BaseService - Generic service layer pattern implementation for business logic
- * 
+ *
  * Provides common CRUD operations and delegates to repository layer for data access.
  * All entity-specific services should extend this class.
- * 
+ *
  * @template T - The Prisma model delegate type
  * @template Dto - Data Transfer Object type for input operations
  * @template Dro - Data Response Object type for output operations
- * 
+ *
  * @example
  * ```typescript
  * export class UserService extends BaseService<UserModel, UserDto, UserDto> {
@@ -17,7 +17,7 @@ import { BaseRepository } from "../repositories";
  *     const userRepository = new UserRepository();
  *     super(userRepository);
  *   }
- *   
+ *
  *   // Add custom business logic methods
  *   async activateUser(userId: string) {
  *     return this.update(userId, { status: 'active' });
@@ -26,308 +26,310 @@ import { BaseRepository } from "../repositories";
  * ```
  */
 export class BaseService<T, Dto, Dro> {
-    protected repository: BaseRepository<T, Dto, Dro>;
+  protected repository!: BaseRepository<T, Dto, Dro>;
 
-    /**
-     * Creates a new service instance
-     * @param repository - Repository instance for data access
-     */
-    constructor(repository: BaseRepository<T, Dto, Dro>) {
-        this.repository = repository;
+  /**
+   * Creates a new service instance
+   * @param repository - Repository instance for data access
+   */
+  constructor(repository?: BaseRepository<T, Dto, Dro>) {
+    if (repository) {
+      this.repository = repository;
     }
+  }
 
-    /**
-     * Execute a text command as a function with access to class context
-     * Transforms text data into executable code using eval
-     * 
-     * @param command - Text command to execute (JavaScript code as string)
-     * @param context - Additional context object to merge with class context
-     * @returns Result of the executed command
-     * 
-     * @private
-     * @example
-     * ```typescript
-     * // Simple expression
-     * const result = this.execute('1 + 1'); // Returns 2
-     * 
-     * // Using class context
-     * const result = this.execute('this.repository.findAll()');
-     * 
-     * // Using provided context
-     * const result = this.execute('data.name.toUpperCase()', { data: { name: 'john' } });
-     * // Returns 'JOHN'
-     * 
-     * // Complex operations
-     * const result = this.execute(`
-     *   const users = await this.findMany({ status: 'active' });
-     *   return users.filter(u => u.age > 18);
-     * `);
-     * ```
-     */
-    private execute<R = any>(command: string, context?: Record<string, any>): R {
-        try {
-            // Create a function with access to 'this' and provided context
-            // Merge class context with provided context
-            const contextKeys = context ? Object.keys(context) : [];
-            const contextValues = context ? Object.values(context) : [];
-            
-            // Create function parameters: this, ...contextKeys
-            const params = ['thisArg', ...contextKeys];
-            
-            // Wrap command in async function to support await
-            const functionBody = `
+  /**
+   * Execute a text command as a function with access to class context
+   * Transforms text data into executable code using eval
+   *
+   * @param command - Text command to execute (JavaScript code as string)
+   * @param context - Additional context object to merge with class context
+   * @returns Result of the executed command
+   *
+   * @private
+   * @example
+   * ```typescript
+   * // Simple expression
+   * const result = this.execute('1 + 1'); // Returns 2
+   *
+   * // Using class context
+   * const result = this.execute('this.repository.findAll()');
+   *
+   * // Using provided context
+   * const result = this.execute('data.name.toUpperCase()', { data: { name: 'john' } });
+   * // Returns 'JOHN'
+   *
+   * // Complex operations
+   * const result = this.execute(`
+   *   const users = await this.findMany({ status: 'active' });
+   *   return users.filter(u => u.age > 18);
+   * `);
+   * ```
+   */
+  private execute<R = any>(command: string, context?: Record<string, any>): R {
+    try {
+      // Create a function with access to 'this' and provided context
+      // Merge class context with provided context
+      const contextKeys = context ? Object.keys(context) : [];
+      const contextValues = context ? Object.values(context) : [];
+
+      // Create function parameters: this, ...contextKeys
+      const params = ['thisArg', ...contextKeys];
+
+      // Wrap command in async function to support await
+      const functionBody = `
                 const self = thisArg;
                 const repository = thisArg.repository;
                 ${command.includes('return') ? command : `return (${command})`}
             `;
-            
-            // Create the function
-            const fn = new Function(...params, functionBody);
-            
-            // Execute with 'this' as first argument
-            const result = fn(this, ...contextValues);
-            
-            // Handle promises
-            if (result && typeof result.then === 'function') {
-                return result as R;
-            }
-            
-            return result;
-        } catch (error: any) {
-            throw new Error(`Command execution failed: ${error.message}\nCommand: ${command}`);
-        }
-    }
 
-    /**
-     * Execute an async text command with class context
-     * Similar to execute() but ensures async/await support
-     * 
-     * @param command - Text command to execute (JavaScript code as string)
-     * @param context - Additional context object to merge with class context
-     * @returns Promise with result of the executed command
-     * 
-     * @private
-     * @example
-     * ```typescript
-     * // Async operations
-     * const users = await this.executeAsync(`
-     *   const data = await this.findMany({ status: 'active' });
-     *   return data.filter(u => u.role === 'admin');
-     * `);
-     * 
-     * // With context
-     * const result = await this.executeAsync(`
-     *   const user = await this.findOne(userId);
-     *   return user ? user.email : null;
-     * `, { userId: '123' });
-     * ```
-     */
-    private async executeAsync<R = any>(command: string, context?: Record<string, any>): Promise<R> {
-        try {
-            const contextKeys = context ? Object.keys(context) : [];
-            const contextValues = context ? Object.values(context) : [];
-            
-            const params = ['thisArg', ...contextKeys];
-            
-            // Wrap in async function
-            const functionBody = `
+      // Create the function
+      const fn = new Function(...params, functionBody);
+
+      // Execute with 'this' as first argument
+      const result = fn(this, ...contextValues);
+
+      // Handle promises
+      if (result && typeof result.then === 'function') {
+        return result as R;
+      }
+
+      return result;
+    } catch (error: any) {
+      throw new Error(`Command execution failed: ${error.message}\nCommand: ${command}`);
+    }
+  }
+
+  /**
+   * Execute an async text command with class context
+   * Similar to execute() but ensures async/await support
+   *
+   * @param command - Text command to execute (JavaScript code as string)
+   * @param context - Additional context object to merge with class context
+   * @returns Promise with result of the executed command
+   *
+   * @private
+   * @example
+   * ```typescript
+   * // Async operations
+   * const users = await this.executeAsync(`
+   *   const data = await this.findMany({ status: 'active' });
+   *   return data.filter(u => u.role === 'admin');
+   * `);
+   *
+   * // With context
+   * const result = await this.executeAsync(`
+   *   const user = await this.findOne(userId);
+   *   return user ? user.email : null;
+   * `, { userId: '123' });
+   * ```
+   */
+  private async executeAsync<R = any>(command: string, context?: Record<string, any>): Promise<R> {
+    try {
+      const contextKeys = context ? Object.keys(context) : [];
+      const contextValues = context ? Object.values(context) : [];
+
+      const params = ['thisArg', ...contextKeys];
+
+      // Wrap in async function
+      const functionBody = `
                 const self = thisArg;
                 const repository = thisArg.repository;
                 ${command.includes('return') ? command : `return (${command})`}
             `;
-            
-            // Create async function
-            const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-            const fn = new AsyncFunction(...params, functionBody);
-            
-            return await fn(this, ...contextValues);
-        } catch (error: any) {
-            throw new Error(`Async command execution failed: ${error.message}\nCommand: ${command}`);
-        }
-    }
 
-    /**
-     * Find all records
-     * @returns Array of all records
-     * @example
-     * ```typescript
-     * const allUsers = await userService.findAll();
-     * ```
-     */
-    async findAll(where?: Record<string, any>): Promise<Dro[]> {
-        return this.repository.search<Dro>(where || {});
-    }
+      // Create async function
+      const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+      const fn = new AsyncFunction(...params, functionBody);
 
-    /**
-     * Find a single record by its ID
-     * @param id - The unique identifier of the record
-     * @returns The found record or null if not found
-     * @example
-     * ```typescript
-     * const user = await userService.findOne('123');
-     * if (!user) {
-     *   throw new Error('User not found');
-     * }
-     * ```
-     */
-    async findOne(id: string): Promise<Dro | null> {
-        return this.repository.findById<Dro>(id);
+      return await fn(this, ...contextValues);
+    } catch (error: any) {
+      throw new Error(`Async command execution failed: ${error.message}\nCommand: ${command}`);
     }
+  }
 
-    /**
-     * Create a new record
-     * @param data - Data for creating the record
-     * @returns The created record
-     * @example
-     * ```typescript
-     * const newUser = await userService.create({
-     *   email: 'user@example.com',
-     *   name: 'John Doe',
-     *   status: 'active'
-     * });
-     * ```
-     */
-    async create<T>(data: T): Promise<Dro> {
-        return this.repository.create<T, Dro>(data);
-    }
+  /**
+   * Find all records
+   * @returns Array of all records
+   * @example
+   * ```typescript
+   * const allUsers = await userService.findAll();
+   * ```
+   */
+  async findAll(where?: Record<string, any>): Promise<Dro[]> {
+    return this.repository.search<Dro>(where || {});
+  }
 
-    /**
-     * Update an existing record by ID
-     * @param id - The unique identifier of the record to update
-     * @param data - Partial data to update
-     * @returns The updated record or null if not found
-     * @example
-     * ```typescript
-     * const updated = await userService.update('123', {
-     *   name: 'Jane Doe',
-     *   status: 'inactive'
-     * });
-     * ```
-     */
-    async update(id: string, data: Partial<Dto>): Promise<Dro | null> {
-        return this.repository.update<Dto, Dro>(id, data);
-    }
+  /**
+   * Find a single record by its ID
+   * @param id - The unique identifier of the record
+   * @returns The found record or null if not found
+   * @example
+   * ```typescript
+   * const user = await userService.findOne('123');
+   * if (!user) {
+   *   throw new Error('User not found');
+   * }
+   * ```
+   */
+  async findOne(id: string): Promise<Dro | null> {
+    return this.repository.findById<Dro>(id);
+  }
 
-    /**
-     * Permanently delete a record by ID
-     * @param id - The unique identifier of the record to delete
-     * @returns The deleted record
-     * @example
-     * ```typescript
-     * const deleted = await userService.delete('123');
-     * ```
-     */
-    async delete(id: string): Promise<Dro> {
-        return this.repository.delete<Dro>(id);
-    }
+  /**
+   * Create a new record
+   * @param data - Data for creating the record
+   * @returns The created record
+   * @example
+   * ```typescript
+   * const newUser = await userService.create({
+   *   email: 'user@example.com',
+   *   name: 'John Doe',
+   *   status: 'active'
+   * });
+   * ```
+   */
+  async create<T>(data: T): Promise<Dro> {
+    return this.repository.create<T, Dro>(data);
+  }
 
-    /**
-     * Soft delete a record by setting its 'deleted' flag to true
-     * Note: Requires the model to have a 'deleted' boolean field
-     * @param id - The unique identifier of the record to soft delete
-     * @returns The updated record
-     * @example
-     * ```typescript
-     * const deleted = await userService.softDelete('123');
-     * // Record is marked as deleted but still exists in database
-     * ```
-     */
-    async softDelete(id: string): Promise<Dro> {
-        return this.repository.softDelete<Dro>(id);
-    }
+  /**
+   * Update an existing record by ID
+   * @param id - The unique identifier of the record to update
+   * @param data - Partial data to update
+   * @returns The updated record or null if not found
+   * @example
+   * ```typescript
+   * const updated = await userService.update('123', {
+   *   name: 'Jane Doe',
+   *   status: 'inactive'
+   * });
+   * ```
+   */
+  async update(id: string, data: Partial<Dto>): Promise<Dro | null> {
+    return this.repository.update<Dto, Dro>(id, data);
+  }
 
-    // ==================== BATCH OPERATIONS ====================
+  /**
+   * Permanently delete a record by ID
+   * @param id - The unique identifier of the record to delete
+   * @returns The deleted record
+   * @example
+   * ```typescript
+   * const deleted = await userService.delete('123');
+   * ```
+   */
+  async delete(id: string): Promise<Dro> {
+    return this.repository.delete<Dro>(id);
+  }
 
-    /**
-     * Create multiple records in a single operation
-     * @param data - Array of data objects to create
-     * @returns Object with count of created records
-     * @example
-     * ```typescript
-     * const result = await userService.createMany([
-     *   { email: 'user1@example.com', name: 'User 1' },
-     *   { email: 'user2@example.com', name: 'User 2' }
-     * ]);
-     * console.log(`Created ${result.count} users`);
-     * ```
-     */
-    async createMany(data: Dto[]): Promise<{ count: number }> {
-        return this.repository.createMany<Dto, { count: number }>(data);
-    }
+  /**
+   * Soft delete a record by setting its 'deleted' flag to true
+   * Note: Requires the model to have a 'deleted' boolean field
+   * @param id - The unique identifier of the record to soft delete
+   * @returns The updated record
+   * @example
+   * ```typescript
+   * const deleted = await userService.softDelete('123');
+   * // Record is marked as deleted but still exists in database
+   * ```
+   */
+  async softDelete(id: string): Promise<Dro> {
+    return this.repository.softDelete<Dro>(id);
+  }
 
-    /**
-     * Update multiple records that match the where condition
-     * @param where - Filter condition to match records (Prisma WhereInput)
-     * @param data - Partial data to update on all matching records
-     * @returns Object with count of updated records
-     * @example
-     * ```typescript
-     * // Activate all pending users
-     * const result = await userService.updateMany(
-     *   { status: 'pending' },
-     *   { status: 'active' }
-     * );
-     * console.log(`Updated ${result.count} users`);
-     * ```
-     */
-    async updateMany(where: Record<string, any>, data: Partial<Dto>): Promise<{ count: number }> {
-        return this.repository.updateMany<Dto, { count: number }>(where, data);
-    }
+  // ==================== BATCH OPERATIONS ====================
 
-    /**
-     * Delete multiple records that match the where condition
-     * @param where - Filter condition to match records (Prisma WhereInput)
-     * @returns Object with count of deleted records
-     * @example
-     * ```typescript
-     * const result = await userService.deleteMany({
-     *   status: 'inactive',
-     *   lastLoginAt: { lt: new Date('2024-01-01') }
-     * });
-     * console.log(`Deleted ${result.count} users`);
-     * ```
-     */
-    async deleteMany(where: Record<string, any>): Promise<{ count: number }> {
-        return this.repository.deleteMany<{ count: number }>(where);
-    }
+  /**
+   * Create multiple records in a single operation
+   * @param data - Array of data objects to create
+   * @returns Object with count of created records
+   * @example
+   * ```typescript
+   * const result = await userService.createMany([
+   *   { email: 'user1@example.com', name: 'User 1' },
+   *   { email: 'user2@example.com', name: 'User 2' }
+   * ]);
+   * console.log(`Created ${result.count} users`);
+   * ```
+   */
+  async createMany(data: Dto[]): Promise<{ count: number }> {
+    return this.repository.createMany<Dto, { count: number }>(data);
+  }
 
-    /**
-     * Soft delete multiple records by their IDs
-     * Note: Requires the model to have a 'deleted' boolean field
-     * @param ids - Array of record IDs to soft delete
-     * @returns Object with count of soft-deleted records
-     * @example
-     * ```typescript
-     * const result = await userService.softDeleteMany(['id1', 'id2', 'id3']);
-     * console.log(`Soft deleted ${result.count} users`);
-     * ```
-     */
-    async softDeleteMany(ids: string[]): Promise<{ count: number }> {
-        return this.repository.softDeleteMany<{ count: number }>(ids);
-    }
+  /**
+   * Update multiple records that match the where condition
+   * @param where - Filter condition to match records (Prisma WhereInput)
+   * @param data - Partial data to update on all matching records
+   * @returns Object with count of updated records
+   * @example
+   * ```typescript
+   * // Activate all pending users
+   * const result = await userService.updateMany(
+   *   { status: 'pending' },
+   *   { status: 'active' }
+   * );
+   * console.log(`Updated ${result.count} users`);
+   * ```
+   */
+  async updateMany(where: Record<string, any>, data: Partial<Dto>): Promise<{ count: number }> {
+    return this.repository.updateMany<Dto, { count: number }>(where, data);
+  }
 
-    /**
-     * Find multiple records with optional filtering
-     * @param where - Optional filter condition (Prisma WhereInput)
-     * @returns Array of matching records
-     * @example
-     * ```typescript
-     * // Find all active users
-     * const activeUsers = await userService.findMany({ status: 'active' });
-     * 
-     * // Find all records
-     * const allUsers = await userService.findMany();
-     * 
-     * // Complex filtering
-     * const users = await userService.findMany({
-     *   AND: [
-     *     { status: 'active' },
-     *     { role: { in: ['admin', 'moderator'] } }
-     *   ]
-     * });
-     * ```
-     */
-    async findMany(where?: Record<string, any>): Promise<Dro[]> {
-        return this.repository.findMany<Dro>(where);
-    }
+  /**
+   * Delete multiple records that match the where condition
+   * @param where - Filter condition to match records (Prisma WhereInput)
+   * @returns Object with count of deleted records
+   * @example
+   * ```typescript
+   * const result = await userService.deleteMany({
+   *   status: 'inactive',
+   *   lastLoginAt: { lt: new Date('2024-01-01') }
+   * });
+   * console.log(`Deleted ${result.count} users`);
+   * ```
+   */
+  async deleteMany(where: Record<string, any>): Promise<{ count: number }> {
+    return this.repository.deleteMany<{ count: number }>(where);
+  }
+
+  /**
+   * Soft delete multiple records by their IDs
+   * Note: Requires the model to have a 'deleted' boolean field
+   * @param ids - Array of record IDs to soft delete
+   * @returns Object with count of soft-deleted records
+   * @example
+   * ```typescript
+   * const result = await userService.softDeleteMany(['id1', 'id2', 'id3']);
+   * console.log(`Soft deleted ${result.count} users`);
+   * ```
+   */
+  async softDeleteMany(ids: string[]): Promise<{ count: number }> {
+    return this.repository.softDeleteMany<{ count: number }>(ids);
+  }
+
+  /**
+   * Find multiple records with optional filtering
+   * @param where - Optional filter condition (Prisma WhereInput)
+   * @returns Array of matching records
+   * @example
+   * ```typescript
+   * // Find all active users
+   * const activeUsers = await userService.findMany({ status: 'active' });
+   *
+   * // Find all records
+   * const allUsers = await userService.findMany();
+   *
+   * // Complex filtering
+   * const users = await userService.findMany({
+   *   AND: [
+   *     { status: 'active' },
+   *     { role: { in: ['admin', 'moderator'] } }
+   *   ]
+   * });
+   * ```
+   */
+  async findMany(where?: Record<string, any>): Promise<Dro[]> {
+    return this.repository.findMany<Dro>(where);
+  }
 }

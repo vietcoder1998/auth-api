@@ -16,7 +16,6 @@ import { client } from '../setup';
 import { BaseController } from './base.controller';
 
 export class AuthController extends BaseController<TokenModel, TokenDto, TokenDro> {
-  private authService: AuthService;
   private tokenService: TokenService;
   private userService: UserService;
   private cacheMiddleware: CacheMiddleware;
@@ -25,10 +24,13 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   constructor(authService: AuthService, tokenService: TokenService, userService: UserService) {
     super(authService);
     this.tokenService = tokenService;
-    this.authService = authService;
     this.userService = userService;
     this.cacheMiddleware = cacheMiddleware;
     this.historyService = historyService;
+  }
+
+  get authService(): AuthService {
+    return this.service as AuthService;
   }
 
   // POST /login
