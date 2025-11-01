@@ -39,7 +39,7 @@ export class MemoryService extends BaseService<AgentMemoryModel, AgentMemoryDto,
     }
 
     // Validate type value
-    const validTypes = ['user', 'assistant', 'system', 'function'];
+    const validTypes = ['short_term', 'long_term', 'knowledge_base'];
     if (!validTypes.includes(memoryData.type)) {
       throw new Error(`Invalid memory type. Must be one of: ${validTypes.join(', ')}`);
     }
@@ -98,6 +98,7 @@ export class MemoryService extends BaseService<AgentMemoryModel, AgentMemoryDto,
         );
       }
     }
+
     delete memoryData.embedding; // Remove legacy field if present
 
     // Fix: Use connect for agent and conversation relations

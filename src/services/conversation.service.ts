@@ -440,7 +440,7 @@ export class ConversationService extends BaseService<
     });
 
     // Also add a promptHistory for this message
-    await this.promptHistoryRepository.create({
+    const prompt = await this.promptHistoryRepository.create({
       conversationId,
       prompt: content,
     });
@@ -460,10 +460,10 @@ export class ConversationService extends BaseService<
       content,
       metadata: metadata ? JSON.stringify(metadata) : null,
       importance: 1,
+      promptId: prompt.id,
     });
 
     // If sender is user, call LLM and save response as agent message and memory
-    let llmMessage = null;
     let answerMemory = null;
 
     const llmResponse = await llmService.processAndSaveConversation(
@@ -473,7 +473,7 @@ export class ConversationService extends BaseService<
     );
 
     // Save agent reply as message
-    llmMessage = await this.messageRepository.create({
+    const llmMessage = await this.messageRepository.create({
       agentId,
       conversationId,
       sender: 'agent',
@@ -501,7 +501,6 @@ export class ConversationService extends BaseService<
       createdAt: message.createdAt,
       memory,
       llmMessage,
-      answerMemory,
     };
   }
 
