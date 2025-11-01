@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import { HEADER_AUTHORIZATION, HEADER_X_USER_ID } from '../env';
-import { AuthService, TokenService, tokenService, userService, UserService, authService } from '../services';
+import { AuthService, authService } from '../services/auth.service';
+import { TokenService, tokenService } from '../services/token.service';
+import { UserService, userService } from '../services/user.service';
 import { CacheMiddleware, cacheMiddleware } from './cache.middleware';
 
 export class AuthMiddleware {
@@ -92,7 +94,9 @@ export class AuthMiddleware {
       next();
     } catch (error: any) {
       // fallback for unexpected errors
-      return response.status(error?.status ?? 500).json({ error: 'Authentication service error' + String(error) });
+      return response
+        .status(error?.status ?? 500)
+        .json({ error: 'Authentication service error' + String(error) });
     }
   }
 }

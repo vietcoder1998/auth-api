@@ -1,9 +1,6 @@
-import { Request, Response, NextFunction, Router } from 'express';
+import { Request, Response } from 'express';
 import { authController } from '../controllers/auth.controller';
-import { loggerMiddleware } from '../middlewares/logger.middle';
-import { client } from '../setup';
 import { BaseRouter } from './base.route';
-
 
 class AuthRoutes extends BaseRouter<any, any, any> {
   constructor() {

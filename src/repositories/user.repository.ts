@@ -75,19 +75,19 @@ export class UserRepository extends BaseRepository<UserModel, UserDto, UserDro> 
   }
 
   public async findUnique(args: any): Promise<UserDto | null> {
-    const user = (await this.userModel.findUnique({
-      ...args,
-      include: {
-        role: true,
-      },
-    })) as (UserDto & { role?: any }) | null;
+    // Prisma does not allow both 'select' and 'include' at the same time
+    const { select, ...restArgs } = args || {};
+    let user: (UserDto & { role?: any }) | null;
+    if (select) {
+      user = (await this.userModel.findUnique({ select, ...restArgs })) as (UserDto & { role?: any }) | null;
+    } else {
+      user = (await this.userModel.findUnique({ ...restArgs, include: { role: true } })) as (UserDto & { role?: any }) | null;
+    }
 
     if (!user) {
       throw new Error('User not found');
     }
-      
     const userDto: UserDto = { ...user, role: user.role || null };
-
     return userDto;
   }
 
