@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { HEADER_X_USER_ID } from '../env';
 import { TokenDro, TokenDto, TokenModel } from '../interfaces';
 import { CacheMiddleware, cacheMiddleware } from '../middlewares';
 import {
@@ -160,7 +161,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   public async logout(req: Request, res: Response) {
     try {
       const { loginHistoryId } = req.body;
-      const userId = req.headers['x-user-id'] as string;
+  const userId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!userId) {
         return res.status(401).json({ error: 'User ID not found in request' });
@@ -235,7 +236,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   // GET /me
   public async getMe(req: Request, res: Response) {
     try {
-      const userId = req.headers['x-user-id'] as string;
+  const userId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!userId) {
         return res.status(401).json({ error: 'User ID not found in request' });
@@ -298,7 +299,7 @@ export class AuthController extends BaseController<TokenModel, TokenDto, TokenDr
   public async handoverUserStatus(req: Request, res: Response) {
     try {
       const { userId, newStatus } = req.body;
-      const requesterId = req.headers['x-user-id'] as string;
+  const requesterId = req.headers[HEADER_X_USER_ID] as string;
 
       if (!requesterId) {
         return res.status(401).json({ error: 'User ID not found in request' });

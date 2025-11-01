@@ -1,3 +1,4 @@
+import { authMiddleware } from './middlewares/auth.middleware';
 import cors from 'cors';
 import express from 'express';
 import path from 'path';
@@ -5,7 +6,6 @@ import swaggerUi from 'swagger-ui-express';
 import * as env from './env';
 import { ResponseMiddleware } from './middlewares';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
-import { jwtTokenValidation } from './middlewares/auth.middleware';
 import { CacheMiddleware } from './middlewares/cache.middleware';
 import { logError, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbac } from './middlewares/rbac.middleware';
@@ -116,7 +116,7 @@ app.use('/api/sso', ssoAuthRouter);
 // Apply authentication middleware chain (order matters)
 app.use(ssoKeyValidation);
 app.use(apiKeyValidation); // Check for API key authentication
-app.use(jwtTokenValidation); // Fallback to JWT if no API key
+app.use(authMiddleware.jwtTokenValidation); // Fallback to JWT if no API key
 app.use(rbac);
 app.use('/api/config', configRouter);
 const cacheMiddlewareInstance = new CacheMiddleware({

@@ -1,5 +1,11 @@
+// Common header keys
 import dotenv from 'dotenv';
 dotenv.config();
+
+export const HEADER_AUTHORIZATION = 'authorization';
+// Common header keys
+export const HEADER_X_USER_ID = 'x-user-id';
+
 
 export const PORT = process.env.PORT || '3000';
 export const DATABASE_URL = process.env.DATABASE_URL || '';

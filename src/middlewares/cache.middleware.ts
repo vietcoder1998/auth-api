@@ -19,15 +19,19 @@ import {
   InvalidationPaths,
   WriteMethods
 } from '../interfaces/cache.interface';
-import { logger } from './logger.middle';
 import { client } from '../setup';
-// Cache middleware class
+import { logger } from './logger.middle';
 export class CacheMiddleware {
   private readonly ttl: number;
   private readonly skipCache: (req: Request) => boolean;
   private readonly keyGenerator: (req: Request) => CacheKey;
   private readonly useUrlBasedKeys: boolean;
-  private static readonly WRITE_METHODS: ReadonlyArray<WriteMethods> = ['PUT', 'POST', 'DELETE', 'PATCH'];
+  private static readonly WRITE_METHODS: ReadonlyArray<WriteMethods> = [
+    'PUT',
+    'POST',
+    'DELETE',
+    'PATCH',
+  ];
   private static readonly SUCCESS_STATUS_MIN = 200;
   private static readonly SUCCESS_STATUS_MAX = 300;
 
@@ -83,7 +87,7 @@ export class CacheMiddleware {
 
       // Fetch all matching keys in parallel
       const keysArrays = await Promise.all(
-        Array.from(patterns).map(pattern => client.keys(pattern))
+        Array.from(patterns).map((pattern) => client.keys(pattern)),
       );
 
       // Flatten and deduplicate
@@ -150,10 +154,12 @@ export class CacheMiddleware {
     const pathParts = cleanPath.split('/').filter(Boolean);
 
     // Generate all parent paths in one pass
-    return pathParts.reduce<string[]>((paths, _, index) => {
-      paths.push('/' + pathParts.slice(0, index + 1).join('/'));
-      return paths;
-    }, []).reverse(); // Reverse to invalidate from deepest to shallowest
+    return pathParts
+      .reduce<string[]>((paths, _, index) => {
+        paths.push('/' + pathParts.slice(0, index + 1).join('/'));
+        return paths;
+      }, [])
+      .reverse(); // Reverse to invalidate from deepest to shallowest
   }
 
   // Handle write operations and invalidate cache
@@ -161,11 +167,11 @@ export class CacheMiddleware {
     const invalidationPaths = this.generateInvalidationPaths(req.originalUrl);
 
     await Promise.all(
-      invalidationPaths.map(path =>
-        this.invalidateCacheByUrlPattern(path).catch(err =>
-          logger.error(`Failed to invalidate cache for ${path}:`, err)
-        )
-      )
+      invalidationPaths.map((path) =>
+        this.invalidateCacheByUrlPattern(path).catch((err) =>
+          logger.error(`Failed to invalidate cache for ${path}:`, err),
+        ),
+      ),
     );
 
     logger.info('Cache invalidated for paths:', invalidationPaths);
@@ -181,7 +187,7 @@ export class CacheMiddleware {
     try {
       const parsedData = JSON.parse(data);
       // Only return parsed data if it's a plain object (not array, not null)
-      return (typeof parsedData === 'object' && parsedData !== null && !Array.isArray(parsedData))
+      return typeof parsedData === 'object' && parsedData !== null && !Array.isArray(parsedData)
         ? parsedData
         : data;
     } catch {
@@ -200,9 +206,7 @@ export class CacheMiddleware {
       [CACHE_HEADER_KEY]: cacheKey,
     };
 
-    Object.entries(cacheHeaders).forEach(([key, value]) =>
-      res.set(key, value as string)
-    );
+    Object.entries(cacheHeaders).forEach(([key, value]) => res.set(key, value as string));
 
     logger.info('Cache HIT for:', res.req.originalUrl);
 
@@ -214,7 +218,7 @@ export class CacheMiddleware {
     req: Request,
     res: Response,
     next: NextFunction,
-    cacheKey: CacheKey
+    cacheKey: CacheKey,
   ): Promise<void> {
     const originalJson = res.json;
 
@@ -234,9 +238,9 @@ export class CacheMiddleware {
               headers: res.getHeaders(),
             };
 
-            (client
-              .setEx(cacheKey, this.ttl, JSON.stringify(cachedResponse)) as Promise<'OK'>)
-              .catch((err: unknown) => logger.error('Cache set error:', err));
+            (
+              client.setEx(cacheKey, this.ttl, JSON.stringify(cachedResponse)) as Promise<'OK'>
+            ).catch((err: unknown) => logger.error('Cache set error:', err));
           } catch (error) {
             logger.error('Failed to cache response:', error);
           }
@@ -290,9 +294,7 @@ export class CacheMiddleware {
             [CACHE_HEADER_KEY]: cacheKey,
           };
 
-          Object.entries(cacheHeaders).forEach(([key, value]) =>
-            res.set(key, value as string)
-          );
+          Object.entries(cacheHeaders).forEach(([key, value]) => res.set(key, value as string));
 
           logger.info(`Cache HIT: ${cacheKey}`);
           res.status(statusCode).json(this.processResponseData(data));
@@ -321,6 +323,23 @@ export class CacheMiddleware {
       logger.error('Failed to cache token:', error);
     }
   }
+  /**
+   * Retrieve userId by token from Redis
+   */
+  async getUserIdByToken(token: string): Promise<string | null> {
+    if (!client.isOpen) {
+      logger.warn('Redis not connected, cannot get userId by token');
+      return null;
+    }
+    const key = `${CACHE_PREFIX}:token:${token}`;
+    try {
+      const userId = await client.get(key);
+      return userId;
+    } catch (error) {
+      logger.error('Failed to get userId by token:', error);
+      return null;
+    }
+  }
 }
 
-export const cacheMiddleware = new CacheMiddleware()
+export const cacheMiddleware = new CacheMiddleware();
