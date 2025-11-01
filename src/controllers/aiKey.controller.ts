@@ -106,7 +106,7 @@ export class AIKeyController extends BaseController<AIKeyModel, AIKeyDto, AIKeyD
       const { id } = req.params;
       const payload = req.body;
       const data = await this.aiKeyService.updateAIKey(id, payload);
-      
+
       if (!data) {
         res.status(404).json({
           success: false,
@@ -114,7 +114,7 @@ export class AIKeyController extends BaseController<AIKeyModel, AIKeyDto, AIKeyD
         });
         return;
       }
-      this.sendSuccess(res, data);
+      this.sendSuccess(res, { data });
     } catch (error) {
       this.handleError(res, error, 400);
     }

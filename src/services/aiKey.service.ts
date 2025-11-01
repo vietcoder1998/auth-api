@@ -3,14 +3,29 @@ import { AIKeyRepository, aiKeyRepository } from '../repositories/aikey.reposito
 import { BaseService } from './base.service';
 
 export class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
-  private readonly aiKeyRepository: AIKeyRepository;
-
   constructor() {
     super(aiKeyRepository);
-    this.aiKeyRepository = aiKeyRepository;
+  }
+
+  get aiKeyRepository(): AIKeyRepository {
+    return this.repository as AIKeyRepository;
   }
 
   async createAIKey(data: any) {
+    // Transform agentIds to proper Prisma relationship format
+    if (data.agentIds) {
+      const { agentIds, ...restData } = data;
+      const createData = {
+        ...restData,
+        agents: {
+          create: agentIds.map((agentId: string) => ({
+            agentId: agentId
+          }))
+        }
+      };
+      return this.aiKeyRepository.create(createData);
+    }
+    
     return this.aiKeyRepository.create(data);
   }
 
@@ -39,6 +54,21 @@ export class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
   }
 
   async updateAIKey(id: string, data: any) {
+    // Transform agentIds to proper Prisma relationship format
+    if (data.agentIds) {
+      const { agentIds, ...restData } = data;
+      const updateData = {
+        ...restData,
+        agents: {
+          deleteMany: {}, // Remove existing relationships
+          create: agentIds.map((agentId: string) => ({
+            agentId: agentId
+          }))
+        }
+      };
+      return this.aiKeyRepository.update(id, updateData);
+    }
+    
     return this.aiKeyRepository.update(id, data);
   }
 
