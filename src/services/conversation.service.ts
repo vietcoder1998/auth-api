@@ -11,6 +11,7 @@ import { ConversationDro, ConversationDto, ConversationModel, MessageDto } from 
 import { cacheMiddleware } from '../middlewares/cache.middleware';
 import { ConversationRepository } from '../repositories/conversation.repository';
 import { MessageRepository } from '../repositories/message.repository';
+import { PromptHistoryRepository } from '../repositories/prompthistory.repository';
 import { prisma } from '../setup';
 import { BaseService } from './base.service';
 import { llmService } from './llm.service';
@@ -24,6 +25,7 @@ export class ConversationService extends BaseService<
   private conversationRepository: ConversationRepository;
   private messageRepository: MessageRepository;
   private memoryService: MemoryService;
+  private promptHistoryRepository: PromptHistoryRepository;
 
   constructor() {
     const conversationRepository = new ConversationRepository();
@@ -31,6 +33,7 @@ export class ConversationService extends BaseService<
     this.conversationRepository = conversationRepository;
     this.messageRepository = new MessageRepository();
     this.memoryService = new MemoryService();
+    this.promptHistoryRepository = new PromptHistoryRepository();
   }
   /**
    * Create a new prompt history for a conversation
@@ -44,8 +47,9 @@ export class ConversationService extends BaseService<
       where: { id: conversationId, userId },
     });
     if (!conversation) throw new Error('Conversation not found');
-    const promptHistory = await prisma.promptHistory.create({
-      data: { conversationId, prompt },
+    const promptHistory = await this.promptHistoryRepository.create({
+      conversationId,
+      prompt,
     });
     // Invalidate cache for conversations after prompt
     await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
@@ -63,9 +67,8 @@ export class ConversationService extends BaseService<
       where: { id: conversationId, userId },
     });
     if (!conversation) throw new Error('Conversation not found');
-    return await prisma.promptHistory.findMany({
-      where: { conversationId },
-      orderBy: { createdAt: 'asc' },
+    return await this.promptHistoryRepository.findMany({
+      conversationId,
     });
   }
 
@@ -77,21 +80,18 @@ export class ConversationService extends BaseService<
     id: string,
     prompt: string,
   ): Promise<ConversationPromptHistory> {
-    const existing = await prisma.promptHistory.findUnique({ where: { id } });
+    const existing = await this.promptHistoryRepository.findById(id);
     if (!existing) throw new Error('Prompt not found');
-    return await prisma.promptHistory.update({
-      where: { id },
-      data: { prompt },
-    });
+    return await this.promptHistoryRepository.update(id, { prompt });
   }
 
   /**
    * Delete a prompt history
    */
   async deletePromptHistory(userId: string, id: string): Promise<DeleteResponse> {
-    const existing = await prisma.promptHistory.findUnique({ where: { id } });
+    const existing = await this.promptHistoryRepository.findById(id);
     if (!existing) throw new Error('Prompt not found');
-    await prisma.promptHistory.delete({ where: { id } });
+    await this.promptHistoryRepository.delete(id);
     return { message: 'Prompt deleted' };
   }
 
@@ -170,12 +170,12 @@ export class ConversationService extends BaseService<
       skip,
       take: currentLimit,
     });
-    const transformedConversations = conversations.map((conv) => ({
-      ...conv,
-      title: conv.title ?? '',
-      summary: conv.summary ?? '',
-      isActive: conv.isActive ?? null,
-      lastMessage: conv.messages[0] || null,
+    const transformedConversations = conversations.map((conversation) => ({
+      ...conversation,
+      title: conversation.title ?? '',
+      summary: conversation.summary ?? '',
+      isActive: conversation.isActive ?? null,
+      lastMessage: conversation.messages[0] || null,
       messages: undefined,
     }));
     return {
@@ -405,11 +405,11 @@ export class ConversationService extends BaseService<
       prisma.conversation.count({ where }),
     ]);
 
-    const transformedConversations = conversations.map((conv) => ({
-      ...conv,
-      title: conv.title ?? '',
-      summary: conv.summary ?? '',
-      isActive: conv.isActive ?? null,
+    const transformedConversations = conversations.map((conversation) => ({
+      ...conversation,
+      title: conversation.title ?? '',
+      summary: conversation.summary ?? '',
+      isActive: conversation.isActive ?? null,
     }));
     return {
       data: transformedConversations,
@@ -435,24 +435,20 @@ export class ConversationService extends BaseService<
     });
 
     // Update conversation timestamp and connect message
-    await this.conversationRepository.update(conversationId, {
+    const conversation: ConversationDro = await this.conversationRepository.update(conversationId, {
       updatedAt: new Date(),
     });
 
     // Also add a promptHistory for this message
-    await prisma.promptHistory.create({
-      data: {
-        conversationId,
-        prompt: content,
-      },
+    await this.promptHistoryRepository.create({
+      conversationId,
+      prompt: content,
     });
 
     // Invalidate cache for conversations after message
     await cacheMiddleware.invalidateCacheByUrlPattern('/api/admin/conversations');
 
-    // Get agentId from conversation
-    const conversation: ConversationDto | null =
-      await this.conversationRepository.findById(conversationId);
+
     const agentId = conversation?.agentId || metadata?.agentId || '';
 
     // Save user message as memory
