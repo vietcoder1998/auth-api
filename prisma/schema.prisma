@@ -66,8 +66,8 @@ model AIPlatform {
   apiKeys      AIKey[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  Agent        Agent[]
-  Conversation Conversation[]
+  agents       Agent[]
+  conversations Conversation[]
   models       AIModel[]
 
   @@map("ai_platform")
