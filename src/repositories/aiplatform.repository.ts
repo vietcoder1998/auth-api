@@ -20,4 +20,15 @@ export class AIPlatformRepository extends BaseRepository<AIPlatformModel, AIPlat
             }
         });
     }
+
+    public override async search<Dro = AIPlatformModel>(params: any): Promise<Dro[]> {
+        const searchParams = {
+            ...params,
+            include: {
+                models: true,
+                ...(params?.include || {}),
+            },
+        };
+        return this.model.findMany(searchParams) as Promise<Dro[]>;
+    }
 }

@@ -25,7 +25,11 @@ class AIPlatformService extends BaseService<any, AIPlatformDto, AIPlatformDto> {
   }
 
   async getAIPlatforms() {
-    return this.aiPlatformRepository.findMany();
+    return this.aiPlatformRepository.findMany({
+      include: {
+        models: true,
+      },
+    });
   }
 
   async getAIPlatformById(id: string) {
