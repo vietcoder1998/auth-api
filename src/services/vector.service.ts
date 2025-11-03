@@ -32,20 +32,20 @@ export class VectorService {
     options?: { dbIndex?: number; collection?: string },
   ): Promise<RedisVector | null> {
     try {
-      // Get embedding from Google GenAI
-      const model = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
-      const result = await model.embedContent(message);
-      // Normalize ContentEmbedding to number[]
-      const embedding = Array.isArray(result.embedding)
-        ? (result.embedding as number[])
-        : (((result.embedding as any).values ??
-            (result.embedding as any).data ??
-            (result.embedding as any).value ??
-            (result.embedding as any).embedding ??
-            (result.embedding as any)) as number[]);
+      // Validate input
+      if (!message || typeof message !== 'string') {
+        throw new Error('Invalid message: message must be a non-empty string');
+      }
+
+      // Get embedding from Google GenAI with retry logic
+      const embedding = await this.getEmbeddingWithRetry(message);
+      
+      if (!embedding) {
+        throw new Error('Failed to generate embedding after retries');
+      }
 
       // Calculate token count (simple whitespace split)
-      const token = typeof message === 'string' ? message.trim().split(/\s+/).length : 0;
+      const token = message.trim().split(/\s+/).length;
 
       // Optionally select Redis DB index
       if (typeof options?.dbIndex === 'number') {
@@ -67,7 +67,19 @@ export class VectorService {
       };
     } catch (error) {
       console.error('Error saving message to Redis vector DB:', error);
-      return null;
+      
+      // Fallback: save without embedding for graceful degradation
+      try {
+        const fallbackResult = await this.saveMessageWithoutEmbedding(message, options);
+        if (fallbackResult) {
+          console.log('Saved message without embedding as fallback');
+          return fallbackResult;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback save also failed:', fallbackError);
+      }
+      
+      throw error; // Re-throw original error if fallback fails
     }
   }
 
@@ -155,16 +167,14 @@ export class VectorService {
     options?: { dbIndex?: number; collection?: string; threshold?: number },
   ): Promise<RedisVector[]> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
-      const result = await model.embedContent(message);
-      // Normalize ContentEmbedding to number[]
-      const embedding = Array.isArray(result.embedding)
-        ? (result.embedding as number[])
-        : (((result.embedding as any).values ??
-            (result.embedding as any).data ??
-            (result.embedding as any).value ??
-            (result.embedding as any).embedding ??
-            (result.embedding as any)) as number[]);
+      // Use retry logic for embedding generation
+      const embedding = await this.getEmbeddingWithRetry(message);
+      
+      if (!embedding) {
+        console.warn('Could not generate embedding for similarity search, returning empty results');
+        return [];
+      }
+      
       return await this.findSameVectorDb(embedding, options);
     } catch (error) {
       console.error('Error finding similar vectors from message:', error);
@@ -228,6 +238,97 @@ export class VectorService {
       };
     }
     return null;
+  }
+
+  /**
+   * Get embedding with retry logic for handling transient errors
+   * @param message The message to embed
+   * @param maxRetries Maximum number of retry attempts
+   * @returns Embedding array or null if all retries fail
+   */
+  private async getEmbeddingWithRetry(message: string, maxRetries: number = 3): Promise<number[] | null> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const model = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
+        const result = await model.embedContent(message);
+        
+        // Normalize ContentEmbedding to number[]
+        const embedding = Array.isArray(result.embedding)
+          ? (result.embedding as number[])
+          : (((result.embedding as any).values ??
+              (result.embedding as any).data ??
+              (result.embedding as any).value ??
+              (result.embedding as any).embedding ??
+              (result.embedding as any)) as number[]);
+
+        if (!embedding || !Array.isArray(embedding) || embedding.length === 0) {
+          throw new Error('Invalid embedding response from Google GenAI');
+        }
+
+        return embedding;
+      } catch (error: any) {
+        console.error(`Embedding attempt ${attempt}/${maxRetries} failed:`, error?.message || error);
+        
+        // If this is the last attempt, don't retry
+        if (attempt === maxRetries) {
+          return null;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10 seconds
+        console.log(`Retrying embedding in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Save message without embedding as fallback
+   * @param message The message to save
+   * @param options Optional config
+   * @returns RedisVector object with dummy embedding
+   */
+  private async saveMessageWithoutEmbedding(
+    message: string,
+    options?: { dbIndex?: number; collection?: string }
+  ): Promise<RedisVector | null> {
+    try {
+      // Calculate token count
+      const token = message.trim().split(/\s+/).length;
+
+      // Create a dummy embedding (zeros) for consistency
+      const dummyEmbedding = new Array(768).fill(0); // Common embedding dimension
+
+      // Optionally select Redis DB index
+      if (typeof options?.dbIndex === 'number') {
+        await this.redisClient.select(options.dbIndex);
+      }
+
+      // Save to Redis with fallback flag
+      const key = (options?.collection || 'embeddings') + ':fallback:' + Date.now().toString();
+      await this.redisClient.set(key, JSON.stringify({ 
+        message, 
+        embedding: dummyEmbedding, 
+        token,
+        isFallback: true,
+        createdAt: new Date().toISOString()
+      }));
+
+      console.log('Saved message without embedding (fallback):', key);
+      
+      return {
+        vectorId: key,
+        embedding: dummyEmbedding,
+        message,
+        similarity: 1,
+        token,
+      };
+    } catch (error) {
+      console.error('Error in fallback save:', error);
+      return null;
+    }
   }
 
   /**

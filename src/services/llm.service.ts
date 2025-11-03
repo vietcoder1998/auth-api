@@ -350,53 +350,71 @@ export class LLMService {
     userMessage: string,
     agentId: string,
   ): Promise<LLMResponseWithVectors> {
-    // 1. Generate answer
-    const llmResponse = await this.pushLLMResponseIntoConversation(
-      conversationId,
-      userMessage,
-      agentId,
-    );
-
-    // Validate LLM response
-    if (!llmResponse) {
-      throw new Error('Failed to generate LLM response');
-    }
-
-    // 2. Save question embedding
-    const questionVector = await vectorService.saveMessage(userMessage);
-    const answerVector = await vectorService.saveMessage(llmResponse.content);
-
-    let memory = null;
-
-    if (llmResponse.model !== 'error') {
-      memory = await this.memoryRepository.create({
-        agentId,
-        content: llmResponse.content,
-        type: 'long_term',
-        vectorId: answerVector?.vectorId,
+    try {
+      // 1. Generate answer
+      const llmResponse = await this.pushLLMResponseIntoConversation(
         conversationId,
-      });
+        userMessage,
+        agentId,
+      );
 
-      if (!memory) {
-        throw new Error('Failed to create memory record');
+      // Validate LLM response
+      if (!llmResponse) {
+        throw new Error('Failed to generate LLM response');
       }
-    }
 
-    const llmMessage: LLMResponse = await this.generateLLMResponse(
-      [
-        { role: 'user', content: userMessage },
-        { role: 'assistant', content: llmResponse.content },
-      ],
-      {
-        model: llmResponse.model,
-      },
-    );
-    return {
-      ...llmResponse,
-      questionVector,
-      answerVector,
-      memory,
-    };
+      // 2. Save question embedding
+      const questionVector = await vectorService.saveMessage(userMessage);
+      const answerVector = await vectorService.saveMessage(llmResponse.content);
+
+      let memory = null;
+
+      if (llmResponse.model !== 'error') {
+        memory = await this.memoryRepository.create({
+          agentId,
+          content: llmResponse.content,
+          type: 'long_term',
+          vectorId: answerVector?.vectorId,
+          conversationId,
+        });
+
+        if (!memory) {
+          throw new Error('Failed to create memory record');
+        }
+      }
+
+      const llmMessage: LLMResponse = await this.generateLLMResponse(
+        [
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: llmResponse.content },
+        ],
+        {
+          model: llmResponse.model,
+        },
+      );
+      
+      return {
+        ...llmMessage,
+        questionVector,
+        answerVector,
+        memory,
+      };
+    } catch (error) {
+      console.error('Error in processAndSaveConversation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process and save conversation';
+      
+      // Return error response with failed state
+      return {
+        content: errorMessage,
+        tokens: 0,
+        model: 'error',
+        processingTime: 0,
+        metadata: { isError: true },
+        questionVector: null,
+        answerVector: null,
+        memory: null,
+      };
+    }
   }
 }
 
