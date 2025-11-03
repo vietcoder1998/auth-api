@@ -93,7 +93,7 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
     return this.aiModelRepository.findMany();
   }
 
-  async updateAIModel(
+  public override async update(
     id: string,
     data: Partial<AIModelDto>,
   ): Promise<AIModelDro | null> {
