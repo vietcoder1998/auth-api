@@ -352,6 +352,69 @@ export class AgentService extends BaseService<any, AgentDto, AgentDto> {
       },
     );
   }
+
+  /**
+   * Update agent's AI keys by replacing all existing keys with new ones
+   * Uses the AIKeyAgent join table
+   */
+  async updateAgentKeys(agentId: string, aiKeyIds: string[]) {
+    // First verify agent exists
+    const agent = await this.repository.findById(agentId);
+    if (!agent) {
+      throw new Error('Agent not found');
+    }
+
+    // Update agent with new AI keys
+    // This will delete existing AIKeyAgent relationships and create new ones
+    return await this.agentRepository.updateWithRelations(agentId, {
+      aiKeys: {
+        deleteMany: {}, // Remove all existing AIKeyAgent relationships
+        create: aiKeyIds.map((keyId) => ({
+          aiKeyId: keyId,
+        })),
+      },
+    });
+  }
+
+  /**
+   * Add AI keys to an agent (append, don't replace)
+   */
+  async addKeysToAgent(agentId: string, aiKeyIds: string[]) {
+    // First verify agent exists
+    const agent = await this.repository.findById(agentId);
+    if (!agent) {
+      throw new Error('Agent not found');
+    }
+
+    return await this.agentRepository.updateWithRelations(agentId, {
+      aiKeys: {
+        create: aiKeyIds.map((keyId) => ({
+          aiKeyId: keyId,
+        })),
+      },
+    });
+  }
+
+  /**
+   * Remove AI keys from an agent
+   */
+  async removeKeysFromAgent(agentId: string, aiKeyIds: string[]) {
+    // First verify agent exists
+    const agent = await this.repository.findById(agentId);
+    if (!agent) {
+      throw new Error('Agent not found');
+    }
+
+    return await this.agentRepository.updateWithRelations(agentId, {
+      aiKeys: {
+        deleteMany: {
+          aiKeyId: {
+            in: aiKeyIds,
+          },
+        },
+      },
+    });
+  }
 }
 
 export const agentService = new AgentService();

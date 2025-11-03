@@ -212,6 +212,68 @@ export class AgentController extends BaseController<any, AgentDto, AgentDto> {
       this.handleError(res, error);
     }
   }
+
+  /**
+   * PUT /agents/:id/ai-keys - Update agent's AI keys
+   * Replaces all existing AI keys with new ones
+   */
+  async updateAgentKeys(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { aiKeyIds } = req.body;
+
+      if (!aiKeyIds || !Array.isArray(aiKeyIds)) {
+        this.handleError(res, 'aiKeyIds must be an array', 400);
+        return;
+      }
+
+      const updatedAgent = await this.agentService.updateAgentKeys(id, aiKeyIds);
+      this.sendSuccess(res, updatedAgent);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * POST /agents/:id/ai-keys/add - Add AI keys to agent
+   * Appends to existing keys without replacing
+   */
+  async addKeysToAgent(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { aiKeyIds } = req.body;
+
+      if (!aiKeyIds || !Array.isArray(aiKeyIds)) {
+        this.handleError(res, 'aiKeyIds must be an array', 400);
+        return;
+      }
+
+      const updatedAgent = await this.agentService.addKeysToAgent(id, aiKeyIds);
+      this.sendSuccess(res, updatedAgent);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
+
+  /**
+   * POST /agents/:id/ai-keys/remove - Remove AI keys from agent
+   */
+  async removeKeysFromAgent(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { aiKeyIds } = req.body;
+
+      if (!aiKeyIds || !Array.isArray(aiKeyIds)) {
+        this.handleError(res, 'aiKeyIds must be an array', 400);
+        return;
+      }
+
+      const updatedAgent = await this.agentService.removeKeysFromAgent(id, aiKeyIds);
+      this.sendSuccess(res, updatedAgent);
+    } catch (error) {
+      this.handleError(res, error);
+    }
+  }
 }
 
 // Export singleton instance

@@ -102,6 +102,20 @@ export class AIKeyController extends BaseController<AIKeyModel, AIKeyDto, AIKeyD
     }
   }
 
+  /**
+   * Override create to use the service's custom createAIKey method
+   * which handles agentIds transformation
+   */
+  public override async create(req: Request, res: Response): Promise<void> {
+    try {
+      const payload = req.body;
+      const data = await this.aiKeyService.createAIKey(payload);
+      this.sendSuccess(res, { data });
+    } catch (error) {
+      this.handleError(res, error, 400);
+    }
+  }
+
   public override async update(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;

@@ -179,8 +179,8 @@ export class GeminiService {
       const lastUser = messages.filter((m) => m.role === 'user').pop();
       promptText = lastUser ? lastUser.content : messages.map((m) => m.content).join('\n');
     }
-    // Only include valid Gemini fields in payload
-    const { model, maxTokens } = adaptedConfig;
+    
+    // Build the contents array for Gemini
     const payload: any = {
       contents: [
         {
@@ -188,8 +188,35 @@ export class GeminiService {
         },
       ],
     };
-    if (model) payload.model = model;
-    if (maxTokens) payload.maxTokens = maxTokens;
+    
+    // Add generation config if any parameters are provided
+    const generationConfig: any = {};
+    
+    // Map maxTokens to maxOutputTokens (Gemini's parameter name)
+    if (adaptedConfig.maxTokens) {
+      generationConfig.maxOutputTokens = adaptedConfig.maxTokens;
+    }
+    
+    // Map temperature
+    if (adaptedConfig.temperature !== undefined) {
+      generationConfig.temperature = adaptedConfig.temperature;
+    }
+    
+    // Map topP
+    if (adaptedConfig.topP !== undefined) {
+      generationConfig.topP = adaptedConfig.topP;
+    }
+    
+    // Map topK (Gemini-specific)
+    if (adaptedConfig.topK !== undefined) {
+      generationConfig.topK = adaptedConfig.topK;
+    }
+    
+    // Only add generationConfig if it has properties
+    if (Object.keys(generationConfig).length > 0) {
+      payload.generationConfig = generationConfig;
+    }
+    
     return payload;
   }
 }
