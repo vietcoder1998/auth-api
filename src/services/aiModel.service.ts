@@ -44,19 +44,45 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
     return this.aiModelRepository.findMany(searchParams);
   }
 
-  async createAIModel(data: AIModelDto): Promise<AIModelDro> {
-    const existing = await this.aiModelRepository.findByName(data.name);
+  public override async create<T = AIModelDto>(data: T): Promise<AIModelDro> {
+    const payload = data as AIModelDto
+    const existing = await this.aiModelRepository.findByName(payload.name);
     if (existing) {
       throw new Error('Model name already exists');
     }
+
+    // Validate required fields
+    if (!payload.type) {
+      throw new Error('Model type is required');
+    }
     
-    const { agentIds, ...rest } = data;
-    return this.aiModelRepository.create({
-      ...rest,
-      agents: agentIds && Array.isArray(agentIds)
-        ? { connect: agentIds.map((id: string) => ({ id })) }
-        : undefined,
-    } as any);
+    // Extract relation fields and ensure they're not in the rest data
+    const { agentIds, platformId, ...rest } = payload;
+    
+    // Explicitly remove these fields if they somehow remain
+    delete (rest as any).agentIds;
+    delete (rest as any).platformId;
+    
+    // Build the create data with proper relations
+    const createData: any = {
+      name: rest.name,
+      type: rest.type,
+      description: rest.description,
+    };
+    
+    // Add agents relation if provided
+    if (agentIds && Array.isArray(agentIds) && agentIds.length > 0) {
+      createData.agents = { connect: agentIds.map((id: string) => ({ id })) };
+    }
+    
+    // Add platform relation if provided
+    if (platformId) {
+      createData.platform = { connect: { id: platformId } };
+    }
+
+    const newAiModel = await this.aiModelRepository.create(createData);
+
+    return newAiModel;
   }
 
   async getAIModelById(id: string): Promise<PrismaAIModel | null> {
@@ -80,13 +106,35 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
       }
     }
     
-    const { agentIds, ...rest } = data;
-    return this.aiModelRepository.update(id, {
-      ...rest,
-      agents: agentIds && Array.isArray(agentIds)
-        ? { set: agentIds.map((id: string) => ({ id })) }
-        : undefined,
-    } as any);
+    // Extract relation fields and ensure they're not in the rest data
+    const { agentIds, platformId, ...rest } = data;
+    
+    // Explicitly remove these fields if they somehow remain
+    delete (rest as any).agentIds;
+    delete (rest as any).platformId;
+    
+    // Build the update data - only include fields that are actually provided
+    const updateData: any = {};
+    
+    if (rest.name !== undefined) updateData.name = rest.name;
+    if (rest.type !== undefined) updateData.type = rest.type;
+    if (rest.description !== undefined) updateData.description = rest.description;
+    
+    // Update agents relation if provided
+    if (agentIds !== undefined && Array.isArray(agentIds)) {
+      updateData.agents = { set: agentIds.map((id: string) => ({ id })) };
+    }
+    
+    // Update platform relation if provided
+    if (platformId !== undefined) {
+      if (platformId) {
+        updateData.platform = { connect: { id: platformId } };
+      } else {
+        updateData.platform = { disconnect: true };
+      }
+    }
+    
+    return this.aiModelRepository.update(id, updateData);
   }
 
   async deleteAIModel(id: string): Promise<PrismaAIModel> {

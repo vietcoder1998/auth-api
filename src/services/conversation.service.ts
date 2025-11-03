@@ -442,10 +442,11 @@ export class ConversationService extends BaseService<
       updatedAt: new Date(),
     });
 
-    // Also add a promptHistory for this message
+    // Create a promptHistory and link it to this message
     const prompt = await this.promptHistoryRepository.create({
       conversationId,
       prompt: content,
+      messageId: message.id, // Link prompt to message
     });
 
     const agentId = conversation?.agentId || metadata?.agentId || '';
@@ -489,12 +490,16 @@ export class ConversationService extends BaseService<
         ...llmResponse.metadata,
         relatedUserMessageId: message.id, // link to prompt
       }),
-      promptId: prompt.id,
     });
 
     if (!llmMessage) {
       throw new Error('Failed to save LLM message');
     }
+
+    // Update the prompt to also reference the LLM response message
+    await this.promptHistoryRepository.update(prompt.id, {
+      messageId: llmMessage.id,
+    });
 
     // Save agent message as memory
     return {
