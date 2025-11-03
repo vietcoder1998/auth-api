@@ -36,7 +36,7 @@ describe('Auth API', () => {
       } = {
         metadata: { value: 'ToolX2', value2: 'ToolAdd10', input: 10, goal: 30 },
         content:
-          'From tool {{value}} and {{value2}}, let make step use for calculate {{input}} to {{goal}} to {{goal}}. Display result: to return only the final value with: [{ stepName: [index], toolName: [toolName], command: ([args]): [returnType] => {} }]',
+          'From tool {{value}} and {{value2}}, let make step use for calculate {{input}} to {{goal}}. Display result: to return only the final value with: [{ stepName: [index], toolName: [toolName], command: ([args]): [returnType] => {} }]',
       };
       override async action(): Promise<{ message: string; tools: string[]; plans: Plan[] }> {
         try {
@@ -66,7 +66,7 @@ describe('Auth API', () => {
             },
           ]);
 
-          console.log(planStrings);
+          console.log('planStrings:', planStrings);
 
           if (!planStrings || planStrings.trim() === '') {
             throw new Error('Empty or invalid plan strings from GeminiService');
