@@ -8,7 +8,7 @@ import { prisma } from '../../src/setup';
 
 export class CoreEntitiesSeeder {
   private aiPlatformRepo = new AIPlatformRepository(prisma.aIPlatform);
-  private aiModelRepo = new AIModelRepository(prisma.aIModel);
+  private aiModelRepo = new AIModelRepository();
   private aiKeyRepo = new AIKeyRepository(prisma.aIKey);
   private labelRepo = new LabelRepository(prisma.label);
   
