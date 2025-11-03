@@ -49,7 +49,14 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
     if (existing) {
       throw new Error('Model name already exists');
     }
-    return this.aiModelRepository.create(data as any);
+    
+    const { agentIds, ...rest } = data;
+    return this.aiModelRepository.create({
+      ...rest,
+      agents: agentIds && Array.isArray(agentIds)
+        ? { connect: agentIds.map((id: string) => ({ id })) }
+        : undefined,
+    } as any);
   }
 
   async getAIModelById(id: string): Promise<PrismaAIModel | null> {
@@ -72,7 +79,14 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
         throw new Error('Model name already exists');
       }
     }
-    return this.aiModelRepository.update(id, data);
+    
+    const { agentIds, ...rest } = data;
+    return this.aiModelRepository.update(id, {
+      ...rest,
+      agents: agentIds && Array.isArray(agentIds)
+        ? { set: agentIds.map((id: string) => ({ id })) }
+        : undefined,
+    } as any);
   }
 
   async deleteAIModel(id: string): Promise<PrismaAIModel> {

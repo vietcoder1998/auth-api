@@ -24,12 +24,8 @@ class AIPlatformService extends BaseService<any, AIPlatformDto, AIPlatformDto> {
     } as any);
   }
 
-  async getAIPlatforms() {
-    return this.aiPlatformRepository.findMany({
-      include: {
-        models: true,
-      },
-    });
+  async getAIPlatforms(params: any) {
+    return this.aiPlatformRepository.search(params);
   }
 
   async getAIPlatformById(id: string) {
@@ -63,7 +59,7 @@ export const aiPlatformService = new AIPlatformService();
 
 // Export individual functions for backward compatibility
 export const createAIPlatform = (data: any) => aiPlatformService.createAIPlatform(data);
-export const getAIPlatforms = () => aiPlatformService.getAIPlatforms();
+export const getAIPlatforms = aiPlatformService.getAIPlatforms.bind(aiPlatformService);
 export const getAIPlatformById = (id: string) => aiPlatformService.getAIPlatformById(id);
-export const updateAIPlatform = (id: string, data: any) => aiPlatformService.updateAIPlatform(id, data);
+export const updateAIPlatform = aiPlatformService.updateAIPlatform.bind(aiPlatformService);
 export const deleteAIPlatform = (id: string) => aiPlatformService.deleteAIPlatform(id);

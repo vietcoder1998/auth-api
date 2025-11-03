@@ -1,48 +1,49 @@
 import { Request, Response } from 'express';
 import * as aiPlatformService from '../services/aiPlatform.service';
 
-export const createAIPlatform = async (req: Request, res: Response) => {
+export const createAIPlatform = async (request: Request, response: Response) => {
   try {
-    const platform = await aiPlatformService.createAIPlatform(req.body);
-    res.status(201).json(platform);
+    const platform = await aiPlatformService.createAIPlatform(request.body);
+    response.status(201).json(platform);
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    response.status(400).json({ error: (error as Error).message });
   }
 };
 
-export const getAIPlatforms = async (_: Request, res: Response) => {
+export const getAIPlatforms = async (_: Request, response: Response) => {
   try {
-    const platforms = await aiPlatformService.getAIPlatforms();
-    res.json(platforms);
+    const { query } = _.params;
+    const platforms = await aiPlatformService.getAIPlatforms(query);
+    response.json(platforms);
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
+    response.status(500).json({ error: (error as Error).message });
   }
 };
 
-export const getAIPlatformById = async (req: Request, res: Response) => {
+export const getAIPlatformById = async (request: Request, response: Response) => {
   try {
-    const platform = await aiPlatformService.getAIPlatformById(req.params.id);
-    if (!platform) return res.status(404).json({ error: 'Not found' });
-    res.json(platform);
+    const platform = await aiPlatformService.getAIPlatformById(request.params.id);
+    if (!platform) return response.status(404).json({ error: 'Not found' });
+    response.json(platform);
   } catch (error) {
-    res.status(500).json({ error: (error as Error).message });
+    response.status(500).json({ error: (error as Error).message });
   }
 };
 
-export const updateAIPlatform = async (req: Request, res: Response) => {
+export const updateAIPlatform = async (request: Request, response: Response) => {
   try {
-    const platform = await aiPlatformService.updateAIPlatform(req.params.id, req.body);
-    res.json(platform);
+    const platform = await aiPlatformService.updateAIPlatform(request.params.id, request.body);
+    response.json(platform);
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    response.status(400).json({ error: (error as Error).message });
   }
 };
 
-export const deleteAIPlatform = async (req: Request, res: Response) => {
+export const deleteAIPlatform = async (request: Request, response: Response) => {
   try {
-    await aiPlatformService.deleteAIPlatform(req.params.id);
-    res.status(204).end();
+    await aiPlatformService.deleteAIPlatform(request.params.id);
+    response.status(204).end();
   } catch (error) {
-    res.status(400).json({ error: (error as Error).message });
+    response.status(400).json({ error: (error as Error).message });
   }
 };
