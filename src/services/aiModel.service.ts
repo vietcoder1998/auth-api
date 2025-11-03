@@ -41,7 +41,7 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
         ...(where?.include || {}),
       },
     };
-    return this.repository.findMany(searchParams);
+    return this.aiModelRepository.findMany(searchParams);
   }
 
   async createAIModel(data: AIModelDto): Promise<AIModelDro> {

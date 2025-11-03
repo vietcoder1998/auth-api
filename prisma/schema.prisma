@@ -27,7 +27,7 @@ model AIModel {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   SSO         SSO[]
-  Agent       Agent[]
+  agents       Agent[]
 
   @@map("ai_model")
 }
