@@ -36,6 +36,7 @@ import { jobExamplePermissions } from './permissions/jobExamples';
 import { aiPlatformPermissions } from './permissions/aiPlatform';
 import { aiKeyPermissions } from './permissions/aiKey';
 import { billingPermissions } from './permissions/billing';
+import { memoriesPermissions } from './permissions/memories';
 
 export const mockPermissions = [
   ...blogPermissions,
@@ -73,6 +74,7 @@ export const mockPermissions = [
   ...aiPlatformPermissions,
   ...aiKeyPermissions,
   ...billingPermissions,
+  ...memoriesPermissions,
 ];
 
 // Modular mock roles

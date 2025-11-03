@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 import { AIKeyDto, AIKeyModel } from '../interfaces';
 import { aiKeyService, AIKeyService } from './../services';
@@ -119,6 +120,27 @@ export class AIKeyController extends BaseController<AIKeyModel, AIKeyDto, AIKeyD
       this.handleError(res, error, 400);
     }
   }
+
+      /**
+   * GET /ai-apiKeys/agent/:agentId - Get AI key used by a specific agent
+   */
+  // async getAIKeyByAgentId(request: Request, response: Response): Promise<void> {
+  //   try {
+  //     const { agentId } = request.params;
+  //     // You need to implement this in the service: aiKeyService.getAIKeyByAgentId(agentId)
+  //     const aiKey = await this.aiKeyService.getAIKeyByAgentId(agentId);
+  //     if (!aiKey) {
+  //       response.status(404).json({
+  //         success: false,
+  //         error: 'AI Key not found for agent',
+  //       });
+  //       return;
+  //     }
+  //     this.sendSuccess(response, aiKey);
+  //   } catch (error) {
+  //     this.handleError(response, error);
+  //   }
+  // }
 }
 
 // Export an instance of the controller

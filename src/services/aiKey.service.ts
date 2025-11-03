@@ -87,6 +87,8 @@ export class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
   async findByKey(key: string) {
     return this.aiKeyRepository.findByKey(key);
   }
+
+
 }
 
 export const aiKeyService = new AIKeyService();

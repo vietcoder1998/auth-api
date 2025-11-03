@@ -10,7 +10,7 @@ export class AgentSeeder {
     mockLabelId,
   }: any) {
     // Use UserRepository to fetch all users and build agentUserMapping
-    const userRepo = new UserRepository(prisma.user);
+    const userRepo = new UserRepository();
     // Use repository method to fetch users by email
     const superadmin = await userRepo.findByEmail('superadmin@example.com');
     const admin = await userRepo.findByEmail('admin@example.com');

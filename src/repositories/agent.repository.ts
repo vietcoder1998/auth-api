@@ -78,6 +78,7 @@ export class AgentRepository extends BaseRepository<AgentModel, AgentDto, AgentD
                         },
                     },
                 },
+                aiKeys: true,
                 _count: {
                     select: {
                         conversations: true,
