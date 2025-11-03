@@ -1,20 +1,50 @@
-import { PrismaClient, AIModel } from '@prisma/client';
+import { PrismaClient, AIModel as PrismaAIModel } from '@prisma/client';
+import { AIModel, AIModelDro, AIModelDto } from '../interfaces';
+import { AIModelRepository, aiModelRepository } from '../repositories';
 import { BaseService } from './base.service';
-import { AIModelRepository } from '../repositories/aimodel.repository';
-import { AIModelDto } from '../interfaces';
 
 const prisma = new PrismaClient();
 
-export class AIModelService extends BaseService<any, AIModelDto, AIModelDto> {
-  private aiModelRepository: AIModelRepository;
-
+export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro> {
   constructor() {
-    const aiModelRepository = new AIModelRepository();
     super(aiModelRepository);
-    this.aiModelRepository = aiModelRepository;
   }
 
-  async createAIModel(data: Omit<AIModel, 'id' | 'createdAt' | 'updatedAt'>): Promise<AIModel> {
+  get aiModelRepository(): AIModelRepository {
+    return this.repository as AIModelRepository;
+  }
+
+  /**
+   * Override search/findMany to include agents relation by default
+   */
+  async search(params?: any): Promise<AIModelDro[]> {
+    const searchParams = {
+      ...params,
+      include: {
+        agents: true,
+        platform: true,
+        ...(params?.include || {}),
+      },
+    };
+    return this.aiModelRepository.search(searchParams);
+  }
+
+  /**
+   * Override findMany to include agents relation by default
+   */
+  async findMany(where?: Record<string, any>): Promise<any[]> {
+    const searchParams = {
+      where,
+      include: {
+        agents: true,
+        platform: true,
+        ...(where?.include || {}),
+      },
+    };
+    return this.repository.findMany(searchParams);
+  }
+
+  async createAIModel(data: AIModelDto): Promise<AIModelDro> {
     const existing = await this.aiModelRepository.findByName(data.name);
     if (existing) {
       throw new Error('Model name already exists');
@@ -22,16 +52,19 @@ export class AIModelService extends BaseService<any, AIModelDto, AIModelDto> {
     return this.aiModelRepository.create(data as any);
   }
 
-  async getAIModelById(id: string): Promise<AIModel | null> {
+  async getAIModelById(id: string): Promise<PrismaAIModel | null> {
     return this.aiModelRepository.findById(id);
   }
 
-  async getAllAIModels(): Promise<AIModel[]> {
+  async getAllAIModels(): Promise<PrismaAIModel[]> {
     return this.aiModelRepository.findMany();
   }
 
-  async updateAIModel(id: string, data: Partial<Omit<AIModel, 'id' | 'createdAt' | 'updatedAt'>>): Promise<AIModel> {
-    if (data.name) {
+  async updateAIModel(
+    id: string,
+    data: Partial<AIModelDto>,
+  ): Promise<AIModelDro | null> {
+    if (data?.name) {
       const existing: any = await this.aiModelRepository.search({
         where: { name: data.name, NOT: { id } },
       });
@@ -42,7 +75,7 @@ export class AIModelService extends BaseService<any, AIModelDto, AIModelDto> {
     return this.aiModelRepository.update(id, data);
   }
 
-  async deleteAIModel(id: string): Promise<AIModel> {
+  async deleteAIModel(id: string): Promise<PrismaAIModel> {
     return this.aiModelRepository.delete(id);
   }
 

@@ -1,50 +1,35 @@
 import { Request, Response } from 'express';
-import { aiModelService } from '../services/aiModel.service';
+import { AIModelService, aiModelService } from '../services/aiModel.service';
+import { BaseController } from './base.controller';
+import { AIModelDto, AIModelDro, AIModelModel } from '../interfaces';
 
-export class AIModelController {
-  async create(req: Request, res: Response) {
-    try {
-      const model = await aiModelService.createAIModel(req.body);
-      res.status(201).json(model);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
-    }
+export class AIModelController extends BaseController<AIModelModel, AIModelDto, AIModelDro> {
+  constructor() {
+    super(aiModelService);
   }
 
-  async getById(req: Request, res: Response) {
-    try {
-      const model = await aiModelService.getAIModelById(req.params.id);
-      if (!model) return res.status(404).json({ error: 'Model not found' });
-      res.json(model);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
-    }
+  get aiModelService(): AIModelService {
+    return this.service as AIModelService;
   }
 
-  async getAll(req: Request, res: Response) {
+  /**
+   * Override search method to include agents relation
+   */
+  async search(req: Request, res: Response): Promise<void> {
     try {
-      const models = await aiModelService.getAllAIModels();
-      res.json(models);
+      const where = req.body;
+      const searchParams = {
+        ...where,
+        include: {
+          agents: true,
+          platform: true,
+          ...(where?.include || {}),
+        },
+      };
+      const data = await this.aiModelService.search(searchParams);
+      this.sendSuccess(res, data);
     } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  async update(req: Request, res: Response) {
-    try {
-      const model = await aiModelService.updateAIModel(req.params.id, req.body);
-      res.json(model);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  async delete(req: Request, res: Response) {
-    try {
-      const model = await aiModelService.deleteAIModel(req.params.id);
-      res.json(model);
-    } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+      this.handleError(res, error);
     }
   }
 
@@ -74,7 +59,7 @@ export class AIModelController {
       let modelNames: string[] = [];
 
       if (platformId) {
-        const local = await aiModelService.getAIModelsByPlatform(platformId);
+        const local = await this.aiModelService.getAIModelsByPlatform(platformId);
         modelNames = local.map((m: any) => m.name);
       }
 
@@ -86,7 +71,7 @@ export class AIModelController {
 
       // If nothing requested, return all stored models
       if (!platformId && !platformType && !geminiConfig) {
-        const all = await aiModelService.getAllAIModels();
+        const all = await this.aiModelService.getAllAIModels();
         modelNames = all.map((m: any) => m.name);
       }
 

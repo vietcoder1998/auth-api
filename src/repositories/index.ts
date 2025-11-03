@@ -36,3 +36,5 @@ export * from './commandExecution.repository';
 export * from './message.repository';
 export * from './conversation.repository';
 export * from './token.repository';
+export * from './sso.repository';
+export * from './aimodel.repository';

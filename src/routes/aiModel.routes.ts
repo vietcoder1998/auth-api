@@ -1,21 +1,14 @@
 import { BaseRouter } from './base.route';
 import { aiModelController } from '../controllers/aiModel.controller';
-import { AIModelDto, AIModelDro, AIModelModel } from '../interfaces';
+import { AIModelDto, AIModelDro, AIModel} from '../interfaces';
 
-export class AIModelRoutes extends BaseRouter<AIModelModel, AIModelDto, AIModelDro> {
+export class AIModelRoutes extends BaseRouter<AIModel, AIModelDto, AIModelDro> {
   constructor() {
-    super('/ai-models');
-    this.initializeRoutes();
+    super('/ai-models', aiModelController);
+    this.initializeCustomRoutes();
   }
 
-  override initializeRoutes(): void {
-    // Standard CRUD routes
-    this.routes.post('/', aiModelController.create.bind(aiModelController));
-    this.routes.get('/', aiModelController.getAll.bind(aiModelController));
-    this.routes.get('/:id', aiModelController.getById.bind(aiModelController));
-    this.routes.put('/:id', aiModelController.update.bind(aiModelController));
-    this.routes.delete('/:id', aiModelController.delete.bind(aiModelController));
-
+  protected initializeCustomRoutes(): void {
     // Custom route for fetching Gemini models
     this.routes.post('/fetch-gemini-models', aiModelController.fetchGeminiModels.bind(aiModelController));
     // Generic models selection endpoint (query or body driven)
