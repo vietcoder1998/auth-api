@@ -11,7 +11,13 @@
     "baseUrl": ".",
     "paths": {
       "@/src/*": ["./src/*"],
-      "@prisma/*": ["../prisma/*"]
+      "@prisma/*": ["../prisma/*"],
+      "@services/*": ["./src/services/*"],
+      "@controllers/*": ["./src/controllers/*"],
+      "@models/*": ["./src/models/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@middlewares/*": ["./src/middlewares/*"],
+      "@routes/*": ["./src/routes/*"]
     }
   },
   "include": ["src"],

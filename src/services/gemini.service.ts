@@ -1,14 +1,21 @@
 import axios from 'axios';
 import { GEMINI_API_KEY, GEMINI_API_URL } from '../env';
 
+export interface GeminiConfig {
+  apiUrl: string;
+  apiKey: string;
+  timeout?: number;
+  headers?: Record<string, string>;
+}
+
 export class GeminiService {
   availableModels: string[] = [];
-  geminiConfig: any;
+  geminiConfig: GeminiConfig;
 
   /**
    * Constructor: fetch available Gemini models and store them
    */
-  constructor(geminiConfig: any) {
+  constructor(geminiConfig: GeminiConfig) {
     this.geminiConfig = geminiConfig;
     GeminiService.pingEnabledGeminiModels(geminiConfig)
       .then((models) => {
@@ -45,7 +52,7 @@ export class GeminiService {
   /**
    * Main Gemini API call, similar to LLMService.callGPT/callLLMCloud
    */
-  static async callGemini(messages: any[], agentConfig: any, geminiConfig: any, aiKey?: string | null): Promise<any> {
+  static async callGemini(messages: any[], agentConfig: any, geminiConfig: GeminiConfig, aiKey?: string | null): Promise<any> {
     const startTime = Date.now();
     try {
       // Validate required parameters
@@ -121,7 +128,7 @@ export class GeminiService {
   /**
    * Build Gemini endpoint URL: base + model + ":generateContent"
    */
-  static getGeminiUrl(agentConfig: any, geminiConfig: any): string {
+  static getGeminiUrl(agentConfig: any, geminiConfig: GeminiConfig): string {
     const baseUrl = agentConfig.geminiApiUrl || geminiConfig.apiUrl;
     const model = agentConfig.model || '';
     // Ensure trailing slash if needed
@@ -138,7 +145,7 @@ export class GeminiService {
   /**
    * Ping Gemini API to get enabled models
    */
-  static async pingEnabledGeminiModels(geminiConfig: any): Promise<string[]> {
+  static async pingEnabledGeminiModels(geminiConfig: GeminiConfig): Promise<string[]> {
     try {
       // Example endpoint: GET https://generativelanguage.googleapis.com/v1/models?key={API_KEY}
       const baseUrl = geminiConfig.apiUrl;
