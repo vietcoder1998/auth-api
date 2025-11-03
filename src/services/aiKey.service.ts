@@ -12,21 +12,20 @@ export class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
   }
 
   async createAIKey(data: any) {
+    const { agentIds, ...restData } = data;
+    
     // Transform agentIds to proper Prisma relationship format
-    if (data.agentIds) {
-      const { agentIds, ...restData } = data;
-      const createData = {
-        ...restData,
-        agents: {
-          create: agentIds.map((agentId: string) => ({
-            agentId: agentId
-          }))
-        }
+    const createData: any = { ...restData };
+    
+    if (agentIds && Array.isArray(agentIds) && agentIds.length > 0) {
+      createData.agents = {
+        create: agentIds.map((agentId: string) => ({
+          agentId: agentId
+        }))
       };
-      return this.aiKeyRepository.create(createData);
     }
     
-    return this.aiKeyRepository.create(data);
+    return this.aiKeyRepository.create(createData);
   }
 
   async getAIKeys() {
@@ -54,22 +53,24 @@ export class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
   }
 
   async updateAIKey(id: string, data: any) {
+    const { agentIds, ...restData } = data;
+    
     // Transform agentIds to proper Prisma relationship format
-    if (data.agentIds) {
-      const { agentIds, ...restData } = data;
-      const updateData = {
-        ...restData,
-        agents: {
-          deleteMany: {}, // Remove existing relationships
-          create: agentIds.map((agentId: string) => ({
-            agentId: agentId
-          }))
-        }
+    const updateData: any = { ...restData };
+    
+    if (agentIds !== undefined && Array.isArray(agentIds)) {
+      updateData.agents = {
+        deleteMany: {}, // Remove all existing relationships
       };
-      return this.aiKeyRepository.update(id, updateData);
+      
+      if (agentIds.length > 0) {
+        updateData.agents.create = agentIds.map((agentId: string) => ({
+          agentId: agentId
+        }));
+      }
     }
     
-    return this.aiKeyRepository.update(id, data);
+    return this.aiKeyRepository.update(id, updateData);
   }
 
   async deleteAIKey(id: string) {
