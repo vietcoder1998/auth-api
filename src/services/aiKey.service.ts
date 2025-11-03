@@ -14,6 +14,9 @@ export class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
   async createAIKey(data: any) {
     const { agentIds, ...restData } = data;
     
+    // Ensure agentIds is completely removed from restData
+    delete restData.agentIds;
+    
     // Transform agentIds to proper Prisma relationship format
     const createData: any = { ...restData };
     
@@ -54,6 +57,9 @@ export class AIKeyService extends BaseService<AIKeyModel, AIKeyDto, AIKeyDto> {
 
   async updateAIKey(id: string, data: any) {
     const { agentIds, ...restData } = data;
+    
+    // Ensure agentIds is completely removed from restData
+    delete restData.agentIds;
     
     // Transform agentIds to proper Prisma relationship format
     const updateData: any = { ...restData };
