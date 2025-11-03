@@ -995,6 +995,8 @@ model Result {
   tool       Tool?       @relation(fields: [toolId], references: [id])
   resultType ResultType?
   createdAt  DateTime    @default(now())
+
+  @@map("result")
 }
 
 model ToolExecuteResult {
@@ -1003,6 +1005,8 @@ model ToolExecuteResult {
   tool      Tool     @relation(fields: [toolId], references: [id])
   result    String?  @db.Text
   createdAt DateTime @default(now())
+
+  @@map("tool_execute_result")
 }
 
 model ToolCommand {
@@ -1011,6 +1015,8 @@ model ToolCommand {
   tool      Tool     @relation(fields: [toolId], references: [id])
   name      String
   createdAt DateTime @default(now())
+
+  @@map("tool_command")
 }
 
 model ToolExplainResult {
@@ -1019,6 +1025,8 @@ model ToolExplainResult {
   toolContext   ToolContext @relation(fields: [toolContextId], references: [id])
   result        String?     @db.Text
   createdAt     DateTime    @default(now())
+
+  @@map("tool_explain_result")
 }
 
 // --- Extend existing models with new fields/relations ---
