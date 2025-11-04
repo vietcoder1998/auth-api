@@ -13,6 +13,7 @@ export * from './message.interface';
 export * from './conversation.interface';
 export * from './role.interface';
 export * from './permission.interface';
+export * from './permissionGroup.interface';
 export * from './category.interface';
 export * from './blog.interface';
 export * from './billing.interface';

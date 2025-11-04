@@ -9,6 +9,7 @@ export * from './message.repository';
 export * from './conversation.repository';
 export * from './role.repository';
 export * from './permission.repository';
+export * from './permissionGroup.repository';
 export * from './category.repository';
 export * from './blog.repository';
 export * from './billing.repository';

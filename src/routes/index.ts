@@ -27,6 +27,7 @@ export * from './memory.routes';
 export * from './notification.routes';
 export * from './notificationTemplate.routes';
 export * from './permission.routes';
+export * from './permissionGroup.routes';
 export * from './promptHistory.routes';
 export * from './promptTemplate.routes';
 export * from './publicBlog.routes';
