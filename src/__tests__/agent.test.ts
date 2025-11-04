@@ -165,29 +165,41 @@ class Tool {
 }
 
 class ToolContext {
-  private _context: Record<string, any> = {
-    params: {} as Record<string, any>,
-    toolNames: [
+  private toolNames =  [
       'update_permission',
       'create_permission',
       'delete_permission',
       'create_user',
       'update_user',
-    ] as string[],
-    goals: [
-      'If do not role, create new role',
-      'If role existed, create',
-      'Update user with ',
-      this.context.prompt,
-    ],
-    prompt: [
-      `From tools: ${JSON.stringify(this.context.toolNames)}`,
-      `With prompt ${this.context.prompt}`,
-      `With params ${this.context.params}`,
+    ] as string[];
+  private params = {
+    userId: 1,
+    userName: 'test user',
+    permission: 'read_write',
+    role: 'admin',
+  };
+  private goals: string[] = [ 
+    'If do not role, create new role',
+    'If role existed, create',
+    'Update user with return only values as a string of json',
+  ];
+  constructor(toolNames: string[] = []) {
+    if (toolNames.length) {
+      this.toolNames = toolNames;
+    }
+  }
+  private _context: Record<string, any> = {
+    params: {} as Record<string, any>,
+    prompts: [
+      `From tools: ${JSON.stringify(this.toolNames)}`,
+      `With params: ${JSON.stringify(this.params)}`,
       `Generate steps with format: [{step: [command.name], toolName: [tool] }] }`,
-      `With goals ${this.goalContext}`,
+      `With goals: ${JSON.stringify(this.goals)}`,
     ],
   };
+  public get prompts(): string[] {
+    return this._context.prompts;
+  }
   public get context() {
     return this._context;
   }
