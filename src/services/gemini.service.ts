@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { GEMINI_API_KEY, GEMINI_API_URL } from '../env';
+import { AgentConfig, GeminiServiceConfig } from '../interfaces';
 
 export interface GeminiConfig {
   apiUrl: string;
@@ -15,18 +16,18 @@ export class GeminiService {
   /**
    * Constructor: fetch available Gemini models and store them
    */
-  constructor(geminiConfig: GeminiConfig) {
+  constructor(geminiConfig: GeminiServiceConfig) {
     this.geminiConfig = geminiConfig;
-    GeminiService.pingEnabledGeminiModels(geminiConfig)
-      .then((models) => {
-        console.log('Available Gemini models:', models);
-        this.availableModels = models;
-      })
-      .catch((error) => {
-        console.error('Failed to ping Gemini models:', error);
-        this.availableModels = [];
-        throw new Error(`Failed to initialize Gemini service: ${error.message}`);
-      });
+    // GeminiService.pingEnabledGeminiModels(geminiConfig)
+    //   .then((models) => {
+    //     console.log('Available Gemini models:', models);
+    //     this.availableModels = models;
+    //   })
+    //   .catch((error) => {
+    //     console.error('Failed to ping Gemini models:', error);
+    //     this.availableModels = [];
+    //     throw new Error(`Failed to initialize Gemini service: ${error.message}`);
+    //   });
   }
   /**
    * Convert Gemini API response to plain string content
@@ -52,7 +53,7 @@ export class GeminiService {
   /**
    * Main Gemini API call, similar to LLMService.callGPT/callLLMCloud
    */
-  static async callGemini(messages: any[], agentConfig: any, geminiConfig: GeminiConfig, aiKey?: string | null): Promise<any> {
+  static async callGemini(messages: any[], agentConfig: AgentConfig, geminiConfig: GeminiServiceConfig, aiKey?: string | null): Promise<any> {
     const startTime = Date.now();
     try {
       // Validate required parameters
@@ -83,6 +84,7 @@ export class GeminiService {
       const content = GeminiService.extractContent(
         response.data?.candidates || response.data?.data || response.data,
       );
+      console.log(JSON.stringify(response.data.candidates));
       return {
         ...response.data,
         content,
@@ -119,6 +121,7 @@ export class GeminiService {
       };
       
       // Throw the error with the response data for proper error handling
+      console.log(error.response.data);
       const geminiError = new Error(`Gemini API call failed: ${message}`);
       (geminiError as any).response = errorResponse;
       throw geminiError;

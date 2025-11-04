@@ -8,3 +8,11 @@ export interface AgentDto extends AgentDro {
     createdAt: Date;
     updatedAt: Date;
 }
+
+export interface AgentConfig {
+    geminiApiUrl?: string;
+    geminiApiKey?: string;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+}
