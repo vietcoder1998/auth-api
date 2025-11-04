@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { GEMINI_API_KEY, GEMINI_API_URL } from '../env';
+import { AgentConfig, GeminiServiceConfig } from '../interfaces';
 
 export class GeminiService {
   availableModels: string[] = [];
@@ -8,7 +9,7 @@ export class GeminiService {
   /**
    * Constructor: fetch available Gemini models and store them
    */
-  constructor(geminiConfig: any) {
+  constructor(geminiConfig: GeminiServiceConfig) {
     this.geminiConfig = geminiConfig;
     GeminiService.pingEnabledGeminiModels(geminiConfig)
       .then((models) => {
@@ -45,7 +46,7 @@ export class GeminiService {
   /**
    * Main Gemini API call, similar to LLMService.callGPT/callLLMCloud
    */
-  static async callGemini(messages: any[], agentConfig: any, geminiConfig: any, aiKey?: string | null): Promise<any> {
+  static async callGemini(messages: any[], agentConfig: AgentConfig, geminiConfig: GeminiServiceConfig, aiKey?: string | null): Promise<any> {
     const startTime = Date.now();
     try {
       // Validate required parameters
