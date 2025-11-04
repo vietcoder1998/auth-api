@@ -55,12 +55,11 @@ class GeminiTestService {
       {
         temperature: 0.2,
         maxTokens: 1500,
-        model: 'gemini-1.5-flash-latest',
+        model: 'gemini-2.5-flash',
       },
       {
         apiUrl: GEMINI_API_URL,
         apiKey: GEMINI_API_KEY,
-        defaultModel: 'gemini-1.5-flash-latest',
       },
       this.apiKey,
     ).then((res) => {
@@ -338,5 +337,5 @@ describe('Auth API', () => {
 
     logger.info('Tool execution result: %o', result.toJSON());
     expect(result.isSuccess).toBe(true);
-  });
+  }, 30000);
 });
