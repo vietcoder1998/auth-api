@@ -54,7 +54,7 @@ class GeminiTestService {
       messages,
       {
         temperature: 0.2,
-        maxTokens: 100,
+        maxTokens: 512,
         model: 'gemini-2.5-flash',
       },
       {

@@ -1,9 +1,8 @@
-import { PrismaClient, AIModel as PrismaAIModel } from '@prisma/client';
+import { AIModel as PrismaAIModel } from '@prisma/client';
 import { AIModel, AIModelDro, AIModelDto } from '../interfaces';
 import { AIModelRepository, aiModelRepository } from '../repositories';
 import { BaseService } from './base.service';
-
-const prisma = new PrismaClient();
+import { GeminiService } from './gemini.service';
 
 export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro> {
   constructor() {
@@ -45,7 +44,7 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
   }
 
   public override async create<T = AIModelDto>(data: T): Promise<AIModelDro> {
-    const payload = data as AIModelDto
+    const payload = data as AIModelDto;
     const existing = await this.aiModelRepository.findByName(payload.name);
     if (existing) {
       throw new Error('Model name already exists');
@@ -55,26 +54,26 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
     if (!payload.type) {
       throw new Error('Model type is required');
     }
-    
+
     // Extract relation fields and ensure they're not in the rest data
     const { agentIds, platformId, ...rest } = payload;
-    
+
     // Explicitly remove these fields if they somehow remain
     delete (rest as any).agentIds;
     delete (rest as any).platformId;
-    
+
     // Build the create data with proper relations
     const createData: any = {
       name: rest.name,
       type: rest.type,
       description: rest.description,
     };
-    
+
     // Add agents relation if provided
     if (agentIds && Array.isArray(agentIds) && agentIds.length > 0) {
       createData.agents = { connect: agentIds.map((id: string) => ({ id })) };
     }
-    
+
     // Add platform relation if provided
     if (platformId) {
       createData.platform = { connect: { id: platformId } };
@@ -93,10 +92,7 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
     return this.aiModelRepository.findMany();
   }
 
-  public override async update(
-    id: string,
-    data: Partial<AIModelDto>,
-  ): Promise<AIModelDro | null> {
+  public override async update(id: string, data: Partial<AIModelDto>): Promise<AIModelDro | null> {
     if (data?.name) {
       const existing: any = await this.aiModelRepository.search({
         where: { name: data.name, NOT: { id } },
@@ -105,26 +101,26 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
         throw new Error('Model name already exists');
       }
     }
-    
+
     // Extract relation fields and ensure they're not in the rest data
     const { agentIds, platformId, ...rest } = data;
-    
+
     // Explicitly remove these fields if they somehow remain
     delete (rest as any).agentIds;
     delete (rest as any).platformId;
-    
+
     // Build the update data - only include fields that are actually provided
     const updateData: any = {};
-    
+
     if (rest.name !== undefined) updateData.name = rest.name;
     if (rest.type !== undefined) updateData.type = rest.type;
     if (rest.description !== undefined) updateData.description = rest.description;
-    
+
     // Update agents relation if provided
     if (agentIds !== undefined && Array.isArray(agentIds)) {
       updateData.agents = { set: agentIds.map((id: string) => ({ id })) };
     }
-    
+
     // Update platform relation if provided
     if (platformId !== undefined) {
       if (platformId) {
@@ -133,7 +129,7 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
         updateData.platform = { disconnect: true };
       }
     }
-    
+
     return this.aiModelRepository.update(id, updateData);
   }
 
@@ -150,7 +146,6 @@ export class AIModelService extends BaseService<AIModel, AIModelDto, AIModelDro>
   }
 
   async fetchGeminiModels(geminiConfig: any): Promise<string[]> {
-    const { default: GeminiService } = await import('./gemini.service');
     return GeminiService.pingEnabledGeminiModels(geminiConfig);
   }
 }

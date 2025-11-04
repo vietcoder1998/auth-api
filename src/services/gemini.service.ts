@@ -29,6 +29,7 @@ export class GeminiService {
     //     throw new Error(`Failed to initialize Gemini service: ${error.message}`);
     //   });
   }
+  
   /**
    * Convert Gemini API response to plain string content
    * @param responseArr Gemini response array
@@ -53,75 +54,90 @@ export class GeminiService {
   /**
    * Main Gemini API call, similar to LLMService.callGPT/callLLMCloud
    */
-  static async callGemini(messages: any[], agentConfig: AgentConfig, geminiConfig: GeminiServiceConfig, aiKey?: string | null): Promise<any> {
+  static async callGemini(
+    messages: any[],
+    agentConfig: AgentConfig,
+    geminiConfig: GeminiServiceConfig,
+    aiKey?: string | null,
+  ): Promise<any> {
     const startTime = Date.now();
+    let fullContent = '';
+    let continueLoop = true;
+    let iteration = 0;
+    const maxIterations = 5; // giới hạn an toàn tránh loop vô tận
+    let lastResponse: any = null;
+
     try {
-      // Validate required parameters
-      if (!messages || !Array.isArray(messages) || messages.length === 0) {
-        throw new Error('Messages array is required and cannot be empty');
-      }
-      
-      if (!agentConfig || !geminiConfig) {
-        throw new Error('Agent config and Gemini config are required');
-      }
-      
+      // Validate input
+      if (!messages?.length) throw new Error('Messages array cannot be empty');
+      if (!agentConfig || !geminiConfig) throw new Error('Missing agent or Gemini config');
+
       const url = GeminiService.getGeminiUrl(agentConfig, geminiConfig);
-      const adaptedConfig = agentConfig; // Optionally adapt config if needed
-      const requestPayload = GeminiService.generateGeminiBody(messages, adaptedConfig);
+      if (!url) throw new Error('Failed to generate Gemini API URL');
+
+      const adaptedConfig = agentConfig;
       const requestHeaders = {
         ...geminiConfig.headers,
-        // Optionally add Authorization if needed
       };
-      
-      if (!url) {
-        throw new Error('Failed to generate Gemini API URL');
+
+      while (continueLoop && iteration < maxIterations) {
+        iteration++;
+
+        const requestPayload = GeminiService.generateGeminiBody(messages, adaptedConfig);
+        console.log(`➡️ Gemini API Request (iteration ${iteration}):`, { requestPayload });
+        const response = await axios.post(url, requestPayload, {
+          headers: requestHeaders,
+          timeout: geminiConfig.timeout || 30000,
+        });
+
+        const candidates = response.data?.candidates || [];
+        const firstCandidate = candidates[0] || {};
+        const finishReason = firstCandidate.finishReason || '';
+        const contentPart = GeminiService.extractContent(candidates);
+
+        fullContent += contentPart || '';
+        lastResponse = response.data;
+
+        // Nếu bị cắt do MAX_TOKENS thì gọi tiếp
+        if (finishReason === 'MAX_TOKENS') {
+          console.log('⚠️ Gemini reached max tokens, requesting continuation...');
+          messages.push({ role: 'assistant', content: contentPart });
+          messages.push({ role: 'user', content: 'Tiếp tục từ chỗ bạn dừng lại.' });
+        } else {
+          continueLoop = false;
+        }
       }
-      
-      const response = await axios.post(url, requestPayload, {
-        headers: requestHeaders,
-        timeout: geminiConfig.timeout || 30000, // Default 30 second timeout
-      });
-      const content = GeminiService.extractContent(
-        response.data?.candidates || response.data?.data || response.data,
-      );
-      console.log(JSON.stringify(response.data.candidates));
+
       return {
-        ...response.data,
-        content,
-        tokens: response.data?.usage?.total_tokens ?? 0,
+        ...lastResponse,
+        content: fullContent,
+        tokens: lastResponse?.usage?.total_tokens ?? 0,
         model: agentConfig.model || 'gemini',
         processingTime: Date.now() - startTime,
         metadata: {
-          promptTokens: response.data?.usage?.prompt_tokens,
-          completionTokens: response.data?.usage?.completion_tokens,
+          promptTokens: lastResponse?.usage?.prompt_tokens,
+          completionTokens: lastResponse?.usage?.completion_tokens,
         },
         debug: {
-          request: { url, payload: requestPayload, headers: requestHeaders },
-          response: response.data,
+          request: { url, headers: requestHeaders },
+          response: lastResponse,
           llmServiceModel: 'gemini',
           adaptedConfig,
         },
       };
     } catch (error: any) {
-      let message = error instanceof Error ? error.message : String(error);
-      if (error?.response?.data?.error?.message) {
-        message = error.response.data.error.message;
-      }
-      
+      let message = error?.response?.data?.error?.message || error.message || String(error);
+      console.error('❌ Gemini API Error:', message);
+
       const errorResponse = {
         content: message,
         model: 'error',
         tokens: 0,
         processingTime: Date.now() - startTime,
         metadata: { isError: true },
-        debug: {
-          error: message,
-          llmServiceModel: 'gemini',
-        },
+        debug: { error: message, llmServiceModel: 'gemini' },
       };
-      
-      // Throw the error with the response data for proper error handling
-      console.log(error.response.data);
+
       const geminiError = new Error(`Gemini API call failed: ${message}`);
       (geminiError as any).response = errorResponse;
       throw geminiError;
@@ -153,21 +169,20 @@ export class GeminiService {
       // Example endpoint: GET https://generativelanguage.googleapis.com/v1/models?key={API_KEY}
       const baseUrl = geminiConfig.apiUrl;
       const token = geminiConfig.apiKey;
-      
+
       if (!baseUrl) {
         throw new Error('Gemini API URL is not configured');
       }
-      
+
       if (!token) {
         throw new Error('Gemini API key is not configured');
       }
-      
+
       // Remove trailing path to get base
       const modelsUrl =
         baseUrl.replace(/\/v1\/chat$/, '/v1/models') +
         (token ? `?key=${encodeURIComponent(token)}` : '');
-      const axios = await import('axios');
-      const response = await axios.default.get(modelsUrl);
+      const response = await axios.get(modelsUrl);
       if (response.data && Array.isArray(response.data.models)) {
         return response.data.models.map((m: any) => m.name);
       }
@@ -189,7 +204,7 @@ export class GeminiService {
       const lastUser = messages.filter((m) => m.role === 'user').pop();
       promptText = lastUser ? lastUser.content : messages.map((m) => m.content).join('\n');
     }
-    
+
     // Build the contents array for Gemini
     const payload: any = {
       contents: [
@@ -198,42 +213,40 @@ export class GeminiService {
         },
       ],
     };
-    
+
     // Add generation config if any parameters are provided
     const generationConfig: any = {};
-    
+
     // Map maxTokens to maxOutputTokens (Gemini's parameter name)
     if (adaptedConfig.maxTokens) {
       generationConfig.maxOutputTokens = adaptedConfig.maxTokens;
     }
-    
+
     // Map temperature
     if (adaptedConfig.temperature !== undefined) {
       generationConfig.temperature = adaptedConfig.temperature;
     }
-    
+
     // Map topP
     if (adaptedConfig.topP !== undefined) {
       generationConfig.topP = adaptedConfig.topP;
     }
-    
+
     // Map topK (Gemini-specific)
     if (adaptedConfig.topK !== undefined) {
       generationConfig.topK = adaptedConfig.topK;
     }
-    
+
     // Only add generationConfig if it has properties
     if (Object.keys(generationConfig).length > 0) {
       payload.generationConfig = generationConfig;
     }
-    
+
     return payload;
   }
 }
 
-new GeminiService({
+export const geminiService = new GeminiService({
   apiUrl: GEMINI_API_URL,
   apiKey: GEMINI_API_KEY,
 });
-
-export default GeminiService;
