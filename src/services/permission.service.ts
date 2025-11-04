@@ -73,7 +73,28 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
    * Get permission by ID
    */
   async getPermissionById(id: string) {
-    const permission = await this.permissionRepository.findById(id);
+    const permission = await prisma.permission.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { roles: true },
+        },
+        permissionGroup: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        roles: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
+    });
 
     if (!permission) {
       throw new Error('Permission not found');
@@ -120,6 +141,13 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
         { name: { contains: search } },
         { description: { contains: search } },
         { route: { contains: search } },
+        { method: { contains: search } },
+        { category: { contains: search } },
+        { 
+          permissionGroup: {
+            name: { contains: search }
+          }
+        },
       ];
     }
 
@@ -135,6 +163,13 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
         include: {
           _count: {
             select: { roles: true },
+          },
+          permissionGroup: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+            },
           },
         },
         orderBy: [{ category: 'asc' }, { name: 'asc' }],
@@ -158,6 +193,15 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
    */
   async getPermissionsByCategory() {
     const permissions: any = await this.permissionRepository.search({
+      include: {
+        permissionGroup: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
 
