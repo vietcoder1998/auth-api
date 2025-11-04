@@ -7,7 +7,8 @@ interface PermissionGroupWithPermissions {
   name: string;
   description: string | null;
   permissions: any[];
-  roleId: string | null;
+  roles?: any[]; // Now supports multiple roles via many-to-many
+  roleId?: string | null; // Kept for backward compatibility but will be removed
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,36 +47,63 @@ export class PermissionGroupSeeder extends BaseSeeder {
 
         console.log(`📋 Creating permission group: ${groupData.name} with ${validPermissionIds.length} permissions`);
 
-        // Create or update the permission group
+        // Create or update the permission group first
         const permissionGroup = await prisma.permissionGroup.upsert({
           where: { name: groupData.name },
           create: {
             name: groupData.name,
             description: groupData.description,
-            permissions: {
-              connect: validPermissionIds.map(id => ({ id }))
-            }
           },
           update: {
             description: groupData.description,
-            permissions: {
-              set: [], // Clear existing connections
-              connect: validPermissionIds.map(id => ({ id })) // Add new connections
-            }
-          },
-          include: {
-            permissions: true,
-            role: true
           }
         });
 
-        createdPermissionGroups.push(permissionGroup);
+        // TODO: After running prisma generate, use the junction table approach
+        // For now, we'll use raw SQL to handle the many-to-many relationships
+        
+        // Clear existing permission relationships for this group
+        await prisma.$executeRaw`
+          DELETE FROM permission_group_permission 
+          WHERE permissionGroupId = ${permissionGroup.id}
+        `;
 
-        console.log(`✅ Permission group '${groupData.name}' created/updated with ${permissionGroup.permissions.length} permissions`);
+        // Create new permission relationships
+        if (validPermissionIds.length > 0) {
+          for (const permissionId of validPermissionIds) {
+            await prisma.$executeRaw`
+              INSERT INTO permission_group_permission (id, permissionGroupId, permissionId, createdAt)
+              VALUES (UUID(), ${permissionGroup.id}, ${permissionId}, NOW())
+              ON DUPLICATE KEY UPDATE createdAt = NOW()
+            `;
+          }
+        }
+
+        // Fetch permissions for this group using raw query
+        const groupPermissions = await prisma.$queryRaw`
+          SELECT p.* FROM permission p
+          JOIN permission_group_permission pgp ON p.id = pgp.permissionId
+          WHERE pgp.permissionGroupId = ${permissionGroup.id}
+        ` as any[];
+
+        // Transform to match expected interface
+        const transformedGroup: PermissionGroupWithPermissions = {
+          id: permissionGroup.id,
+          name: permissionGroup.name,
+          description: permissionGroup.description,
+          permissions: groupPermissions,
+          roleId: null, // Will be updated in assignGroupsToRoles
+          createdAt: permissionGroup.createdAt,
+          updatedAt: permissionGroup.updatedAt
+        };
+
+        createdPermissionGroups.push(transformedGroup);
+
+        console.log(`✅ Permission group '${groupData.name}' created/updated with ${transformedGroup.permissions.length} permissions`);
         
         // Log which permissions were linked
         if (this.isVerbose()) {
-          console.log(`   Linked permissions:`, permissionGroup.permissions.map((p: any) => p.name));
+          console.log(`   Linked permissions:`, transformedGroup.permissions.map((p: any) => p.name));
         }
 
       } catch (error) {
@@ -95,7 +123,7 @@ export class PermissionGroupSeeder extends BaseSeeder {
   }
 
   /**
-   * Assign permission groups to roles
+   * Assign permission groups to roles (many-to-many)
    * @param permissionGroups - Created permission groups
    * @param roles - Role objects with IDs
    */
@@ -108,12 +136,15 @@ export class PermissionGroupSeeder extends BaseSeeder {
     const { superadminRole, adminRole, userRole } = roles;
 
     try {
-      // Superadmin gets all permission groups - update each group to belong to superadmin role
+      // Clear existing role-group assignments
+      await prisma.$executeRaw`DELETE FROM role_permission_group`;
+
+      // Superadmin gets all permission groups
       for (const group of permissionGroups) {
-        await prisma.permissionGroup.update({
-          where: { id: group.id },
-          data: { roleId: superadminRole.id }
-        });
+        await prisma.$executeRaw`
+          INSERT INTO role_permission_group (id, roleId, permissionGroupId, createdAt)
+          VALUES (UUID(), ${superadminRole.id}, ${group.id}, NOW())
+        `;
       }
 
       console.log(`✅ Assigned all ${permissionGroups.length} permission groups to superadmin role`);
@@ -131,12 +162,13 @@ export class PermissionGroupSeeder extends BaseSeeder {
       
       const adminGroups = permissionGroups.filter(group => adminGroupNames.includes(group.name));
       
-      // Reset admin groups first, then assign to admin
+      // Assign admin groups to admin role
       for (const group of adminGroups) {
-        await prisma.permissionGroup.update({
-          where: { id: group.id },
-          data: { roleId: adminRole.id }
-        });
+        await prisma.$executeRaw`
+          INSERT INTO role_permission_group (id, roleId, permissionGroupId, createdAt)
+          VALUES (UUID(), ${adminRole.id}, ${group.id}, NOW())
+          ON DUPLICATE KEY UPDATE createdAt = NOW()
+        `;
       }
 
       console.log(`✅ Assigned ${adminGroups.length} permission groups to admin role`);
@@ -149,12 +181,19 @@ export class PermissionGroupSeeder extends BaseSeeder {
       
       const userGroups = permissionGroups.filter(group => userGroupNames.includes(group.name));
       
-      // Note: Since each permission group can only belong to one role, we'll create duplicates for user role
-      // Or we can modify the approach to have shared groups
-      console.log(`✅ User role will inherit permissions through role hierarchy`);
-      console.log(`   User can access: ${userGroupNames.join(', ')}`);
+      // Assign user groups to user role
+      for (const group of userGroups) {
+        await prisma.$executeRaw`
+          INSERT INTO role_permission_group (id, roleId, permissionGroupId, createdAt)
+          VALUES (UUID(), ${userRole.id}, ${group.id}, NOW())
+          ON DUPLICATE KEY UPDATE createdAt = NOW()
+        `;
+      }
 
-      console.log('🎉 Successfully assigned permission groups to roles');
+      console.log(`✅ Assigned ${userGroups.length} permission groups to user role`);
+      console.log(`   User groups: ${userGroupNames.join(', ')}`);
+
+      console.log('🎉 Successfully assigned permission groups to roles using many-to-many relationships');
 
     } catch (error) {
       console.error('❌ Failed to assign permission groups to roles:', error);

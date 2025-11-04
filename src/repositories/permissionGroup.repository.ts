@@ -24,12 +24,33 @@ export class PermissionGroupRepository extends BaseRepository<
     return this.permissionGroupModel.findFirst({ where: { name } });
   }
 
+  // Updated to handle many-to-many relationship with roles
   async findByRole(roleId: string) {
     return this.permissionGroupModel.findMany({ 
-      where: { roleId },
+      where: { 
+        roles: {
+          some: {
+            roleId: roleId
+          }
+        }
+      },
       include: {
-        permissions: true,
-        role: true
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        roles: {
+          include: {
+            role: {
+              select: {
+                id: true,
+                name: true,
+                description: true
+              }
+            }
+          }
+        }
       }
     });
   }
@@ -39,13 +60,19 @@ export class PermissionGroupRepository extends BaseRepository<
       where: { id },
       include: {
         permissions: {
-          orderBy: { name: 'asc' }
+          include: {
+            permission: true
+          }
         },
-        role: {
-          select: {
-            id: true,
-            name: true,
-            description: true
+        roles: {
+          include: {
+            role: {
+              select: {
+                id: true,
+                name: true,
+                description: true
+              }
+            }
           }
         }
       }
@@ -81,30 +108,38 @@ export class PermissionGroupRepository extends BaseRepository<
     
     if (includePermissions) {
       include.permissions = {
-        orderBy: { name: 'asc' },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          category: true,
-          route: true,
-          method: true
+        include: {
+          permission: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              category: true,
+              route: true,
+              method: true
+            }
+          }
         }
       };
     }
 
     if (includeRole) {
-      include.role = {
-        select: {
-          id: true,
-          name: true,
-          description: true
+      include.roles = {
+        include: {
+          role: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          }
         }
       };
     }
 
     include._count = {
-      permissions: true
+      permissions: true,
+      roles: true
     };
 
     const [groups, total] = await Promise.all([
@@ -127,67 +162,103 @@ export class PermissionGroupRepository extends BaseRepository<
     };
   }
 
+  // Updated for many-to-many relationships with junction tables
   async addPermissionsToGroup(groupId: string, permissionIds: string[]) {
-    return this.permissionGroupModel.update({
+    // Create junction table entries
+    await prisma.permissionGroupPermission.createMany({
+      data: permissionIds.map(permissionId => ({
+        permissionGroupId: groupId,
+        permissionId
+      })),
+      skipDuplicates: true
+    });
+
+    return this.permissionGroupModel.findUnique({
       where: { id: groupId },
-      data: {
-        permissions: {
-          connect: permissionIds.map(id => ({ id }))
-        }
-      },
       include: {
-        permissions: true,
-        role: true
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        roles: {
+          include: {
+            role: true
+          }
+        }
       }
     });
   }
 
   async removePermissionsFromGroup(groupId: string, permissionIds: string[]) {
-    return this.permissionGroupModel.update({
-      where: { id: groupId },
-      data: {
-        permissions: {
-          disconnect: permissionIds.map(id => ({ id }))
+    // Remove junction table entries
+    await prisma.permissionGroupPermission.deleteMany({
+      where: {
+        permissionGroupId: groupId,
+        permissionId: {
+          in: permissionIds
         }
-      },
+      }
+    });
+
+    return this.permissionGroupModel.findUnique({
+      where: { id: groupId },
       include: {
-        permissions: true,
-        role: true
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        roles: {
+          include: {
+            role: true
+          }
+        }
       }
     });
   }
 
   async setPermissionsForGroup(groupId: string, permissionIds: string[]) {
-    return this.permissionGroupModel.update({
+    // Remove all existing permissions for the group
+    await prisma.permissionGroupPermission.deleteMany({
+      where: { permissionGroupId: groupId }
+    });
+
+    // Add new permissions
+    if (permissionIds.length > 0) {
+      await prisma.permissionGroupPermission.createMany({
+        data: permissionIds.map(permissionId => ({
+          permissionGroupId: groupId,
+          permissionId
+        }))
+      });
+    }
+
+    return this.permissionGroupModel.findUnique({
       where: { id: groupId },
-      data: {
-        permissions: {
-          set: permissionIds.map(id => ({ id }))
-        }
-      },
       include: {
-        permissions: true,
-        role: true
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        roles: {
+          include: {
+            role: true
+          }
+        }
       }
     });
   }
 
   async getPermissionsNotInGroup(groupId: string, page: number = 1, limit: number = 10, search?: string) {
-    // Get permissions that are not in the specified group
-    const group = await this.permissionGroupModel.findUnique({
-      where: { id: groupId },
-      include: {
-        permissions: {
-          select: { id: true }
-        }
-      }
+    // Get permission IDs that are already in the group via junction table
+    const existingPermissions = await prisma.permissionGroupPermission.findMany({
+      where: { permissionGroupId: groupId },
+      select: { permissionId: true }
     });
 
-    if (!group) {
-      throw new Error('Permission group not found');
-    }
-
-    const excludeIds = group.permissions.map((p: any) => p.id);
+    const excludeIds = existingPermissions.map(p => p.permissionId);
     const skip = (page - 1) * limit;
 
     const where: any = {
@@ -223,25 +294,71 @@ export class PermissionGroupRepository extends BaseRepository<
     };
   }
 
-  async assignToRole(groupId: string, roleId: string) {
-    return this.permissionGroupModel.update({
+  // New methods for many-to-many role assignment
+  async assignToRoles(groupId: string, roleIds: string[]) {
+    // Create junction table entries
+    await prisma.rolePermissionGroup.createMany({
+      data: roleIds.map(roleId => ({
+        permissionGroupId: groupId,
+        roleId
+      })),
+      skipDuplicates: true
+    });
+
+    return this.permissionGroupModel.findUnique({
       where: { id: groupId },
-      data: { roleId },
       include: {
-        permissions: true,
-        role: true
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        roles: {
+          include: {
+            role: true
+          }
+        }
       }
     });
   }
 
-  async unassignFromRole(groupId: string) {
-    return this.permissionGroupModel.update({
+  async unassignFromRoles(groupId: string, roleIds?: string[]) {
+    const whereClause: any = {
+      permissionGroupId: groupId
+    };
+
+    if (roleIds && roleIds.length > 0) {
+      whereClause.roleId = { in: roleIds };
+    }
+
+    // Remove junction table entries
+    await prisma.rolePermissionGroup.deleteMany({
+      where: whereClause
+    });
+
+    return this.permissionGroupModel.findUnique({
       where: { id: groupId },
-      data: { roleId: null },
       include: {
-        permissions: true,
-        role: true
+        permissions: {
+          include: {
+            permission: true
+          }
+        },
+        roles: {
+          include: {
+            role: true
+          }
+        }
       }
     });
+  }
+
+  // Legacy methods for backward compatibility (deprecated)
+  async assignToRole(groupId: string, roleId: string) {
+    return this.assignToRoles(groupId, [roleId]);
+  }
+
+  async unassignFromRole(groupId: string) {
+    return this.unassignFromRoles(groupId);
   }
 }

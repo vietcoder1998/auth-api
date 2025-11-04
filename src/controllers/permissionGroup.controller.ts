@@ -230,6 +230,45 @@ export class PermissionGroupController extends BaseController<
       this.handleError(res, error);
     }
   }
+
+  // New many-to-many role assignment endpoints
+  async assignGroupToRoles(req: Request, res: Response) {
+    try {
+      const { id: groupId } = req.params;
+      const { roleIds } = req.body;
+      
+      if (!roleIds || !Array.isArray(roleIds)) {
+        return this.handleError(res, 'roleIds array is required', 400);
+      }
+      
+      const updatedGroup = await permissionGroupService.assignGroupToRoles(groupId, roleIds);
+      
+      logInfo(`Group ${groupId} assigned to ${roleIds.length} roles successfully`);
+      this.sendSuccess(res, updatedGroup, 'Group assigned to roles successfully');
+    } catch (error) {
+      logError('Error assigning group to roles:', error);
+      this.handleError(res, error);
+    }
+  }
+
+  async unassignGroupFromRoles(req: Request, res: Response) {
+    try {
+      const { id: groupId } = req.params;
+      const { roleIds } = req.body; // Optional - if not provided, unassigns from all roles
+      
+      const updatedGroup = await permissionGroupService.unassignGroupFromRoles(groupId, roleIds);
+      
+      const message = roleIds && roleIds.length > 0 
+        ? `Group ${groupId} unassigned from ${roleIds.length} roles successfully`
+        : `Group ${groupId} unassigned from all roles successfully`;
+      
+      logInfo(message);
+      this.sendSuccess(res, updatedGroup, message);
+    } catch (error) {
+      logError('Error unassigning group from roles:', error);
+      this.handleError(res, error);
+    }
+  }
 }
 
 // Export an instance

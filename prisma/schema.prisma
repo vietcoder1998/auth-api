@@ -226,45 +226,77 @@ model User {
 }
 
 model Role {
-  id               String            @id @default(uuid())
-  name             String            @unique
-  description      String?
-  permissions      Permission[]
-  users            User[]
-  permissionGroups PermissionGroup[] // 1:n relationship with permission groups
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @default(now())
+  id          String                @id @default(uuid())
+  name        String                @unique
+  description String?
+  permissions Permission[]
+  users       User[]
+  // Many-to-many relationship with permission groups through junction table
+  permissionGroups RolePermissionGroup[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @default(now())
 
   @@map("role")
 }
 
 model PermissionGroup {
-  id          String       @id @default(uuid())
-  name        String       @unique
+  id          String                      @id @default(uuid())
+  name        String                      @unique
   description String?
-  permissions Permission[] // 1:n relationship with permissions
-  roleId      String?      // n:1 relationship with role (removed @unique)
-  role        Role?        @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @default(now())
+  // Many-to-many relationship with permissions through junction table
+  permissions PermissionGroupPermission[]
+  // Many-to-many relationship with roles through junction table
+  roles       RolePermissionGroup[]
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @default(now())
 
   @@map("permission_group")
 }
 
 model Permission {
-  id                String           @id @default(uuid())
-  name              String           @unique
-  description       String?
-  category          String           @default("other")
-  route             String?
-  method            String?          // GET, POST, PUT, DELETE, PATCH
-  roles             Role[]
-  permissionGroupId String?
-  permissionGroup   PermissionGroup? @relation(fields: [permissionGroupId], references: [id], onDelete: Restrict)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @default(now())
+  id          String                      @id @default(uuid())
+  name        String                      @unique
+  description String?
+  category    String                      @default("other")
+  route       String?
+  method      String?                     // GET, POST, PUT, DELETE, PATCH
+  roles       Role[]
+  // Many-to-many relationship with permission groups through junction table
+  permissionGroups PermissionGroupPermission[]
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @default(now())
 
   @@map("permission")
+}
+
+// Junction table for Role <-> PermissionGroup (many-to-many)
+model RolePermissionGroup {
+  id                String          @id @default(uuid())
+  roleId            String
+  permissionGroupId String
+  role              Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionGroup   PermissionGroup @relation(fields: [permissionGroupId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+
+  @@unique([roleId, permissionGroupId])
+  @@index([roleId])
+  @@index([permissionGroupId])
+  @@map("role_permission_group")
+}
+
+// Junction table for PermissionGroup <-> Permission (many-to-many)
+model PermissionGroupPermission {
+  id                String          @id @default(uuid())
+  permissionGroupId String
+  permissionId      String
+  permissionGroup   PermissionGroup @relation(fields: [permissionGroupId], references: [id], onDelete: Cascade)
+  permission        Permission      @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+
+  @@unique([permissionGroupId, permissionId])
+  @@index([permissionGroupId])
+  @@index([permissionId])
+  @@map("permission_group_permission")
 }
 
 model Token {

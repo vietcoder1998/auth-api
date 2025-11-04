@@ -44,6 +44,116 @@ export class PermissionRepository extends BaseRepository<
     return this.permissionModel.findMany({ where: { method } });
   }
 
+  // Find permissions with their permission groups
+  async findWithPermissionGroups(id?: string, options?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+  }) {
+    const where: any = {};
+    
+    if (id) {
+      where.id = id;
+    }
+    
+    if (options?.search) {
+      where.OR = [
+        { name: { contains: options.search } },
+        { description: { contains: options.search } },
+      ];
+    }
+    
+    if (options?.category) {
+      where.category = options.category;
+    }
+
+    const includeOptions = {
+      permissionGroups: {
+        include: {
+          permissionGroup: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+            }
+          }
+        }
+      }
+    };
+
+    if (id) {
+      return this.permissionModel.findUnique({
+        where: { id },
+        include: includeOptions
+      });
+    }
+
+    const skip = options?.page && options?.limit ? (options.page - 1) * options.limit : undefined;
+    const take = options?.limit;
+
+    const [permissions, total] = await Promise.all([
+      this.permissionModel.findMany({
+        where,
+        include: includeOptions,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' }
+      }),
+      this.permissionModel.count({ where })
+    ]);
+
+    return { permissions, total };
+  }
+
+  // Find permissions not in a specific group
+  async findPermissionsNotInGroup(groupId: string, options?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) {
+    const where: any = {
+      permissionGroups: {
+        none: {
+          permissionGroupId: groupId
+        }
+      }
+    };
+
+    if (options?.search) {
+      where.AND = [
+        where,
+        {
+          OR: [
+            { name: { contains: options.search } },
+            { description: { contains: options.search } },
+          ]
+        }
+      ];
+      delete where.permissionGroups;
+      where.permissionGroups = {
+        none: {
+          permissionGroupId: groupId
+        }
+      };
+    }
+
+    const skip = options?.page && options?.limit ? (options.page - 1) * options.limit : undefined;
+    const take = options?.limit;
+
+    const [permissions, total] = await Promise.all([
+      this.permissionModel.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { name: 'asc' }
+      }),
+      this.permissionModel.count({ where })
+    ]);
+
+    return { permissions, total };
+  }
+
   override async create<T = PermissionDto, R = PermissionDro>(data: T): Promise<R> {
     // Cast or transform data to the expected Prisma input type
     const createdData = await this.permissionModel.create({

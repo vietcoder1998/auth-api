@@ -70,20 +70,27 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
     return await this.permissionRepository.create(filteredData);
   }
   /**
-   * Get permission by ID
+   * Get permission by ID with permission groups
    */
   async getPermissionById(id: string) {
     const permission = await prisma.permission.findUnique({
       where: { id },
       include: {
         _count: {
-          select: { roles: true },
+          select: { 
+            roles: true,
+            permissionGroups: true
+          },
         },
-        permissionGroup: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
+        permissionGroups: {
+          include: {
+            permissionGroup: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+              },
+            },
           },
         },
         roles: {
@@ -100,7 +107,13 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
       throw new Error('Permission not found');
     }
 
-    return permission;
+    // Transform the data to match the expected DTO structure
+    const transformedPermission = {
+      ...permission,
+      permissionGroups: permission.permissionGroups.map(pg => pg.permissionGroup)
+    };
+
+    return transformedPermission;
   }
 
   /**
@@ -128,64 +141,47 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
     }
 
     return await this.permissionRepository.delete(id);
-  } /**
-   * Get all permissions with pagination
+  }
+
+  /**
+   * Get all permissions with pagination and permission groups
    */
   async getPermissions(page: number = 1, limit: number = 20, search?: string, category?: string) {
-    const skip = (page - 1) * limit;
-
-    const where: any = {};
-
-    if (search) {
-      where.OR = [
-        { name: { contains: search } },
-        { description: { contains: search } },
-        { route: { contains: search } },
-        { method: { contains: search } },
-        { category: { contains: search } },
-        { 
-          permissionGroup: {
-            name: { contains: search }
-          }
-        },
-      ];
-    }
-
-    if (category && category !== 'all') {
-      where.category = category;
-    }
-
-    const [permissions, total] = await Promise.all([
-      this.permissionRepository.search({
-        where,
-        skip,
-        take: limit,
-        include: {
-          _count: {
-            select: { roles: true },
-          },
-          permissionGroup: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-            },
-          },
-        },
-        orderBy: [{ category: 'asc' }, { name: 'asc' }],
-      }),
-      prisma.permission.count({ where }),
-    ]);
-
-    console.log(`Fetched ${permissions.length} permissions (total: ${total})`);
-
-    return {
-      data: permissions,
-      total,
+    const options = {
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      search,
+      category
     };
+
+    const result = await this.permissionRepository.findWithPermissionGroups(undefined, options);
+    
+    if (result && 'permissions' in result && 'total' in result) {
+      // Transform the data to match the expected DTO structure
+      const transformedPermissions = result.permissions.map((permission: any) => ({
+        ...permission,
+        permissionGroups: permission.permissionGroups?.map((pg: any) => pg.permissionGroup) || []
+      }));
+
+      console.log(`Fetched ${transformedPermissions.length} permissions (total: ${result.total})`);
+
+      return {
+        data: transformedPermissions,
+        total: result.total,
+        page,
+        limit,
+        totalPages: Math.ceil(result.total / limit),
+      };
+    } else {
+      // Single permission case (shouldn't happen with undefined id, but for type safety)
+      return {
+        data: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      };
+    }
   }
 
   /**

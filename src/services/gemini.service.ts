@@ -29,7 +29,7 @@ export class GeminiService {
     //     throw new Error(`Failed to initialize Gemini service: ${error.message}`);
     //   });
   }
-  
+
   /**
    * Convert Gemini API response to plain string content
    * @param responseArr Gemini response array
@@ -87,7 +87,7 @@ export class GeminiService {
         console.log(`➡️ Gemini API Request (iteration ${iteration}):`, { requestPayload });
         const response = await axios.post(url, requestPayload, {
           headers: requestHeaders,
-          timeout: geminiConfig.timeout || 30000,
+          timeout: geminiConfig.timeout || 15000,
         });
 
         const candidates = response.data?.candidates || [];

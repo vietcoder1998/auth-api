@@ -87,7 +87,7 @@ export class PermissionGroupService extends BaseService<
         data: createData,
         include: {
           permissions: true,
-          role: true
+          roles: true
         }
       });
 
@@ -129,7 +129,7 @@ export class PermissionGroupService extends BaseService<
         data: finalUpdateData,
         include: {
           permissions: true,
-          role: true
+          roles: true
         }
       });
 
@@ -213,32 +213,13 @@ export class PermissionGroupService extends BaseService<
     }
   }
 
+  // Updated to use new many-to-many methods
   async assignGroupToRole(groupId: string, roleId: string) {
-    try {
-      const group = await this.permissionGroupRepository.findById(groupId);
-      if (!group) {
-        throw new Error('Permission group not found');
-      }
-
-      return await this.permissionGroupRepository.assignToRole(groupId, roleId);
-    } catch (error) {
-      console.error('Error assigning group to role:', error);
-      throw error;
-    }
+    return this.assignGroupToRoles(groupId, [roleId]);
   }
 
   async unassignGroupFromRole(groupId: string) {
-    try {
-      const group = await this.permissionGroupRepository.findById(groupId);
-      if (!group) {
-        throw new Error('Permission group not found');
-      }
-
-      return await this.permissionGroupRepository.unassignFromRole(groupId);
-    } catch (error) {
-      console.error('Error unassigning group from role:', error);
-      throw error;
-    }
+    return this.unassignGroupFromRoles(groupId);
   }
 
   async getGroupsByRole(roleId: string) {
@@ -249,6 +230,36 @@ export class PermissionGroupService extends BaseService<
       throw error;
     }
   }
+
+  // New methods for many-to-many role assignments
+  async assignGroupToRoles(groupId: string, roleIds: string[]) {
+    try {
+      const existingGroup = await this.permissionGroupRepository.findById(groupId);
+      if (!existingGroup) {
+        throw new Error('Permission group not found');
+      }
+
+      return await this.permissionGroupRepository.assignToRoles(groupId, roleIds);
+    } catch (error) {
+      console.error('Error assigning group to roles:', error);
+      throw error;
+    }
+  }
+
+  async unassignGroupFromRoles(groupId: string, roleIds?: string[]) {
+    try {
+      const existingGroup = await this.permissionGroupRepository.findById(groupId);
+      if (!existingGroup) {
+        throw new Error('Permission group not found');
+      }
+
+      return await this.permissionGroupRepository.unassignFromRoles(groupId, roleIds);
+    } catch (error) {
+      console.error('Error unassigning group from roles:', error);
+      throw error;
+    }
+  }
+
 }
 
 // Export an instance
