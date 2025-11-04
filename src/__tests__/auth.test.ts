@@ -123,11 +123,11 @@ class ToolContext {
 			this.context.prompt
 		],
 		prompt: [
-			"From tools: ${JSON.stringfy(this.toolNames)}",
-			"With prompt ${this._context.prompt}",
-			"With params ${this._context.params}",
-			"Generate steps with format: [{step: [command.name], toolName: [tool] }] }",
-			"With goals ${this.goalContext}"
+			`From tools: ${JSON.stringify(this.context.toolNames)}`,
+			`With prompt ${this.context.prompt}`,
+			`With params ${this.context.params}`,
+			`Generate steps with format: [{step: [command.name], toolName: [tool] }] }`,
+			`With goals ${this.goalContext}`
 		]
 	}
 	public get context() {
@@ -212,7 +212,6 @@ class Agent {
 
 		return toolResult
 	}
-	
 }
 
 describe('Auth API', () => {
