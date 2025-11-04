@@ -113,11 +113,10 @@ class ToolResult {
 }
 
 class Tool {
-  private _name: string;
-  private _type: string = 'type';
   public get type(): string {
-    return this._type;
+    return 'Tool';
   }
+  private _name: string;
   private get name(): string {
     return this._name;
   }
@@ -204,10 +203,10 @@ class ToolContext {
     return this._context;
   }
   public get goalContext(): string {
-    return this.context.goal.join(' ');
+    return this.goals.join(' ');
   }
   public get contextPrompt(): string {
-    return this.context.prompt.join('');
+    return this.context.prompts.join('');
   }
   public get fullPrompt(): string {
     return [this.goalContext, this.contextPrompt].join('/n');
@@ -232,6 +231,10 @@ interface ToolParameter extends Object {
 }
 
 class PlanTool extends Tool {
+  private _type: string = 'PlanTool';
+  public get type(): string {
+    return this._type;
+  }
   private _geminiService: GeminiTestService;
   public get geminiService(): GeminiTestService {
     return this._geminiService;
