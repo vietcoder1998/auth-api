@@ -94,7 +94,7 @@ class Tool {
 		try { 
 			const actionResult: Record<string, any> = {}
 			const newToolParamester: ToolParameter = {
-				...toolParameter
+				...toolParameter,
 				...actionResult
 			}
 			const nextResult: ToolResult = await nextTool.execute(newToolParamester, plans, index++)
