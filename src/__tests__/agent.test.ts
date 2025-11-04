@@ -1,4 +1,4 @@
-import { GEMINI_API_URL } from '../env';
+import { GEMINI_API_KEY, GEMINI_API_URL } from '../env';
 import { logger } from '../middlewares/logger.middle';
 import { GeminiService } from '../services';
 
@@ -52,11 +52,15 @@ class GeminiTestService {
 
     return await GeminiService.callGemini(
       messages,
-      {},
       {
-        apiUrl: this.apiUrl,
-        apiKey: this.apiKey,
-        defaultModel: 'gemini-1.5-flash',
+        temperature: 0.2,
+        maxTokens: 1500,
+        model: 'gemini-1.5-flash-latest',
+      },
+      {
+        apiUrl: GEMINI_API_URL,
+        apiKey: GEMINI_API_KEY,
+        defaultModel: 'gemini-1.5-flash-latest',
       },
       this.apiKey,
     ).then((res) => {

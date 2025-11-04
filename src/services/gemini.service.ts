@@ -113,6 +113,7 @@ export class GeminiService {
       };
       
       // Throw the error with the response data for proper error handling
+      console.log(error)
       const geminiError = new Error(`Gemini API call failed: ${message}`);
       (geminiError as any).response = errorResponse;
       throw geminiError;

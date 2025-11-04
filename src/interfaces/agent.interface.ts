@@ -13,4 +13,6 @@ export interface AgentConfig {
     geminiApiUrl?: string;
     geminiApiKey?: string;
     model?: string;
+    temperature?: number;
+    maxTokens?: number;
 }
