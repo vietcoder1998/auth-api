@@ -142,6 +142,8 @@ export class PermissionService extends BaseService<PermissionModel, PermissionDt
       prisma.permission.count({ where }),
     ]);
 
+    console.log(`Fetched ${permissions.length} permissions (total: ${total})`);
+
     return {
       data: permissions,
       total,
