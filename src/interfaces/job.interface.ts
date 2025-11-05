@@ -6,26 +6,26 @@ export interface JobDto extends JobModel{
   id?: string;
   type: string;
   status?: string;
-  queueName?: string;
-  workerId?: string;
+  queueName?: string | null;
+  workerId?: string | null;
   payload?: string | Record<string, any>;
   result?: string | Record<string, any>;
-  error?: string;
+  error?: string | null;
   priority?: number;
   retries?: number;
   maxRetries?: number;
   progress?: number;
   timeout?: number;
   metadata?: string | Record<string, any>;
-  userId?: string;
-  description?: string;
-  startedAt?: Date;
-  finishedAt?: Date;
+  userId?: string | null;
+  description?: string | null;
+  startedAt?: Date | null;
+  finishedAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-export interface JobDro {
+export interface JobDro extends JobDto{
   id: string;
   type: string;
   status: string;
@@ -38,7 +38,7 @@ export interface JobDro {
   retries: number;
   maxRetries: number;
   progress: number;
-  timeout?: number | null;
+  timeout?: number;
   metadata?: any;
   userId?: string | null;
   description?: string | null;
@@ -82,4 +82,12 @@ export interface JobMQPayloadDto extends JobUpdateDto {
   payload: Record<string, any>;
   userId?: string;
   priority?: number;
+}
+
+export interface JobCreateDto extends Partial<JobDto> {
+  id?: string;
+  type: string;
+  payload?: Record<string, any>;
+  userId?: string;
+  description?: string;
 }

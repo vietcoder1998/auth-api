@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { JobResultDro, JobResultDto } from '../interfaces/job-result.interface';
-import { JobDto, JobModel, JobMQPayloadDto } from '../interfaces/job.interface';
+import { JobCreateDto, JobDto, JobModel, JobMQPayloadDto } from '../interfaces/job.interface';
 import { logError, logInfo } from '../middlewares/logger.middle';
 import { JobResultRepository } from '../repositories/job-result.repository';
 import { JobRepository } from '../repositories/job.repository';
@@ -201,7 +201,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
       }
 
       const jobId: string = uuidv4();
-      const job: JobDto = await this.jobRepository.create({
+      const jobCreateDto: JobCreateDto = {
         id: jobId,
         type,
         status: 'pending',
@@ -209,10 +209,11 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         userId,
         description,
         queueName: this.getQueueNameForType(type),
-      });
+      };
+      const job: JobDto = await this.jobRepository.create(jobCreateDto);
 
       if (!jobId) {
-        throw new Error("JobId is not found");
+        throw new Error('JobId is not found');
       }
 
       await this.sendToMQ({
@@ -224,9 +225,9 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
 
       // Fetch the full job with createdAt and updatedAt
       const fullJob: JobDro | null = await this.jobRepository.findById(jobId);
-      
+
       if (!fullJob) {
-        throw new Error("Created job not found");
+        throw new Error('Created job not found');
       }
 
       return fullJob;
@@ -269,7 +270,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
           undefined, // databaseIds
         );
 
-        return newJob
+        return newJob;
       }
 
       const updateData = {

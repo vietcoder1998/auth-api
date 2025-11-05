@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { JobDro, JobDto, JobFilter, JobStats } from '../interfaces';
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
@@ -290,20 +291,24 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
    * Override create to handle JSON stringification
    */
   override async create<T = any, R = any>(data: T): Promise<R> {
-    const jobData = data as any;
+    // Prepare JobCreateInput with correct types for JSON fields
+    const createJobData: Prisma.JobCreateInput = {
+      ...(data as JobDto),
+      payload:
+        (data as JobDto).payload && typeof (data as JobDto).payload === 'object'
+          ? JSON.stringify((data as JobDto).payload)
+          : ((data as JobDto).payload as string | null | undefined),
+      result:
+        (data as JobDto).result && typeof (data as JobDto).result === 'object'
+          ? JSON.stringify((data as JobDto).result)
+          : ((data as JobDto).result as string | null | undefined),
+      metadata:
+        (data as JobDto).metadata && typeof (data as JobDto).metadata === 'object'
+          ? JSON.stringify((data as JobDto).metadata)
+          : ((data as JobDto).metadata as string | null | undefined),
+    };
 
-    // Stringify JSON fields if they are objects
-    if (jobData.payload && typeof jobData.payload === 'object') {
-      jobData.payload = JSON.stringify(jobData.payload);
-    }
-    if (jobData.result && typeof jobData.result === 'object') {
-      jobData.result = JSON.stringify(jobData.result);
-    }
-    if (jobData.metadata && typeof jobData.metadata === 'object') {
-      jobData.metadata = JSON.stringify(jobData.metadata);
-    }
-
-    const job = await super.create(jobData);
+    const job = await this.jobModel.create({ data: createJobData });
     return this.toDro(job as JobDto) as R;
   }
 
