@@ -1,4 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
+
 const prisma = new PrismaClient();
 
 // Get job data from environment variables if available

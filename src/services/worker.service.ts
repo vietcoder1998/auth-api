@@ -18,6 +18,7 @@ export class WorkerService {
     'extract',
     'file-tuning', 
     'backup',
+    'restore',
     'execute_tool',
     'generate_prompt',
     'conversation',
@@ -29,6 +30,7 @@ export class WorkerService {
     extract: require.resolve('../workers/extract.workers.ts'),
     backup: require.resolve('../workers/backup.works.ts'),
     'file-tuning': require.resolve('../workers/fine-tuning.workers.ts'),
+    restore: require.resolve('../workers/restore.worker.ts'),
   };
 
   constructor(
@@ -82,7 +84,7 @@ export class WorkerService {
               // Get worker path for job type
               let workerPath = this.WORKER_PATHS[jobData.type];
               if (!workerPath) {
-                workerPath = require.resolve('../workers/generic.job.worker.js');
+                workerPath = require.resolve('../workers/generic.job.worker.ts');
                 logInfo('Using generic worker', { jobType: jobData.type });
               }
 
@@ -307,7 +309,7 @@ export class WorkerService {
       // Get worker path for job type
       let workerPath = this.WORKER_PATHS[jobType];
       if (!workerPath) {
-        workerPath = require.resolve('../workers/generic.job.worker.js');
+        workerPath = require.resolve('../workers/generic.job.worker.ts');
         logInfo('Using generic worker', { jobType });
       }
 

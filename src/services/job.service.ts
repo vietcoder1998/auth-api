@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { JobResultDro, JobResultDto } from '../interfaces/job-result.interface';
 import { JobDto, JobModel, JobMQPayloadDto } from '../interfaces/job.interface';
@@ -13,19 +12,12 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   private readonly jobRepository: JobRepository;
   private readonly jobResultRepository: JobResultRepository;
   private readonly rabbitMQRepository: RabbitMQRepository;
-  private readonly prisma: PrismaClient;
 
-  constructor(
-    jobRepository: JobRepository,
-    jobResultRepository: JobResultRepository,
-    rabbitMQRepository: RabbitMQRepository,
-    prisma: PrismaClient,
-  ) {
+  constructor() {
     super();
     this.jobRepository = jobRepository;
     this.jobResultRepository = jobResultRepository;
     this.rabbitMQRepository = rabbitMQRepository;
-    this.prisma = prisma;
   }
 
   /**
@@ -217,12 +209,20 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
 
       const job: JobDto = await this.jobRepository.update(jobId, jobCreateDto);
 
-      await this.sendToMQ({
+      // Create proper payload with required base fields
+      const mqPayload: JobMQPayloadDto = {
         jobId: jobId,
         type,
-        payload,
+        payload: {
+          ...payload,
+          jobId,
+          type,
+          userId
+        } as any, // Temporary cast until we have better type handling
         userId,
-      });
+      };
+      
+      await this.sendToMQ(mqPayload);
 
       // Fetch the full job with createdAt and updatedAt
       const fullJob: JobDro | null = await this.jobRepository.findById(jobId);
@@ -251,7 +251,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         finishedAt:
           data.status === 'completed' || data.status === 'failed' ? new Date() : data.finishedAt,
       };
-      
+
       if (originalJob) {
         const updatedJob: JobDro = await this.jobRepository.update(jobIdToUpdate, updateData);
 
@@ -424,9 +424,4 @@ export const jobRepository = new JobRepository();
 export const jobResultRepository = new JobResultRepository();
 export const rabbitMQRepository = new RabbitMQRepository();
 
-export const jobService = new JobService(
-  jobRepository,
-  jobResultRepository,
-  rabbitMQRepository,
-  new PrismaClient(),
-);
+export const jobService = new JobService();

@@ -1,23 +1,39 @@
 import { PrismaClient } from '@prisma/client';
+import { 
+  FineTuningJobPayload, 
+  WorkerJobData, 
+  WorkerEnvironment,
+  WorkerResponse 
+} from '../interfaces/worker.interface';
 
 const prisma = new PrismaClient();
 
 // Get job data from environment variables if available
-const jobId = process.env.JOB_ID;
-const jobType = process.env.JOB_TYPE;
-const jobPayload = process.env.JOB_PAYLOAD ? JSON.parse(process.env.JOB_PAYLOAD) : {};
+const env: WorkerEnvironment = {
+  jobId: process.env.JOB_ID,
+  jobType: process.env.JOB_TYPE,
+  jobPayload: process.env.JOB_PAYLOAD,
+  workerId: process.env.WORKER_ID,
+  userId: process.env.USER_ID
+};
 
 // If job data is in environment variables, process immediately
-if (jobId && jobType) {
-  processJob({ jobId, type: jobType, payload: jobPayload });
+if (env.jobId && env.jobType) {
+  const payload: FineTuningJobPayload = env.jobPayload ? JSON.parse(env.jobPayload) : {
+    jobId: env.jobId,
+    type: env.jobType,
+    workerId: env.workerId,
+    userId: env.userId
+  };
+  processJob({ jobId: env.jobId, type: env.jobType, payload });
 }
 
 // Handle messages from parent process
-process.on('message', async (job: { jobId: string; type: string; payload: any }) => {
+process.on('message', async (job: WorkerJobData<FineTuningJobPayload>) => {
   await processJob(job);
 });
 
-async function processJob(job: { jobId: string; type: string; payload: any }) {
+async function processJob(job: WorkerJobData<FineTuningJobPayload>) {
   try {
     // Example: perform fine-tuning logic here
     console.log('Starting fine-tuning job...');
@@ -26,24 +42,43 @@ async function processJob(job: { jobId: string; type: string; payload: any }) {
 
     // Update job status/result in DB
     await prisma.job.update({
-      where: { id: job.jobId },
+      where: { id: job.payload.jobId },
       data: {
         status: 'completed',
         result: JSON.stringify({ message: 'Fine-tuning job completed', payload: job.payload }),
         finishedAt: new Date(),
       },
     });
-    process.send?.({ success: true, data: { jobId: job.jobId } });
+    
+    const response: WorkerResponse = {
+      success: true,
+      data: { 
+        jobId: job.payload.jobId,
+        type: job.payload.type,
+        result: 'Fine-tuning job completed',
+        payload: job.payload
+      }
+    };
+    process.send?.(response);
   } catch (error) {
     await prisma.job.update({
-      where: { id: job.jobId },
+      where: { id: job.payload.jobId },
       data: {
         status: 'failed',
         error: String(error),
         finishedAt: new Date(),
       },
     });
-    process.send?.({ success: false, data: { jobId: job.jobId }, error });
+    
+    const response: WorkerResponse = {
+      success: false,
+      data: { 
+        jobId: job.payload.jobId,
+        type: job.payload.type
+      },
+      error: String(error)
+    };
+    process.send?.(response);
   } finally {
     await prisma.$disconnect();
   }

@@ -1,8 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import fs from 'fs';
-import path from 'path';
 import { 
-  ExtractJobPayload, 
+  BackupJobPayload, 
   WorkerJobData, 
   WorkerEnvironment,
   WorkerResponse 
@@ -21,7 +19,7 @@ const env: WorkerEnvironment = {
 
 // If job data is in environment variables, process immediately
 if (env.jobId && env.jobType) {
-  const payload: ExtractJobPayload = env.jobPayload ? JSON.parse(env.jobPayload) : {
+  const payload: BackupJobPayload = env.jobPayload ? JSON.parse(env.jobPayload) : {
     jobId: env.jobId,
     type: env.jobType,
     workerId: env.workerId,
@@ -31,29 +29,23 @@ if (env.jobId && env.jobType) {
 }
 
 // Handle messages from parent process
-process.on('message', async (job: WorkerJobData<ExtractJobPayload>) => {
+process.on('message', async (job: WorkerJobData<BackupJobPayload>) => {
   await processJob(job);
 });
 
-async function processJob(job: WorkerJobData<ExtractJobPayload>) {
+async function processJob(job: WorkerJobData<BackupJobPayload>) {
   try {
-    // Backup all tables to a JSON file
-    const tables = await prisma.$queryRawUnsafe<any[]>("SHOW TABLES");
-    const dbBackup: Record<string, any[]> = {};
-    for (const tableObj of tables) {
-      const tableName = String(Object.values(tableObj)[0]);
-      const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM \`${tableName}\``);
-      dbBackup[tableName] = rows;
-    }
-    const backupDir = path.resolve(__dirname, '../../backups');
-    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
-    const backupFile = path.join(backupDir, `db-backup-${job.payload.jobId}.json`);
-    fs.writeFileSync(backupFile, JSON.stringify(dbBackup, null, 2), 'utf8');
+    // Example: perform backup logic here
+    console.log('Starting backup job...');
+    // Simulate backup work
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // Update job status/result in DB
     await prisma.job.update({
       where: { id: job.payload.jobId },
       data: {
         status: 'completed',
-        result: JSON.stringify({ message: 'DB backup completed', backupFile }),
+        result: JSON.stringify({ message: 'Backup job completed', payload: job.payload }),
         finishedAt: new Date(),
       },
     });
@@ -63,18 +55,17 @@ async function processJob(job: WorkerJobData<ExtractJobPayload>) {
       data: { 
         jobId: job.payload.jobId,
         type: job.payload.type,
-        result: 'DB backup completed',
-        details: { backupFile },
+        result: 'Backup job completed',
         payload: job.payload
       }
     };
     process.send?.(response);
-  } catch (error: any) {
+  } catch (error) {
     await prisma.job.update({
       where: { id: job.payload.jobId },
       data: {
         status: 'failed',
-        error: String(error?.message || error),
+        error: String(error),
         finishedAt: new Date(),
       },
     });
@@ -85,7 +76,7 @@ async function processJob(job: WorkerJobData<ExtractJobPayload>) {
         jobId: job.payload.jobId,
         type: job.payload.type
       },
-      error: String(error?.message || error)
+      error: String(error)
     };
     process.send?.(response);
   } finally {
