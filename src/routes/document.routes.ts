@@ -1,26 +1,36 @@
-import { Router } from 'express';
-import {
-  listDocuments,
-  getDocument,
-  createDocument,
-  updateDocument,
-  deleteDocument,
-} from '../controllers/document.controller';
-import { startExtractJobForDocument } from '../controllers/job.controller';
+import { documentController } from '../controllers/document.controller';
+import { jobController } from '../controllers/job.controller';
 import { upload, uploadFile } from '../controllers/file.controller';
+import { BaseRouter } from './index';
 
-const router = Router();
+export class DocumentRoutes extends BaseRouter<any, any, any> {
+  constructor() {
+    super('/documents');
+    this.initializeRoutes();
+  }
 
-// Document upload endpoint
-router.post('/upload', upload.single('file'), uploadFile);
+  protected initializeRoutes(): void {
+    // Document upload endpoint
+    this.routes.post('/upload', upload.single('file'), uploadFile);
 
-router.get('/', listDocuments);
-router.get('/:id', getDocument);
-router.post('/', createDocument);
-router.put('/:id', updateDocument);
-router.delete('/:id', deleteDocument);
+    // Document CRUD operations
+    this.routes.post('/', documentController.createDocument.bind(documentController));
+    this.routes.get('/', documentController.listDocuments.bind(documentController));
+    this.routes.get('/:id', documentController.getDocument.bind(documentController));
+    this.routes.put('/:id', documentController.updateDocument.bind(documentController));
+    this.routes.delete('/:id', documentController.deleteDocument.bind(documentController));
 
-// Start extract job for a document
-router.post('/:id/start-extract-job', startExtractJobForDocument);
+    // Document processing
+    this.routes.post('/chunks/split', documentController.splitFileToChunks.bind(documentController));
+    this.routes.post('/chunks/job', documentController.createChunkJob.bind(documentController));
 
-export default router;
+    // Start extract job for a document
+    this.routes.post(
+      '/:id/start-extract-job',
+      jobController.startExtractJobForDocument.bind(jobController)
+    );
+  }
+}
+
+export const documentRoutes = new DocumentRoutes();
+export default documentRoutes;
