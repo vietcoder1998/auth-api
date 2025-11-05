@@ -1,21 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { JobResultDro, JobResultDto } from '../interfaces/job-result.interface';
-import { JobDto, JobModel } from '../interfaces/job.interface';
+import { JobDto, JobModel, JobMQPayloadDto } from '../interfaces/job.interface';
 import { logError, logInfo } from '../middlewares/logger.middle';
 import { JobResultRepository } from '../repositories/job-result.repository';
 import { JobRepository } from '../repositories/job.repository';
 import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
 import { JobDro } from './../interfaces/job.interface';
 import { BaseService } from './base.service';
-
-export interface JobMQPayloadDto {
-  jobId: string;
-  type: string;
-  payload: any;
-  userId?: string;
-  priority?: number;
-}
 
 export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   private readonly jobRepository: JobRepository;
@@ -196,7 +188,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
    */
   public async addJob(
     type: string,
-    payload: any,
+    payload: Record<string, any>,
     userId?: string,
     description?: string,
     conversationIds?: string[],
@@ -208,9 +200,8 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         throw new Error('Payload must be an object');
       }
 
-      const jobId = uuidv4();
-
-      const job = await this.jobRepository.create({
+      const jobId: string = uuidv4();
+      const job: JobDto = await this.jobRepository.create({
         id: jobId,
         type,
         status: 'pending',
@@ -220,14 +211,25 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         queueName: this.getQueueNameForType(type),
       });
 
+      if (!jobId) {
+        throw new Error("JobId is not found");
+      }
+
       await this.sendToMQ({
-        jobId: job.id,
+        jobId: jobId,
         type,
         payload,
         userId,
       });
 
-      return job;
+      // Fetch the full job with createdAt and updatedAt
+      const fullJob: JobDro | null = await this.jobRepository.findById(jobId);
+      
+      if (!fullJob) {
+        throw new Error("Created job not found");
+      }
+
+      return fullJob;
     } catch (error) {
       logError('Failed to add job', { error, type });
       throw error;
@@ -251,6 +253,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
     try {
       if (data.status === 'restart') {
         const originalJob: JobDro | null = await this.jobRepository.findById(id);
+        const jobPayLoad: Record<string, any> = JSON.parse(originalJob?.payload || '{}');
 
         if (!originalJob) {
           throw new Error('Job not found');
@@ -258,7 +261,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
 
         const newJob: JobDro = await this.addJob(
           originalJob.type,
-          originalJob.payload,
+          jobPayLoad,
           originalJob.userId ?? undefined,
           originalJob.description || undefined,
           undefined, // conversationIds

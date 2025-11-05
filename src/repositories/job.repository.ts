@@ -1,7 +1,6 @@
-import { JobDro, JobDto, JobFilter, JobModel, JobStats } from '../interfaces';
+import { JobDro, JobDto, JobFilter, JobStats } from '../interfaces';
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
-
 export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, JobDro> {
   constructor() {
     super(prisma.job);
@@ -13,19 +12,24 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
   /**
    * Transform model to DRO with parsed JSON fields
    */
-  protected toDro(model: JobModel): JobDro {
+  protected toDro(model: JobDto): JobDro {
+    const job = model;
     return {
-      ...model,
-      createdAt: model.createdAt ?? new Date(0),
-      updatedAt: model.updatedAt ?? new Date(0),
-      priority: model.priority ?? 0,
-      payload: model.payload ? this.parseJson(model.payload) : null,
-      result: model.result ? this.parseJson(model.result) : null,
-      metadata: model.metadata ? this.parseJson(model.metadata) : null,
-      retries: model.retries ?? 0,
-      maxRetries: model.maxRetries ?? 0,
-      progress: model.progress ?? 0,
-    };
+      ...job,
+      id: job.id ?? '',
+      createdAt: job.createdAt ?? new Date(0),
+      updatedAt: job.updatedAt ?? new Date(0),
+      priority: job.priority ?? 0,
+      payload: typeof job.payload === 'string' ? this.parseJson(job.payload) : job.payload,
+      result: typeof job.result === 'string' ? this.parseJson(job.result) : job.result,
+      metadata:
+        typeof job.metadata === 'string' ? this.parseJson(job.metadata) : (job.metadata ?? null),
+      retries: job.retries ?? 0,
+      maxRetries: job.maxRetries ?? 0,
+      progress: job.progress ?? 0,
+      type: job.type ?? '',
+      status: job.status ?? '',
+    } as JobDro;
   }
 
   /**
@@ -43,12 +47,12 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
    * Find jobs by status
    */
   async findByStatus(status: string): Promise<JobDro[]> {
-    const jobs = (await this.jobModel?.findMany({
+    const jobs = await this.jobModel.findMany({
       where: { status },
       orderBy: { createdAt: 'desc' },
-    })) as JobModel[];
+    });
 
-    return jobs.map((job) => this.toDro(job));
+    return jobs.map((job) => this.toDro(job as JobDto));
   }
 
   /**
@@ -69,48 +73,48 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
    * Find jobs by type
    */
   async findByType(type: string): Promise<JobDro[]> {
-    const jobs = (await this.jobModel.findMany({
+    const jobs = await this.jobModel.findMany({
       where: { type },
       orderBy: { createdAt: 'desc' },
-    })) as JobModel[];
+    });
 
-    return jobs.map((job) => this.toDro(job));
+    return jobs.map((job) => this.toDro(job as JobDto));
   }
 
   /**
    * Find jobs by queue name
    */
   async findByQueue(queueName: string): Promise<JobDro[]> {
-    const jobs = (await this.jobModel.findMany({
+    const jobs = await this.jobModel.findMany({
       where: { queueName },
       orderBy: { createdAt: 'desc' },
-    })) as JobModel[];
+    });
 
-    return jobs.map((job) => this.toDro(job));
+    return jobs.map((job) => this.toDro(job as JobDto));
   }
 
   /**
    * Find jobs by worker ID
    */
   async findByWorker(workerId: string): Promise<JobDro[]> {
-    const jobs = (await this.jobModel.findMany({
+    const jobs = await this.jobModel.findMany({
       where: { workerId },
       orderBy: { createdAt: 'desc' },
-    })) as JobModel[];
+    });
 
-    return jobs.map((job) => this.toDro(job));
+    return jobs.map((job) => this.toDro(job as JobDto));
   }
 
   /**
    * Find jobs by user ID
    */
   async findByUser(userId: string): Promise<JobDro[]> {
-    const jobs = (await this.jobModel.findMany({
+    const jobs = await this.jobModel.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-    })) as JobModel[];
+    });
 
-    return jobs.map((job) => this.toDro(job));
+    return jobs.map((job) => this.toDro(job as JobDto));
   }
 
   /**
@@ -131,19 +135,19 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       if (filter.endDate) where.createdAt.lte = filter.endDate;
     }
 
-    const jobs = (await this.jobModel.findMany({
+    const jobs = await this.jobModel.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-    })) as JobModel[];
+    });
 
-    return jobs.map((job) => this.toDro(job));
+    return jobs.map((job) => this.toDro(job as JobDto));
   }
 
   /**
    * Find failed jobs that can be retried
    */
   async findRetryable(): Promise<JobDro[]> {
-    const jobs = (await this.jobModel.findMany({
+    const jobs = await this.jobModel.findMany({
       where: {
         status: 'failed',
         retries: {
@@ -151,60 +155,60 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
         },
       },
       orderBy: { createdAt: 'asc' },
-    })) as JobModel[];
+    });
 
-    return jobs.map((job) => this.toDro(job));
+    return jobs.map((job) => this.toDro(job as JobDto));
   }
 
   /**
    * Increment retry count
    */
   async incrementRetries(id: string): Promise<JobDro> {
-    const job = (await this.jobModel.update({
+    const job = await this.jobModel.update({
       where: { id },
       data: {
         retries: {
           increment: 1,
         },
       },
-    })) as JobModel;
+    });
 
-    return this.toDro(job);
+    return this.toDro(job as JobDto);
   }
 
   /**
    * Update job progress
    */
   async updateProgress(id: string, progress: number): Promise<JobDro> {
-    const job = (await this.jobModel.update({
+    const job = await this.jobModel.update({
       where: { id },
       data: { progress },
-    })) as JobModel;
+    });
 
-    return this.toDro(job);
+    return this.toDro(job as JobDto);
   }
 
   /**
    * Mark job as started
    */
   async markStarted(id: string, workerId: string): Promise<JobDro> {
-    const job = (await this.jobModel.update({
+    const job = await this.jobModel.update({
       where: { id },
       data: {
         status: 'processing',
         workerId,
         startedAt: new Date(),
       },
-    })) as JobModel;
+    });
 
-    return this.toDro(job);
+    return this.toDro(job as JobDto);
   }
 
   /**
    * Mark job as completed
    */
   async markCompleted(id: string, result?: any): Promise<JobDro> {
-    const job = (await this.jobModel.update({
+    const job = await this.jobModel.update({
       where: { id },
       data: {
         status: 'completed',
@@ -212,40 +216,39 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
         progress: 100,
         finishedAt: new Date(),
       },
-    })) as JobModel;
+    });
 
-    return this.toDro(job);
+    return this.toDro(job as JobDto);
   }
 
   /**
    * Mark job as failed
    */
   async markFailed(id: string, error: string): Promise<JobDro> {
-    const job = (await this.jobModel.update({
+    const job = await this.jobModel.update({
       where: { id },
       data: {
         status: 'failed',
         error,
         finishedAt: new Date(),
       },
-    })) as JobModel;
+    });
 
-    return this.toDro(job);
+    return this.toDro(job as JobDto);
   }
 
   /**
    * Mark job as cancelled
    */
   async markCancelled(id: string): Promise<JobDro> {
-    const job = (await this.jobModel.update({
+    const job = await this.jobModel.update({
       where: { id },
       data: {
         status: 'cancelled',
         finishedAt: new Date(),
       },
-    })) as JobModel;
-
-    return this.toDro(job);
+    });
+    return this.toDro(job as JobDto);
   }
 
   /**
@@ -301,7 +304,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
     }
 
     const job = await super.create(jobData);
-    return this.toDro(job as JobModel) as R;
+    return this.toDro(job as JobDto) as R;
   }
 
   /**
@@ -322,7 +325,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
     }
 
     const job = await super.update(id, updateData);
-    return this.toDro(job as JobModel) as Dro;
+    return this.toDro(job as JobDto) as Dro;
   }
 
   /**
