@@ -2,8 +2,9 @@ import { rabbitMqRepository, RabbitMQRepository } from '../repositories/rabbitmq
 import { JobRepository } from '../repositories/job.repository';
 import { JobResultRepository } from '../repositories/job-result.repository';
 import { logError, logInfo } from '../middlewares/logger.middle';
-import { Worker } from 'worker_threads';
+import { fork, ChildProcess } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
+import * as path from 'path';
 
 export class WorkerService {
   private readonly rabbitMQRepository: RabbitMQRepository;
@@ -11,7 +12,7 @@ export class WorkerService {
   private readonly jobResultRepository: JobResultRepository;
   private workerId: string;
   private isRunning: boolean = false;
-  private runningWorkers: Map<string, Worker> = new Map(); // Track running workers by jobId
+  private runningWorkers: Map<string, ChildProcess> = new Map(); // Track running workers by jobId
 
   private readonly JOB_TYPES = [
     'extract',
@@ -85,14 +86,23 @@ export class WorkerService {
                 logInfo('Using generic worker', { jobType: jobData.type });
               }
 
-              // Create worker thread
-              const worker = new Worker(workerPath);
+              // Create worker process
+              const worker = fork(workerPath, [], {
+                env: {
+                  ...process.env,
+                  JOB_ID: jobData.jobId,
+                  JOB_TYPE: jobData.type,
+                  JOB_PAYLOAD: JSON.stringify(jobData.payload),
+                  WORKER_ID: this.workerId,
+
+                }
+              });
               
               // Track the worker
               this.runningWorkers.set(jobData.jobId, worker);
               
-              // Send job data to worker
-              worker.postMessage({
+              // Send job data to worker (optional, already in env)
+              worker.send({
                 jobId: jobData.jobId,
                 type: jobData.type,
                 payload: jobData.payload,
@@ -100,21 +110,21 @@ export class WorkerService {
               });
 
               // Handle worker messages (results)
-              worker.on('message', async (result) => {
+              worker.on('message', async (result: any) => {
                 try {
                   // Create job result using repository
                   await this.jobResultRepository.create({
                     jobId: jobData.jobId,
                     status: 'completed',
-                    result: result.data,
+                    result: result.data || result,
                     processingTime: result.processingTime || 0,
-                    metadata: result.metadata,
+                    metadata: result.metadata || {},
                   });
 
                   // Update job status
                   await this.jobRepository.update(jobData.jobId, {
                     status: 'completed',
-                    result: result.data,
+                    result: result.data || result,
                     progress: 100,
                     finishedAt: new Date(),
                   });
@@ -127,7 +137,7 @@ export class WorkerService {
 
                   // Clean up
                   this.runningWorkers.delete(jobData.jobId);
-                  worker.terminate();
+                  worker.kill();
                 } catch (error) {
                   logError('Failed to save worker result', {
                     workerId: this.workerId,
@@ -138,7 +148,7 @@ export class WorkerService {
               });
 
               // Handle worker errors
-              worker.on('error', async (error) => {
+              worker.on('error', async (error: any) => {
                 try {
                   // Create job result for failure
                   await this.jobResultRepository.create({
@@ -155,7 +165,7 @@ export class WorkerService {
                     finishedAt: new Date(),
                   });
                   
-                  logError('Worker error', {
+                  logError('Worker failed', {
                     workerId: this.workerId,
                     jobId: jobData.jobId,
                     type: jobData.type,
@@ -164,7 +174,7 @@ export class WorkerService {
 
                   // Clean up
                   this.runningWorkers.delete(jobData.jobId);
-                  worker.terminate();
+                  worker.kill();
                 } catch (saveError) {
                   logError('Failed to save worker error', {
                     workerId: this.workerId,
@@ -175,7 +185,7 @@ export class WorkerService {
               });
 
               // Handle worker exit
-              worker.on('exit', (code) => {
+              worker.on('exit', (code: any) => {
                 this.runningWorkers.delete(jobData.jobId);
                 if (code !== 0) {
                   logError('Worker stopped with exit code', {
@@ -301,14 +311,22 @@ export class WorkerService {
         logInfo('Using generic worker', { jobType });
       }
 
-      // Create worker thread
-      const worker = new Worker(workerPath);
+      // Create worker process
+      const worker = fork(workerPath, [], {
+        env: {
+          ...process.env,
+          JOB_ID: jobId,
+          JOB_TYPE: jobType,
+          JOB_PAYLOAD: JSON.stringify(payload),
+          WORKER_ID: this.workerId,
+        }
+      });
       
       // Track the worker
       this.runningWorkers.set(jobId, worker);
       
       // Send job data to worker
-      worker.postMessage({
+      worker.send({
         jobId,
         type: jobType,
         payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
@@ -316,21 +334,21 @@ export class WorkerService {
       });
 
       // Handle worker messages (results)
-      worker.on('message', async (result) => {
+      worker.on('message', async (result: any) => {
         try {
           // Create job result using repository
           await this.jobResultRepository.create({
             jobId,
             status: 'completed',
-            result: result.data,
+            result: result.data || result,
             processingTime: result.processingTime || 0,
-            metadata: result.metadata,
+            metadata: result.metadata || {},
           });
 
           // Update job status
           await this.jobRepository.update(jobId, {
             status: 'completed',
-            result: result.data,
+            result: result.data || result,
             progress: 100,
             finishedAt: new Date(),
           });
@@ -343,7 +361,7 @@ export class WorkerService {
 
           // Clean up
           this.runningWorkers.delete(jobId);
-          worker.terminate();
+          worker.kill();
         } catch (error) {
           logError('Failed to save worker result', {
             workerId: this.workerId,
@@ -354,7 +372,7 @@ export class WorkerService {
       });
 
       // Handle worker errors
-      worker.on('error', async (error) => {
+      worker.on('error', async (error: any) => {
         try {
           // Create job result for failure
           await this.jobResultRepository.create({
@@ -380,7 +398,7 @@ export class WorkerService {
 
           // Clean up
           this.runningWorkers.delete(jobId);
-          worker.terminate();
+          worker.kill();
         } catch (saveError) {
           logError('Failed to save worker error', {
             workerId: this.workerId,
@@ -391,7 +409,7 @@ export class WorkerService {
       });
 
       // Handle worker exit
-      worker.on('exit', (code) => {
+      worker.on('exit', (code: any) => {
         this.runningWorkers.delete(jobId);
         if (code !== 0) {
           logError('Worker stopped with exit code', {
@@ -424,7 +442,7 @@ export class WorkerService {
     try {
       const worker = this.runningWorkers.get(jobId);
       if (worker) {
-        worker.terminate();
+        worker.kill();
         this.runningWorkers.delete(jobId);
         
         // Update job status to cancelled

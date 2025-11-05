@@ -1,11 +1,25 @@
-import { parentPort } from 'worker_threads';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
 
 const prisma = new PrismaClient();
 
-parentPort?.on('message', async (job: { jobId: string; type: string; payload: any }) => {
+// Get job data from environment variables if available
+const jobId = process.env.JOB_ID;
+const jobType = process.env.JOB_TYPE;
+const jobPayload = process.env.JOB_PAYLOAD ? JSON.parse(process.env.JOB_PAYLOAD) : {};
+
+// If job data is in environment variables, process immediately
+if (jobId && jobType) {
+  processJob({ jobId, type: jobType, payload: jobPayload });
+}
+
+// Handle messages from parent process
+process.on('message', async (job: { jobId: string; type: string; payload: any }) => {
+  await processJob(job);
+});
+
+async function processJob(job: { jobId: string; type: string; payload: any }) {
   try {
     // Backup all tables to a JSON file
     const tables = await prisma.$queryRawUnsafe<any[]>("SHOW TABLES");
@@ -27,7 +41,7 @@ parentPort?.on('message', async (job: { jobId: string; type: string; payload: an
         finishedAt: new Date(),
       },
     });
-    parentPort?.postMessage({ success: true, jobId: job.jobId, backupFile });
+    process.send?.({ success: true, data: { jobId: job.jobId, backupFile } });
   } catch (error: any) {
     await prisma.job.update({
       where: { id: job.jobId },
@@ -37,8 +51,8 @@ parentPort?.on('message', async (job: { jobId: string; type: string; payload: an
         finishedAt: new Date(),
       },
     });
-    parentPort?.postMessage({ success: false, jobId: job.jobId, error });
+    process.send?.({ success: false, data: { jobId: job.jobId }, error });
   } finally {
     await prisma.$disconnect();
   }
-});
+}

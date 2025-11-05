@@ -1,8 +1,23 @@
-const { parentPort } = require('worker_threads');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-parentPort.on('message', async (jobData) => {
+// Get job data from environment variables if available
+const jobId = process.env.JOB_ID;
+const jobType = process.env.JOB_TYPE;
+const jobPayload = process.env.JOB_PAYLOAD ? JSON.parse(process.env.JOB_PAYLOAD) : {};
+const workerId = process.env.WORKER_ID;
+
+// If job data is in environment variables, process immediately
+if (jobId && jobType) {
+  processJob({ jobId, type: jobType, payload: jobPayload, workerId });
+}
+
+// Handle messages from parent process
+process.on('message', async (jobData) => {
+  await processJob(jobData);
+});
+
+async function processJob(jobData) {
   try {
     switch (jobData.type) {
       case 'extract': {
@@ -20,13 +35,13 @@ parentPort.on('message', async (jobData) => {
         if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
         const backupFile = path.join(backupDir, `db-backup-${jobData.jobId}.json`);
         fs.writeFileSync(backupFile, JSON.stringify(dbBackup, null, 2), 'utf8');
-        parentPort.postMessage({ status: 'success', backupFile });
+        process.send({ status: 'success', data: { backupFile } });
         break;
       }
       default:
-        parentPort.postMessage({ status: 'no-op', type: jobData.type });
+        process.send({ status: 'no-op', data: { type: jobData.type } });
     }
   } catch (err) {
-    parentPort.postMessage({ status: 'error', error: err.message });
+    process.send({ status: 'error', error: err.message });
   }
-});
+}
