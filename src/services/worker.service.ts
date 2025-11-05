@@ -1,6 +1,6 @@
-import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
+import { rabbitMqRepository, RabbitMQRepository } from '../repositories/rabbitmq.repository';
 import { JobRepository } from '../repositories/job.repository';
-import { JobService } from './job.service';
+import { JobResultRepository } from '../repositories/job-result.repository';
 import { logError, logInfo } from '../middlewares/logger.middle';
 import { Worker } from 'worker_threads';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,13 +8,14 @@ import { v4 as uuidv4 } from 'uuid';
 export class WorkerService {
   private readonly rabbitMQRepository: RabbitMQRepository;
   private readonly jobRepository: JobRepository;
-  private readonly jobService: JobService;
+  private readonly jobResultRepository: JobResultRepository;
   private workerId: string;
   private isRunning: boolean = false;
+  private runningWorkers: Map<string, Worker> = new Map(); // Track running workers by jobId
 
   private readonly JOB_TYPES = [
     'extract',
-    'file-tuning',
+    'file-tuning', 
     'backup',
     'execute_tool',
     'generate_prompt',
@@ -25,20 +26,18 @@ export class WorkerService {
 
   private readonly WORKER_PATHS: Record<string, string> = {
     extract: require.resolve('../workers/extract.workers.ts'),
-    backup: require.resolve('../workers/backup.workers.ts'),
+    backup: require.resolve('../workers/backup.works.ts'),
     'file-tuning': require.resolve('../workers/fine-tuning.workers.ts'),
-    execute_tool: require.resolve('../workers/execute-tool.workers.ts'),
-    generate_prompt: require.resolve('../workers/generate-prompt.workers.ts'),
   };
 
   constructor(
     rabbitMQRepository: RabbitMQRepository,
     jobRepository: JobRepository,
-    jobService: JobService
+    jobResultRepository: JobResultRepository,
   ) {
     this.rabbitMQRepository = rabbitMQRepository;
     this.jobRepository = jobRepository;
-    this.jobService = jobService;
+    this.jobResultRepository = jobResultRepository;
     this.workerId = uuidv4();
   }
 
@@ -82,12 +81,15 @@ export class WorkerService {
               // Get worker path for job type
               let workerPath = this.WORKER_PATHS[jobData.type];
               if (!workerPath) {
-                workerPath = require.resolve('../workers/generic.job.worker.ts');
+                workerPath = require.resolve('../workers/generic.job.worker.js');
                 logInfo('Using generic worker', { jobType: jobData.type });
               }
 
               // Create worker thread
               const worker = new Worker(workerPath);
+              
+              // Track the worker
+              this.runningWorkers.set(jobData.jobId, worker);
               
               // Send job data to worker
               worker.postMessage({
@@ -100,14 +102,21 @@ export class WorkerService {
               // Handle worker messages (results)
               worker.on('message', async (result) => {
                 try {
-                  await this.jobService.saveJobResultIntoJob({
-                    id: jobData.jobId, // or generate a new id if needed
+                  // Create job result using repository
+                  await this.jobResultRepository.create({
                     jobId: jobData.jobId,
                     status: 'completed',
                     result: result.data,
                     processingTime: result.processingTime || 0,
                     metadata: result.metadata,
-                    createdAt: new Date(), // or use result.createdAt if available
+                  });
+
+                  // Update job status
+                  await this.jobRepository.update(jobData.jobId, {
+                    status: 'completed',
+                    result: result.data,
+                    progress: 100,
+                    finishedAt: new Date(),
                   });
                   
                   logInfo(`Worker finished successfully`, {
@@ -116,6 +125,8 @@ export class WorkerService {
                     type: jobData.type,
                   });
 
+                  // Clean up
+                  this.runningWorkers.delete(jobData.jobId);
                   worker.terminate();
                 } catch (error) {
                   logError('Failed to save worker result', {
@@ -129,13 +140,19 @@ export class WorkerService {
               // Handle worker errors
               worker.on('error', async (error) => {
                 try {
-                  await this.jobService.saveJobResultIntoJob({
-                    id: jobData.jobId,
+                  // Create job result for failure
+                  await this.jobResultRepository.create({
                     jobId: jobData.jobId,
                     status: 'failed',
                     error: error.message,
                     processingTime: 0,
-                    createdAt: new Date(),
+                  });
+
+                  // Update job status to failed
+                  await this.jobRepository.update(jobData.jobId, {
+                    status: 'failed',
+                    error: error.message,
+                    finishedAt: new Date(),
                   });
                   
                   logError('Worker error', {
@@ -145,6 +162,8 @@ export class WorkerService {
                     error,
                   });
 
+                  // Clean up
+                  this.runningWorkers.delete(jobData.jobId);
                   worker.terminate();
                 } catch (saveError) {
                   logError('Failed to save worker error', {
@@ -157,6 +176,7 @@ export class WorkerService {
 
               // Handle worker exit
               worker.on('exit', (code) => {
+                this.runningWorkers.delete(jobData.jobId);
                 if (code !== 0) {
                   logError('Worker stopped with exit code', {
                     workerId: this.workerId,
@@ -234,6 +254,10 @@ export class WorkerService {
   public async stop(): Promise<void> {
     try {
       this.isRunning = false;
+      
+      // Stop all running workers
+      await this.stopAllWorkers();
+      
       await this.rabbitMQRepository.disconnect();
       logInfo('Worker service stopped', { workerId: this.workerId });
     } catch (error) {
@@ -255,4 +279,199 @@ export class WorkerService {
   public isWorkerRunning(): boolean {
     return this.isRunning;
   }
+
+  /**
+   * Start a specific worker for a job
+   */
+  public async startJobWorker(jobId: string, jobType: string, payload: any): Promise<void> {
+    try {
+      // Stop existing worker if any
+      await this.stopJobWorker(jobId);
+
+      // Update job status to processing
+      await this.jobRepository.update(jobId, {
+        status: 'running',
+        startedAt: new Date(),
+      });
+
+      // Get worker path for job type
+      let workerPath = this.WORKER_PATHS[jobType];
+      if (!workerPath) {
+        workerPath = require.resolve('../workers/generic.job.worker.js');
+        logInfo('Using generic worker', { jobType });
+      }
+
+      // Create worker thread
+      const worker = new Worker(workerPath);
+      
+      // Track the worker
+      this.runningWorkers.set(jobId, worker);
+      
+      // Send job data to worker
+      worker.postMessage({
+        jobId,
+        type: jobType,
+        payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
+        workerId: this.workerId,
+      });
+
+      // Handle worker messages (results)
+      worker.on('message', async (result) => {
+        try {
+          // Create job result using repository
+          await this.jobResultRepository.create({
+            jobId,
+            status: 'completed',
+            result: result.data,
+            processingTime: result.processingTime || 0,
+            metadata: result.metadata,
+          });
+
+          // Update job status
+          await this.jobRepository.update(jobId, {
+            status: 'completed',
+            result: result.data,
+            progress: 100,
+            finishedAt: new Date(),
+          });
+          
+          logInfo(`Worker finished successfully`, {
+            workerId: this.workerId,
+            jobId,
+            type: jobType,
+          });
+
+          // Clean up
+          this.runningWorkers.delete(jobId);
+          worker.terminate();
+        } catch (error) {
+          logError('Failed to save worker result', {
+            workerId: this.workerId,
+            jobId,
+            error,
+          });
+        }
+      });
+
+      // Handle worker errors
+      worker.on('error', async (error) => {
+        try {
+          // Create job result for failure
+          await this.jobResultRepository.create({
+            jobId,
+            status: 'failed',
+            error: error.message,
+            processingTime: 0,
+          });
+
+          // Update job status to failed
+          await this.jobRepository.update(jobId, {
+            status: 'failed',
+            error: error.message,
+            finishedAt: new Date(),
+          });
+          
+          logError('Worker error', {
+            workerId: this.workerId,
+            jobId,
+            type: jobType,
+            error,
+          });
+
+          // Clean up
+          this.runningWorkers.delete(jobId);
+          worker.terminate();
+        } catch (saveError) {
+          logError('Failed to save worker error', {
+            workerId: this.workerId,
+            jobId,
+            error: saveError,
+          });
+        }
+      });
+
+      // Handle worker exit
+      worker.on('exit', (code) => {
+        this.runningWorkers.delete(jobId);
+        if (code !== 0) {
+          logError('Worker stopped with exit code', {
+            workerId: this.workerId,
+            jobId,
+            exitCode: code,
+          });
+        }
+      });
+
+      logInfo('Job worker started', {
+        workerId: this.workerId,
+        jobId,
+        type: jobType,
+      });
+    } catch (error) {
+      logError('Failed to start job worker', {
+        workerId: this.workerId,
+        jobId,
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Stop a specific worker for a job
+   */
+  public async stopJobWorker(jobId: string): Promise<void> {
+    try {
+      const worker = this.runningWorkers.get(jobId);
+      if (worker) {
+        worker.terminate();
+        this.runningWorkers.delete(jobId);
+        
+        // Update job status to cancelled
+        await this.jobRepository.update(jobId, {
+          status: 'cancelled',
+          finishedAt: new Date(),
+        });
+
+        logInfo('Job worker stopped', {
+          workerId: this.workerId,
+          jobId,
+        });
+      }
+    } catch (error) {
+      logError('Failed to stop job worker', {
+        workerId: this.workerId,
+        jobId,
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all running job IDs
+   */
+  public getRunningJobIds(): string[] {
+    return Array.from(this.runningWorkers.keys());
+  }
+
+  /**
+   * Stop all running workers
+   */
+  public async stopAllWorkers(): Promise<void> {
+    try {
+      const jobIds = this.getRunningJobIds();
+      await Promise.all(jobIds.map(jobId => this.stopJobWorker(jobId)));
+      logInfo('All workers stopped', { workerId: this.workerId });
+    } catch (error) {
+      logError('Failed to stop all workers', { workerId: this.workerId, error });
+      throw error;
+    }
+  }
 }
+
+export const workerService = new WorkerService(
+  new RabbitMQRepository(),
+  new JobRepository(),
+  new JobResultRepository(),
+);

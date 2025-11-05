@@ -370,3 +370,5 @@ export class RabbitMQRepository {
     return this.connection !== null && this.channel !== null;
   }
 }
+
+export const rabbitMqRepository = new RabbitMQRepository();

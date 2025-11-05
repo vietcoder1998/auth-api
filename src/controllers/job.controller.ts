@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { BaseController } from './base.controller';
 import { JobModel, JobDto, JobDro } from '../interfaces/job.interface';
 import { JobService } from '../services/job.service';
-import { jobService } from '../services';
+import { jobService, jobRepository } from '../services';
+import { workerService } from '../services/worker.service';
 
 export class JobController extends BaseController<JobModel, JobDto, JobDro> {
   private jobService: JobService;
@@ -38,7 +39,7 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
    */
   async getJobDetail(req: Request, res: Response): Promise<void> {
     try {
-      const job = await this.jobService.getJobDetail(req.params.id);
+      const job = await jobRepository.findById(req.params.id);
       
       if (!job) {
         this.handleError(res, 'Job not found', 404);
@@ -96,13 +97,13 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
       
       switch (true) {
         case !!status:
-          jobs = await this.jobService.getJobsByStatus(String(status));
+          jobs = await jobRepository.findByStatus(String(status));
           break;
         case !!type:
-          jobs = await this.jobService.getJobsByType(String(type));
+          jobs = await jobRepository.findByType(String(type));
           break;
         default:
-          jobs = await this.jobService.getJobs();
+          jobs = await jobRepository.findAllWithRelations();
           break;
       }
       
@@ -117,7 +118,7 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
    */
   async getJob(req: Request, res: Response): Promise<void> {
     try {
-      const job = await this.jobService.getJob(req.params.id);
+      const job = await jobRepository.findByIdWithRelations(req.params.id);
       
       if (!job) {
         this.handleError(res, 'Job not found', 404);
@@ -155,7 +156,7 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
    */
   async deleteJob(req: Request, res: Response): Promise<void> {
     try {
-      await this.jobService.deleteJob(req.params.id);
+      await jobRepository.delete(req.params.id);
       this.sendSuccess(res, null, 'Job deleted successfully');
     } catch (error) {
       this.handleError(res, error instanceof Error ? error.message : String(error), 500);
@@ -168,13 +169,49 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
   async startJob(req: Request, res: Response): Promise<void> {
     try {
       const jobId = req.params.id;
+      const { action = 'start' } = req.body; // 'start' or 'restart'
       
-      // Update job status to restart
-      const job = await this.jobService.updateJob(jobId, { 
-        status: 'restart'
-      });
-      
-      this.sendSuccess(res, job, `Job ${jobId} restarted successfully`);
+      // Get the existing job
+      const existingJob = await jobRepository.findByIdWithRelations(jobId);
+      if (!existingJob) {
+        this.handleError(res, 'Job not found', 404);
+        return;
+      }
+
+      if (action === 'restart') {
+        // Stop existing worker if running
+        await workerService.stopJobWorker(jobId);
+        
+        // Reset job status and restart
+        const job = await this.jobService.updateJob(jobId, { 
+          status: 'pending',
+          startedAt: null,
+          finishedAt: null,
+          progress: 0,
+          error: null
+        });
+        
+        // Start new worker for this job
+        await workerService.startJobWorker(jobId, existingJob.type, existingJob.payload);
+        
+        this.sendSuccess(res, job, `Job ${jobId} restarted successfully`);
+      } else {
+        // Start job - create new worker
+        if (existingJob.status === 'running') {
+          this.handleError(res, 'Job is already running', 400);
+          return;
+        }
+        
+        // Update job status to pending
+        const job = await this.jobService.updateJob(jobId, { 
+          status: 'pending'
+        });
+        
+        // Start new worker for this job
+        await workerService.startJobWorker(jobId, existingJob.type, existingJob.payload);
+        
+        this.sendSuccess(res, job, `Job ${jobId} started successfully`);
+      }
     } catch (error) {
       this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
@@ -200,7 +237,7 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
    */
   async getJobStats(req: Request, res: Response): Promise<void> {
     try {
-      const stats = await this.jobService.getJobStats();
+      const stats = await jobRepository.getStats();
       this.sendSuccess(res, stats);
     } catch (error) {
       this.handleError(res, error instanceof Error ? error.message : String(error), 500);

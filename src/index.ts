@@ -16,7 +16,7 @@ import configRouter from './routes/config.routes';
 import publicBlogRouter from './routes/publicBlog.routes';
 import ssoAuthRouter from './routes/ssoAuth.routes';
 import { configService } from './services/config.service';
-import { jobService } from './services/job.service';
+import { jobRepository } from './services/job.service';
 import { setup } from './setup';
 import {
   getChildProcessInfo,
@@ -72,7 +72,7 @@ app.get(
       ]);
       const memory = getMemoryStatus();
       const { cpu, cpuLoad } = getCpuStatus();
-      const jobs = await jobService.getJobs();
+      const jobs = await jobRepository.findAllWithRelations();
       const osStatus = getOsStatus();
       const childProcessInfo = getChildProcessInfo();
       const healthStatus: Record<string, any> = {

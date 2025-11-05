@@ -420,9 +420,13 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   }
 }
 
+export const jobRepository = new JobRepository();
+export const jobResultRepository = new JobResultRepository();
+export const rabbitMQRepository = new RabbitMQRepository();
+
 export const jobService = new JobService(
-  new JobRepository(),
-  new JobResultRepository(),
-  new RabbitMQRepository(),
+  jobRepository,
+  jobResultRepository,
+  rabbitMQRepository,
   new PrismaClient(),
 );
