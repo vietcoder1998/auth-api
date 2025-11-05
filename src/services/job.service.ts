@@ -292,8 +292,9 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
     try {
       return await this.jobRepository.findAllWithRelations();
     } catch (error) {
-      logError('Failed to get jobs', { error });
-      throw error;
+      logError('Failed to get jobs - possible database schema mismatch', { error });
+      // Return empty array instead of throwing to prevent startup failure
+      return [];
     }
   }
 

@@ -51,6 +51,7 @@ import {
 } from '../src/repositories';
 import { entityMethodSeeder, entitySeeder, RoleSeeder, toolCommandSeeder } from './seeders';
 import { AgentSeeder } from './seeders/agent.seeder';
+import { JobSeeder } from './seeders/job.seeder';
 
 interface MockModel {
   id: string;
@@ -179,23 +180,8 @@ async function main() {
     }
   }
 
-  // Seed Jobs
-  console.log('🧑‍💼 Seeding Jobs...');
-  for (const job of mockJobs) {
-    try {
-      await prisma.job.create({
-        data: {
-          type: job.type,
-          status: job.status,
-          result: job.result,
-          createdAt: job.createdAt,
-          updatedAt: job.updatedAt,
-        },
-      });
-    } catch (error) {
-      console.log(`⚠ Error creating job:`, error);
-    }
-  }
+  // Seed Jobs using dedicated seeder
+  await JobSeeder.instance.run(prisma);
   // Seed permissions from mock data - Use repository seed
   console.log('🔐 Seeding Permissions...');
 
