@@ -5,3 +5,6 @@ export * from './permissionGroup.seeder';
 export * from './entity.seeder';
 export * from './entitymethod.seeder';
 export * from './job.seeder';
+export * from './prompt.seeder';
+export * from './conversation.seeder';
+export * from './message.seeder';

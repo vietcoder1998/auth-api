@@ -52,6 +52,9 @@ import {
 import { entityMethodSeeder, entitySeeder, RoleSeeder, toolCommandSeeder } from './seeders';
 import { AgentSeeder } from './seeders/agent.seeder';
 import { JobSeeder } from './seeders/job.seeder';
+import { PromptSeeder } from './seeders/prompt.seeder';
+import { ConversationSeeder } from './seeders/conversation.seeder';
+import { MessageSeeder } from './seeders/message.seeder';
 
 interface MockModel {
   id: string;
@@ -136,49 +139,9 @@ async function main() {
 
   // We'll seed FAQs after agents are created, so skip for now
   // This section will be moved to after agent creation
-  // Seed Prompts - Batch operation
-  console.log('💡 Seeding Prompts...');
-
-  // Validate and prepare prompt data in parallel
-  const promptValidationResults = await Promise.all(
-    mockPrompts.map(async (prompt) => {
-      if (!prompt.conversationId) {
-        console.warn(`⚠ Skipping prompt: '${prompt.prompt}' (missing conversationId)`);
-        return null;
-      }
-
-      const convExists = await prisma.conversation.findUnique({
-        where: { id: prompt.conversationId },
-      });
-
-      if (!convExists) {
-        console.warn(
-          `⚠ Skipping prompt: '${prompt.prompt}' (invalid conversationId: ${prompt.conversationId})`,
-        );
-        return null;
-      }
-
-      return {
-        conversationId: prompt.conversationId,
-        prompt: prompt.prompt,
-        createdAt: prompt.createdAt,
-      };
-    }),
-  );
-
-  // Filter out invalid prompts and batch create
-  const validPrompts = promptValidationResults.filter((p) => p !== null);
-  if (validPrompts.length > 0) {
-    try {
-      await prisma.promptHistory.createMany({
-        data: validPrompts,
-        skipDuplicates: true,
-      });
-      console.log(`✓ Created ${validPrompts.length} prompts`);
-    } catch (error) {
-      console.log(`⚠ Error creating prompts:`, error);
-    }
-  }
+  
+  // Seed Prompts using dedicated seeder
+  await PromptSeeder.instance.run(prisma, mockPrompts);
 
   // Seed Jobs using dedicated seeder
   await JobSeeder.instance.run(prisma);
@@ -626,57 +589,15 @@ async function main() {
     });
   }
 
-  // Seed Conversations and Messages
-  // Note: Conversations use direct Prisma due to lack of compound unique index
-  console.log('💬 Seeding Conversations...');
-
-  // Map mock IDs to actual created agent and user IDs
-  const mockToRealMapping: Record<string, string> = {
-    'agent-001': createdAgents.find((a: any) => a.name === 'General Assistant')?.id || '',
-    'agent-002': createdAgents.find((a: any) => a.name === 'Code Assistant')?.id || '',
-    'agent-003': createdAgents.find((a: any) => a.name === 'Business Analyst')?.id || '',
-    'agent-004': createdAgents.find((a: any) => a.name === 'Creative Writer')?.id || '',
-    'agent-005': createdAgents.find((a: any) => a.name === 'Learning Companion')?.id || '',
-    'super-admin-id': superadminUser?.id || '',
-    'admin-id': adminUser?.id || '',
-    'user-id': regularUser?.id || '',
-  };
-
-  const conversations = mockConversations.map((conv) => ({
-    agentId: mockToRealMapping[conv.agentId] || '',
-    userId: mockToRealMapping[conv.userId] || '',
-    title: conv.title,
-    summary: conv.summary,
-    isActive: conv.isActive,
-  }));
-
-  const createdConversations: any[] = [];
-  for (const conversation of conversations) {
-    if (conversation.agentId && conversation.userId) {
-      try {
-        const existingConversation = await prisma.conversation.findFirst({
-          where: {
-            agentId: conversation.agentId,
-            userId: conversation.userId,
-            title: conversation.title,
-          },
-        });
-
-        if (!existingConversation) {
-          const createdConversation = await prisma.conversation.create({
-            data: conversation,
-          });
-          createdConversations.push(createdConversation);
-          console.log(`✓ Created conversation: ${conversation.title}`);
-        } else {
-          createdConversations.push(existingConversation);
-          console.log(`✓ Found existing conversation: ${conversation.title}`);
-        }
-      } catch (error) {
-        console.log(`⚠ Error creating conversation:`, error);
-      }
-    }
-  }
+  // Seed Conversations using dedicated seeder
+  const createdConversations: any[] = await ConversationSeeder.instance.run(
+    prisma,
+    mockConversations,
+    createdAgents,
+    superadminUser,
+    adminUser,
+    regularUser
+  );
 
   // Add mock label to all conversations
   if (mockLabelId && createdConversations.length > 0) {
@@ -689,51 +610,12 @@ async function main() {
     await entityLabelRepo.createMany(conversationLabels);
   }
 
-  // Seed Messages with position tracking
-  // Note: Messages use direct Prisma due to complex nested relationship with conversations
-  console.log('📝 Seeding Messages...');
-
-  const createdMessages: any[] = [];
-  // Create messages for each conversation from mock data
-  for (let i = 0; i < mockConversations.length && i < createdConversations.length; i++) {
-    const mockConv = mockConversations[i];
-    const realConv = createdConversations[i] as any;
-
-    if (mockConv.messages && realConv?.id) {
-      for (const message of mockConv.messages) {
-        try {
-          const existingMessage = await prisma.message.findFirst({
-            where: {
-              conversationId: realConv.id,
-              content: message.content,
-              position: message.position,
-            },
-          });
-
-          if (!existingMessage) {
-            const createdMessage = await prisma.message.create({
-              data: {
-                conversationId: realConv.id,
-                sender: message.sender,
-                content: message.content,
-                position: message.position,
-                tokens: message.tokens || null,
-                metadata: message.metadata || null,
-              },
-            });
-            createdMessages.push(createdMessage);
-            console.log(
-              `✓ Created message ${message.position} in conversation "${mockConv.title}"`,
-            );
-          } else {
-            createdMessages.push(existingMessage);
-          }
-        } catch (error) {
-          console.log(`⚠ Error creating message:`, error);
-        }
-      }
-    }
-  }
+  // Seed Messages using dedicated seeder
+  const createdMessages: any[] = await MessageSeeder.instance.run(
+    prisma,
+    mockConversations,
+    createdConversations
+  );
 
   // Add mock label to all messages
   if (mockLabelId && createdMessages.length > 0) {
