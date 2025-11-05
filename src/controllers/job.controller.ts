@@ -27,12 +27,9 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
         `Extract document ${documentId}`,
       );
       
-      res.json({ success: true, data: job });
+      this.sendSuccess(res, job);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -44,16 +41,13 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
       const job = await this.jobService.getJobDetail(req.params.id);
       
       if (!job) {
-        res.status(404).json({ success: false, error: 'Job not found' });
+        this.handleError(res, 'Job not found', 404);
         return;
       }
       
-      res.json({ success: true, data: job });
+      this.sendSuccess(res, job);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -66,12 +60,12 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
       const userId = req.user?.id;
       
       if (!type) {
-        res.status(400).json({ success: false, error: 'Job type is required' });
+        this.handleError(res, 'Job type is required', 400);
         return;
       }
       
       if (!payload) {
-        res.status(400).json({ success: false, error: 'Job payload is required' });
+        this.handleError(res, 'Job payload is required', 400);
         return;
       }
       
@@ -85,12 +79,9 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
         databaseIds
       );
       
-      res.status(201).json({ success: true, data: job });
+      this.sendSuccess(res, job);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -101,22 +92,23 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
     try {
       const { status, type } = req.query;
       
-      let jobs;
+      let jobs: JobDro[];
       
-      if (status) {
-        jobs = await this.jobService.getJobsByStatus(String(status));
-      } else if (type) {
-        jobs = await this.jobService.getJobsByType(String(type));
-      } else {
-        jobs = await this.jobService.getJobs();
+      switch (true) {
+        case !!status:
+          jobs = await this.jobService.getJobsByStatus(String(status));
+          break;
+        case !!type:
+          jobs = await this.jobService.getJobsByType(String(type));
+          break;
+        default:
+          jobs = await this.jobService.getJobs();
+          break;
       }
       
-      res.json({ success: true, data: jobs });
+      this.sendSuccess(res, jobs);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -128,16 +120,13 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
       const job = await this.jobService.getJob(req.params.id);
       
       if (!job) {
-        res.status(404).json({ success: false, error: 'Job not found' });
+        this.handleError(res, 'Job not found', 404);
         return;
       }
       
-      res.json({ success: true, data: job });
+      this.sendSuccess(res, job);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -155,12 +144,9 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
         progress,
       });
       
-      res.json({ success: true, data: job });
+      this.sendSuccess(res, job);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -170,12 +156,9 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
   async deleteJob(req: Request, res: Response): Promise<void> {
     try {
       await this.jobService.deleteJob(req.params.id);
-      res.json({ success: true, message: 'Job deleted successfully' });
+      this.sendSuccess(res, null, 'Job deleted successfully');
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -191,16 +174,9 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
         status: 'restart'
       });
       
-      res.json({ 
-        success: true, 
-        message: `Job ${jobId} restarted successfully`,
-        data: job 
-      });
+      this.sendSuccess(res, job, `Job ${jobId} restarted successfully`);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -213,16 +189,9 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
       
       const job = await this.jobService.retryJob(jobId);
       
-      res.json({ 
-        success: true, 
-        message: `Job ${jobId} queued for retry`,
-        data: job 
-      });
+      this.sendSuccess(res, job, `Job ${jobId} queued for retry`);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -232,12 +201,9 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
   async getJobStats(req: Request, res: Response): Promise<void> {
     try {
       const stats = await this.jobService.getJobStats();
-      res.json({ success: true, data: stats });
+      this.sendSuccess(res, stats);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -248,12 +214,9 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
     try {
       const jobId = req.params.id;
       const results = await this.jobService.getJobResults(jobId);
-      res.json({ success: true, data: results });
+      this.sendSuccess(res, results);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -266,16 +229,13 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
       const result = await this.jobService.getLatestJobResult(jobId);
       
       if (!result) {
-        res.status(404).json({ success: false, error: 'No results found for this job' });
+        this.handleError(res, 'No results found for this job', 404);
         return;
       }
       
-      res.json({ success: true, data: result });
+      this.sendSuccess(res, result);
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 
@@ -285,17 +245,13 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
   async pingRabbitMQ(req: Request, res: Response): Promise<void> {
     try {
       const isConnected = await this.jobService.pingRabbitMQ();
-      res.json({ 
-        success: true, 
-        connected: isConnected,
-        message: isConnected ? 'RabbitMQ is connected' : 'RabbitMQ is not connected'
-      });
+      this.sendSuccess(
+        res, 
+        { connected: isConnected },
+        isConnected ? 'RabbitMQ is connected' : 'RabbitMQ is not connected'
+      );
     } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        connected: false,
-        error: error instanceof Error ? error.message : String(error) 
-      });
+      this.handleError(res, error instanceof Error ? error.message : String(error), 500);
     }
   }
 }

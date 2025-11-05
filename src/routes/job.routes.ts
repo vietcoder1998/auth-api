@@ -8,7 +8,7 @@ export class JobRoutes extends BaseRouter<JobModel, JobDto, JobDro> {
     this.initializeRoutes();
   }
 
-  protected initializeRoutes(): void {
+  override initializeRoutes(): void {
     // Public routes
     this.routes.get('/ping', jobController.pingRabbitMQ.bind(jobController));
 
