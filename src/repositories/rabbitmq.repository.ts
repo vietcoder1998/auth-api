@@ -1,5 +1,6 @@
-import amqp, { Channel, Connection, ConsumeMessage } from 'amqplib';
-import { logger } from '../middlewares/logger.middle';
+import type { Channel, ChannelModel, Connection, ConsumeMessage } from 'amqplib';
+import amqp from 'amqplib';
+import { logError, logInfo, logWarn } from '../middlewares/logger.middle';
 
 export interface RabbitMQConfig {
   url: string;
@@ -17,12 +18,8 @@ export interface RabbitMQConfig {
 export class RabbitMQRepository {
   private connection: Connection | null = null;
   private channel: Channel | null = null;
+  private channelModel: ChannelModel | null = null;
   private config: RabbitMQConfig;
-  private readonly queueNames: Record<string, string> = {
-    execute_tool: 'execute_tool',
-    generate_prompt: 'generate_prompt',
-    backup: 'backup',
-  };
 
   constructor(config?: RabbitMQConfig) {
     this.config = config || {
@@ -56,30 +53,39 @@ export class RabbitMQRepository {
   async connect(): Promise<void> {
     try {
       if (this.connection) {
-        logger.info('RabbitMQ connection already exists');
+        logInfo('RabbitMQ connection already exists');
         return;
       }
 
-      logger.info(`Connecting to RabbitMQ at ${this.config.url}`);
-      this.connection = await amqp.connect(this.config.url);
+      logInfo(`Connecting to RabbitMQ at ${this.config.url}`);
 
-      this.connection.on('error', (err) => {
-        logger.error('RabbitMQ connection error:', err);
-      });
+      this.channelModel = await amqp.connect(this.config.url);
 
-      this.connection.on('close', () => {
-        logger.warn('RabbitMQ connection closed');
-        this.connection = null;
-        this.channel = null;
-      });
+      if (!this.channelModel) {
+        throw new Error('Failed to create RabbitMQ channel');
+      }
 
-      logger.info('Successfully connected to RabbitMQ');
+      this.connection = this.channelModel.connection;
+
+      if (this.connection) {
+        this.connection.on('error', (err: Error) => {
+          logError('RabbitMQ connection error', { error: err });
+        });
+
+        this.connection.on('close', () => {
+          logWarn('RabbitMQ connection closed');
+          this.connection = null;
+          this.channel = null;
+        });
+      }
+
+      logInfo('Successfully connected to RabbitMQ');
 
       // Create channel and assert queues
       await this.createChannel();
       await this.assertQueues();
     } catch (error) {
-      logger.error('Failed to connect to RabbitMQ:', error);
+      logError('Failed to connect to RabbitMQ', { error });
       throw error;
     }
   }
@@ -97,24 +103,35 @@ export class RabbitMQRepository {
         return this.channel;
       }
 
-      this.channel = await this.connection.createChannel();
+      if (!this.channelModel) {
+        throw new Error('RabbitMQ channel model not available');
+      }
 
-      this.channel.on('error', (err) => {
-        logger.error('RabbitMQ channel error:', err);
-      });
+      this.channel = await this.channelModel.createChannel();
 
-      this.channel.on('close', () => {
-        logger.warn('RabbitMQ channel closed');
-        this.channel = null;
-      });
+      if (this.channel) {
+        this.channel.on('error', (err: Error) => {
+          logError('RabbitMQ channel error', { error: err });
+        });
 
-      // Set prefetch to control concurrent message processing
-      await this.channel.prefetch(1);
+        this.channel.on('close', () => {
+          logWarn('RabbitMQ channel closed');
+          this.channel = null;
+        });
 
-      logger.info('RabbitMQ channel created successfully');
+        // Set prefetch to control concurrent message processing
+        await this.channel.prefetch(1);
+      }
+
+      logInfo('RabbitMQ channel created successfully');
+
+      if (!this.channel) {
+        throw new Error('Failed to create channel');
+      }
+
       return this.channel;
     } catch (error) {
-      logger.error('Failed to create RabbitMQ channel:', error);
+      logError('Failed to create RabbitMQ channel', { error });
       throw error;
     }
   }
@@ -136,10 +153,10 @@ export class RabbitMQRepository {
           arguments: queueConfig.arguments || {},
         });
 
-        logger.info(`Queue asserted: ${queueConfig.name}`);
+        logInfo(`Queue asserted: ${queueConfig.name}`);
       }
     } catch (error) {
-      logger.error('Failed to assert queues:', error);
+      logError('Failed to assert queues', { error });
       throw error;
     }
   }
@@ -165,7 +182,7 @@ export class RabbitMQRepository {
   getQueueName(queueKey: string): string {
     const queueConfig = this.config.queues[queueKey];
     if (!queueConfig) {
-      logger.warn(`Queue key "${queueKey}" not found in config, using key as queue name`);
+      logWarn(`Queue key "${queueKey}" not found in config, using key as queue name`);
       return queueKey;
     }
     return queueConfig.name;
@@ -182,14 +199,14 @@ export class RabbitMQRepository {
       priority?: number;
       expiration?: string;
       headers?: any;
-    }
+    },
   ): Promise<boolean> {
     try {
       const channel = await this.getChannel();
       const queueName = this.getQueueName(queueKey);
 
       const messageBuffer = Buffer.from(JSON.stringify(message));
-      
+
       const sent = channel.sendToQueue(queueName, messageBuffer, {
         persistent: options?.persistent !== false,
         priority: options?.priority || 0,
@@ -198,14 +215,14 @@ export class RabbitMQRepository {
       });
 
       if (sent) {
-        logger.info(`Message published to queue "${queueName}"`);
+        logInfo(`Message published to queue "${queueName}"`);
       } else {
-        logger.warn(`Failed to publish message to queue "${queueName}" - buffer full`);
+        logWarn(`Failed to publish message to queue "${queueName}" - buffer full`);
       }
 
       return sent;
     } catch (error) {
-      logger.error(`Error publishing to queue "${queueKey}":`, error);
+      logError(`Error publishing to queue "${queueKey}"`, { error });
       throw error;
     }
   }
@@ -221,27 +238,23 @@ export class RabbitMQRepository {
       exclusive?: boolean;
       priority?: number;
       arguments?: any;
-    }
+    },
   ): Promise<string> {
     try {
       const channel = await this.getChannel();
       const queueName = this.getQueueName(queueKey);
 
-      const { consumerTag } = await channel.consume(
-        queueName,
-        onMessage,
-        {
-          noAck: options?.noAck || false,
-          exclusive: options?.exclusive || false,
-          priority: options?.priority,
-          arguments: options?.arguments,
-        }
-      );
+      const { consumerTag } = await channel.consume(queueName, onMessage, {
+        noAck: options?.noAck || false,
+        exclusive: options?.exclusive || false,
+        priority: options?.priority,
+        arguments: options?.arguments,
+      });
 
-      logger.info(`Started consuming from queue "${queueName}" with tag: ${consumerTag}`);
+      logInfo(`Started consuming from queue "${queueName}" with tag: ${consumerTag}`);
       return consumerTag;
     } catch (error) {
-      logger.error(`Error consuming from queue "${queueKey}":`, error);
+      logError(`Error consuming from queue "${queueKey}"`, { error });
       throw error;
     }
   }
@@ -254,7 +267,7 @@ export class RabbitMQRepository {
       const channel = await this.getChannel();
       channel.ack(message, allUpTo);
     } catch (error) {
-      logger.error('Error acknowledging message:', error);
+      logError('Error acknowledging message', { error });
       throw error;
     }
   }
@@ -267,7 +280,7 @@ export class RabbitMQRepository {
       const channel = await this.getChannel();
       channel.nack(message, allUpTo, requeue);
     } catch (error) {
-      logger.error('Error rejecting message:', error);
+      logError('Error rejecting message', { error });
       throw error;
     }
   }
@@ -282,7 +295,7 @@ export class RabbitMQRepository {
       const queueInfo = await channel.checkQueue(queueName);
       return queueInfo.messageCount;
     } catch (error) {
-      logger.error(`Error getting message count for queue "${queueKey}":`, error);
+      logError(`Error getting message count for queue "${queueKey}"`, { error });
       throw error;
     }
   }
@@ -295,10 +308,10 @@ export class RabbitMQRepository {
       const channel = await this.getChannel();
       const queueName = this.getQueueName(queueKey);
       const result = await channel.purgeQueue(queueName);
-      logger.info(`Purged ${result.messageCount} messages from queue "${queueName}"`);
+      logInfo(`Purged ${result.messageCount} messages from queue "${queueName}"`);
       return result.messageCount;
     } catch (error) {
-      logger.error(`Error purging queue "${queueKey}":`, error);
+      logError(`Error purging queue "${queueKey}"`, { error });
       throw error;
     }
   }
@@ -306,7 +319,10 @@ export class RabbitMQRepository {
   /**
    * Delete a queue
    */
-  async deleteQueue(queueKey: string, options?: { ifUnused?: boolean; ifEmpty?: boolean }): Promise<number> {
+  async deleteQueue(
+    queueKey: string,
+    options?: { ifUnused?: boolean; ifEmpty?: boolean },
+  ): Promise<number> {
     try {
       const channel = await this.getChannel();
       const queueName = this.getQueueName(queueKey);
@@ -314,10 +330,10 @@ export class RabbitMQRepository {
         ifUnused: options?.ifUnused || false,
         ifEmpty: options?.ifEmpty || false,
       });
-      logger.info(`Deleted queue "${queueName}" with ${result.messageCount} messages`);
+      logInfo(`Deleted queue "${queueName}" with ${result.messageCount} messages`);
       return result.messageCount;
     } catch (error) {
-      logger.error(`Error deleting queue "${queueKey}":`, error);
+      logError(`Error deleting queue "${queueKey}"`, { error });
       throw error;
     }
   }
@@ -330,16 +346,19 @@ export class RabbitMQRepository {
       if (this.channel) {
         await this.channel.close();
         this.channel = null;
-        logger.info('RabbitMQ channel closed');
+        logInfo('RabbitMQ channel closed');
       }
 
-      if (this.connection) {
-        await this.connection.close();
-        this.connection = null;
-        logger.info('RabbitMQ connection closed');
+      if (this.channelModel) {
+        await this.channelModel.close();
+        this.channelModel = null;
+        logInfo('RabbitMQ channel model closed');
       }
+
+      this.connection = null;
+      logInfo('RabbitMQ disconnected');
     } catch (error) {
-      logger.error('Error disconnecting from RabbitMQ:', error);
+      logError('Error disconnecting from RabbitMQ', { error });
       throw error;
     }
   }

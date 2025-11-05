@@ -1,367 +1,258 @@
 import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
 import { JobRepository } from '../repositories/job.repository';
-import { logger } from '../middlewares/logger.middle';
-
-// Type definitions from the diagram
-export interface JobExecuteToolProcessDto {
-  jobId: string;
-  toolName: string;
-  parameters: Record<string, any>;
-  agentId?: string;
-  conversationId?: string;
-}
-
-export interface JobExecuteToolResultDto {
-  jobId: string;
-  success: boolean;
-  result: any;
-  error?: string;
-  processingTime: number;
-}
-
-export interface JobGeneratePromptDto {
-  jobId: string;
-  prompt: string;
-  agentId: string;
-  conversationId?: string;
-  context?: Record<string, any>;
-}
-
-export interface JobGeneratePromptResultDto {
-  jobId: string;
-  success: boolean;
-  generatedPrompt: string;
-  error?: string;
-  processingTime: number;
-}
-
-export interface JobBackupProcessDto {
-  jobId: string;
-  backupType: 'full' | 'incremental' | 'differential';
-  entities: string[];
-  destination?: string;
-}
-
-export interface JobBackupProcessResultDto {
-  jobId: string;
-  success: boolean;
-  backupPath?: string;
-  error?: string;
-  processingTime: number;
-}
+import { JobService } from './job.service';
+import { logError, logInfo } from '../middlewares/logger.middle';
+import { Worker } from 'worker_threads';
+import { v4 as uuidv4 } from 'uuid';
 
 export class WorkerService {
   private readonly rabbitMQRepository: RabbitMQRepository;
   private readonly jobRepository: JobRepository;
+  private readonly jobService: JobService;
+  private workerId: string;
+  private isRunning: boolean = false;
+
+  private readonly JOB_TYPES = [
+    'extract',
+    'file-tuning',
+    'backup',
+    'execute_tool',
+    'generate_prompt',
+    'conversation',
+    'document',
+    'database',
+  ];
+
+  private readonly WORKER_PATHS: Record<string, string> = {
+    extract: require.resolve('../workers/extract.workers.ts'),
+    backup: require.resolve('../workers/backup.workers.ts'),
+    'file-tuning': require.resolve('../workers/fine-tuning.workers.ts'),
+    execute_tool: require.resolve('../workers/execute-tool.workers.ts'),
+    generate_prompt: require.resolve('../workers/generate-prompt.workers.ts'),
+  };
 
   constructor(
     rabbitMQRepository: RabbitMQRepository,
-    jobRepository: JobRepository
+    jobRepository: JobRepository,
+    jobService: JobService
   ) {
     this.rabbitMQRepository = rabbitMQRepository;
     this.jobRepository = jobRepository;
+    this.jobService = jobService;
+    this.workerId = uuidv4();
   }
 
   /**
-   * Listen to RabbitMQ queues and process messages
+   * Process jobs from message queue
    */
-  private async listenOnMq(): Promise<void> {
+  public async processJobs(): Promise<void> {
     try {
-      const channel = await this.rabbitMQRepository.getChannel();
-      
-      // Listen to execute_tool queue
-      await channel.consume(
-        this.rabbitMQRepository.getQueueName('execute_tool'),
-        async (msg) => {
-          if (msg) {
-            try {
-              const data: JobExecuteToolProcessDto = JSON.parse(msg.content.toString());
-              await this.startJobExecuteToolProcess(data);
-              channel.ack(msg);
-            } catch (error) {
-              logger.error('Error processing execute_tool message:', error);
-              channel.nack(msg, false, false);
-            }
-          }
-        }
-      );
-
-      // Listen to generate_prompt queue
-      await channel.consume(
-        this.rabbitMQRepository.getQueueName('generate_prompt'),
-        async (msg) => {
-          if (msg) {
-            try {
-              const data: JobGeneratePromptDto = JSON.parse(msg.content.toString());
-              await this.startGeneratePromptProcess(data);
-              channel.ack(msg);
-            } catch (error) {
-              logger.error('Error processing generate_prompt message:', error);
-              channel.nack(msg, false, false);
-            }
-          }
-        }
-      );
-
-      // Listen to backup queue
-      await channel.consume(
-        this.rabbitMQRepository.getQueueName('backup'),
-        async (msg) => {
-          if (msg) {
-            try {
-              const data: JobBackupProcessDto = JSON.parse(msg.content.toString());
-              await this.startBackupProcess(data);
-              channel.ack(msg);
-            } catch (error) {
-              logger.error('Error processing backup message:', error);
-              channel.nack(msg, false, false);
-            }
-          }
-        }
-      );
-
-      logger.info('Worker service listening to RabbitMQ queues');
-    } catch (error) {
-      logger.error('Error setting up RabbitMQ listeners:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fork a new process to handle job execution (from diagram)
-   */
-  private forkProcess(): void {
-    // Implementation would use Node.js child_process.fork()
-    // This is a placeholder for the actual implementation
-    logger.info('Forking new process for job execution');
-  }
-
-  /**
-   * Fork a new job process with specific job ID
-   * @param jobId - The job ID to process
-   * @returns Promise that resolves when job is queued
-   */
-  private async forkNewJobProcessWithJob<T>(jobId: string): Promise<T> {
-    try {
-      // Get job details from repository
-      const job = await this.jobRepository.findById(jobId);
-      
-      if (!job) {
-        throw new Error(`Job not found: ${jobId}`);
+      if (this.isRunning) {
+        logInfo('Worker service already running', { workerId: this.workerId });
+        return;
       }
 
-      // Fork process to handle the job
-      this.forkProcess();
+      this.isRunning = true;
 
-      return job as T;
+      // Get all unique queue names
+      const queueNames = [...new Set(Object.keys(this.WORKER_PATHS).map((type) =>
+        this.getQueueNameForType(type)
+      ))];
+
+      // Process each queue
+      for (const queueName of queueNames) {
+        await this.rabbitMQRepository.consume(
+          queueName,
+          async (msg) => {
+            if (!msg) return;
+
+            try {
+              const jobData = JSON.parse(msg.content.toString());
+              
+              logInfo('Processing job from queue', {
+                workerId: this.workerId,
+                jobId: jobData.jobId,
+                type: jobData.type,
+                queue: queueName,
+              });
+
+              // Update job status to processing
+              await this.jobRepository.markStarted(jobData.jobId, this.workerId);
+
+              // Get worker path for job type
+              let workerPath = this.WORKER_PATHS[jobData.type];
+              if (!workerPath) {
+                workerPath = require.resolve('../workers/generic.job.worker.ts');
+                logInfo('Using generic worker', { jobType: jobData.type });
+              }
+
+              // Create worker thread
+              const worker = new Worker(workerPath);
+              
+              // Send job data to worker
+              worker.postMessage({
+                jobId: jobData.jobId,
+                type: jobData.type,
+                payload: jobData.payload,
+                workerId: this.workerId,
+              });
+
+              // Handle worker messages (results)
+              worker.on('message', async (result) => {
+                try {
+                  await this.jobService.saveJobResultIntoJob({
+                    id: jobData.jobId, // or generate a new id if needed
+                    jobId: jobData.jobId,
+                    status: 'completed',
+                    result: result.data,
+                    processingTime: result.processingTime || 0,
+                    metadata: result.metadata,
+                    createdAt: new Date(), // or use result.createdAt if available
+                  });
+                  
+                  logInfo(`Worker finished successfully`, {
+                    workerId: this.workerId,
+                    jobId: jobData.jobId,
+                    type: jobData.type,
+                  });
+
+                  worker.terminate();
+                } catch (error) {
+                  logError('Failed to save worker result', {
+                    workerId: this.workerId,
+                    jobId: jobData.jobId,
+                    error,
+                  });
+                }
+              });
+
+              // Handle worker errors
+              worker.on('error', async (error) => {
+                try {
+                  await this.jobService.saveJobResultIntoJob({
+                    id: jobData.jobId,
+                    jobId: jobData.jobId,
+                    status: 'failed',
+                    error: error.message,
+                    processingTime: 0,
+                    createdAt: new Date(),
+                  });
+                  
+                  logError('Worker error', {
+                    workerId: this.workerId,
+                    jobId: jobData.jobId,
+                    type: jobData.type,
+                    error,
+                  });
+
+                  worker.terminate();
+                } catch (saveError) {
+                  logError('Failed to save worker error', {
+                    workerId: this.workerId,
+                    jobId: jobData.jobId,
+                    error: saveError,
+                  });
+                }
+              });
+
+              // Handle worker exit
+              worker.on('exit', (code) => {
+                if (code !== 0) {
+                  logError('Worker stopped with exit code', {
+                    workerId: this.workerId,
+                    jobId: jobData.jobId,
+                    exitCode: code,
+                  });
+                }
+              });
+
+              // Acknowledge message
+              await this.rabbitMQRepository.ack(msg);
+            } catch (error) {
+              logError('Error processing job message', {
+                workerId: this.workerId,
+                error,
+              });
+              // Reject and don't requeue if there's a parsing error
+              await this.rabbitMQRepository.nack(msg, false, false);
+            }
+          }
+        );
+      }
+
+      logInfo('Worker service started, listening to all queues', {
+        workerId: this.workerId,
+        queues: queueNames,
+      });
     } catch (error) {
-      logger.error(`Error forking process for job ${jobId}:`, error);
+      this.isRunning = false;
+      logError('Failed to start worker service', {
+        workerId: this.workerId,
+        error,
+      });
       throw error;
     }
   }
 
   /**
-   * Start job execution for tool processing
-   * @param jobExecuteToolProcessDto - The tool execution job data
-   * @returns Promise with job result
+   * Get queue name based on job type
    */
-  private async startJobExecuteToolProcess(
-    jobExecuteToolProcessDto: JobExecuteToolProcessDto
-  ): Promise<JobExecuteToolResultDto> {
-    const startTime = Date.now();
-    
-    try {
-      logger.info(`Starting tool execution job: ${jobExecuteToolProcessDto.jobId}`);
-      
-      // Create job record
-      await this.jobRepository.create({
-        id: jobExecuteToolProcessDto.jobId,
-        type: 'execute_tool',
-        status: 'processing',
-        data: jobExecuteToolProcessDto,
-      });
-
-      // Fork process to handle execution
-      await this.forkNewJobProcessWithJob(jobExecuteToolProcessDto.jobId);
-
-      // Simulate tool execution (replace with actual implementation)
-      const result = {
-        jobId: jobExecuteToolProcessDto.jobId,
-        success: true,
-        result: { message: 'Tool executed successfully' },
-        processingTime: Date.now() - startTime,
-      };
-
-      // Update job status
-      await this.jobRepository.update(jobExecuteToolProcessDto.jobId, {
-        status: 'completed',
-        result,
-      });
-
-      return result;
-    } catch (error) {
-      logger.error('Error in tool execution job:', error);
-      
-      const errorResult = {
-        jobId: jobExecuteToolProcessDto.jobId,
-        success: false,
-        result: null,
-        error: error instanceof Error ? error.message : String(error),
-        processingTime: Date.now() - startTime,
-      };
-
-      await this.jobRepository.update(jobExecuteToolProcessDto.jobId, {
-        status: 'failed',
-        result: errorResult,
-      });
-
-      return errorResult;
-    }
+  private getQueueNameForType(type: string): string {
+    const queueMap: Record<string, string> = {
+      execute_tool: 'execute_tool',
+      generate_prompt: 'generate_prompt',
+      backup: 'backup',
+      extract: 'extract',
+      'file-tuning': 'file-tuning',
+    };
+    return queueMap[type] || 'job-queue';
   }
 
   /**
-   * Start job for generating prompts
-   * @param jobGeneratePromptDto - The prompt generation job data
-   * @returns Promise with generated prompt result
-   */
-  private async startGeneratePromptProcess(
-    jobGeneratePromptDto: JobGeneratePromptDto
-  ): Promise<JobGeneratePromptResultDto> {
-    const startTime = Date.now();
-    
-    try {
-      logger.info(`Starting prompt generation job: ${jobGeneratePromptDto.jobId}`);
-      
-      // Create job record
-      await this.jobRepository.create({
-        id: jobGeneratePromptDto.jobId,
-        type: 'generate_prompt',
-        status: 'processing',
-        data: jobGeneratePromptDto,
-      });
-
-      // Fork process to handle generation
-      await this.forkNewJobProcessWithJob(jobGeneratePromptDto.jobId);
-
-      // Simulate prompt generation (replace with actual LLM service call)
-      const generatedPrompt = `Generated prompt based on: ${jobGeneratePromptDto.prompt}`;
-
-      const result = {
-        jobId: jobGeneratePromptDto.jobId,
-        success: true,
-        generatedPrompt,
-        processingTime: Date.now() - startTime,
-      };
-
-      await this.jobRepository.update(jobGeneratePromptDto.jobId, {
-        status: 'completed',
-        result,
-      });
-
-      return result;
-    } catch (error) {
-      logger.error('Error in prompt generation job:', error);
-      
-      const errorResult = {
-        jobId: jobGeneratePromptDto.jobId,
-        success: false,
-        generatedPrompt: '',
-        error: error instanceof Error ? error.message : String(error),
-        processingTime: Date.now() - startTime,
-      };
-
-      await this.jobRepository.update(jobGeneratePromptDto.jobId, {
-        status: 'failed',
-        result: errorResult,
-      });
-
-      return errorResult;
-    }
-  }
-
-  /**
-   * Start backup process job
-   * @param jobBackupProcessDto - The backup job data
-   * @returns Promise with backup result
-   */
-  private async startBackupProcess(
-    jobBackupProcessDto: JobBackupProcessDto
-  ): Promise<JobBackupProcessResultDto> {
-    const startTime = Date.now();
-    
-    try {
-      logger.info(`Starting backup job: ${jobBackupProcessDto.jobId}`);
-      
-      // Create job record
-      await this.jobRepository.create({
-        id: jobBackupProcessDto.jobId,
-        type: 'backup',
-        status: 'processing',
-        data: jobBackupProcessDto,
-      });
-
-      // Fork process to handle backup
-      await this.forkNewJobProcessWithJob(jobBackupProcessDto.jobId);
-
-      // Simulate backup (replace with actual backup implementation)
-      const backupPath = `/backups/${jobBackupProcessDto.backupType}/${Date.now()}`;
-
-      const result = {
-        jobId: jobBackupProcessDto.jobId,
-        success: true,
-        backupPath,
-        processingTime: Date.now() - startTime,
-      };
-
-      await this.jobRepository.update(jobBackupProcessDto.jobId, {
-        status: 'completed',
-        result,
-      });
-
-      return result;
-    } catch (error) {
-      logger.error('Error in backup job:', error);
-      
-      const errorResult = {
-        jobId: jobBackupProcessDto.jobId,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        processingTime: Date.now() - startTime,
-      };
-
-      await this.jobRepository.update(jobBackupProcessDto.jobId, {
-        status: 'failed',
-        result: errorResult,
-      });
-
-      return errorResult;
-    }
-  }
-
-  /**
-   * Initialize the worker service and start listening to queues
+   * Start the worker service
    */
   public async start(): Promise<void> {
     try {
+      if (this.isRunning) {
+        logInfo('Worker service already running', { workerId: this.workerId });
+        return;
+      }
+
       await this.rabbitMQRepository.connect();
-      await this.listenOnMq();
-      logger.info('Worker service started successfully');
+      await this.processJobs();
+      
+      logInfo('Worker service started successfully', { workerId: this.workerId });
     } catch (error) {
-      logger.error('Failed to start worker service:', error);
+      logError('Failed to start worker service', { workerId: this.workerId, error });
       throw error;
     }
   }
 
   /**
-   * Stop the worker service and close connections
+   * Stop the worker service
    */
   public async stop(): Promise<void> {
     try {
+      this.isRunning = false;
       await this.rabbitMQRepository.disconnect();
-      logger.info('Worker service stopped');
+      logInfo('Worker service stopped', { workerId: this.workerId });
     } catch (error) {
-      logger.error('Error stopping worker service:', error);
+      logError('Error stopping worker service', { workerId: this.workerId, error });
       throw error;
     }
+  }
+
+  /**
+   * Get worker ID
+   */
+  public getWorkerId(): string {
+    return this.workerId;
+  }
+
+  /**
+   * Check if worker is running
+   */
+  public isWorkerRunning(): boolean {
+    return this.isRunning;
   }
 }

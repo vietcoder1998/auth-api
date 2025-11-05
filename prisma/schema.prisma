@@ -27,7 +27,7 @@ model AIModel {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   SSO         SSO[]
-  agents       Agent[]
+  agents      Agent[]
 
   @@map("ai_model")
 }
@@ -59,16 +59,16 @@ enum CommandType {
 
 // AI Platform Model
 model AIPlatform {
-  id           String         @id @default(uuid())
-  name         String         @unique
-  description  String?        @db.Text
-  endpoint     String? // API endpoint URL
-  apiKeys      AIKey[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  agents       Agent[]
+  id            String         @id @default(uuid())
+  name          String         @unique
+  description   String?        @db.Text
+  endpoint      String? // API endpoint URL
+  apiKeys       AIKey[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  agents        Agent[]
   conversations Conversation[]
-  models       AIModel[]
+  models        AIModel[]
 
   @@map("ai_platform")
 }
@@ -119,7 +119,7 @@ model Billing {
   conversationId String?
   conversation   Conversation? @relation(fields: [conversationId], references: [id])
   createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  updatedAt      DateTime      @default(now())
 
   @@map("billing")
 }
@@ -178,20 +178,20 @@ model Notification {
 }
 
 model Message {
-  id             String         @id @default(uuid())
+  id             String          @id @default(uuid())
   conversationId String
-  conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         String // 'user', 'agent', 'system'
-  content        String         @db.Text
-  metadata       String?        @db.Text
+  content        String          @db.Text
+  metadata       String?         @db.Text
   tokens         Int?
-  position       Int            @default(0)
+  position       Int             @default(0)
   agentId        String?
-  isError        Boolean        @default(false)
-  type           MessageType    @default(question) // 'question' or 'answer'
+  isError        Boolean         @default(false)
+  type           MessageType     @default(question) // 'question' or 'answer'
   faqId          String?
-  faq            Faq?           @relation(fields: [faqId], references: [id])
-  createdAt      DateTime       @default(now())
+  faq            Faq?            @relation(fields: [faqId], references: [id])
+  createdAt      DateTime        @default(now())
   AgentMemory    AgentMemory[]
   promptHistory  PromptHistory[] // 1:n - One message can be referenced by many prompts
 
@@ -226,15 +226,15 @@ model User {
 }
 
 model Role {
-  id          String                @id @default(uuid())
-  name        String                @unique
-  description String?
-  permissions Permission[]
-  users       User[]
+  id               String                @id @default(uuid())
+  name             String                @unique
+  description      String?
+  permissions      Permission[]
+  users            User[]
   // Many-to-many relationship with permission groups through junction table
   permissionGroups RolePermissionGroup[]
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @default(now())
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @default(now())
 
   @@map("role")
 }
@@ -254,17 +254,17 @@ model PermissionGroup {
 }
 
 model Permission {
-  id          String                      @id @default(uuid())
-  name        String                      @unique
-  description String?
-  category    String                      @default("other")
-  route       String?
-  method      String?                     // GET, POST, PUT, DELETE, PATCH
-  roles       Role[]
+  id               String                      @id @default(uuid())
+  name             String                      @unique
+  description      String?
+  category         String                      @default("other")
+  route            String?
+  method           String? // GET, POST, PUT, DELETE, PATCH
+  roles            Role[]
   // Many-to-many relationship with permission groups through junction table
   permissionGroups PermissionGroupPermission[]
-  createdAt   DateTime                    @default(now())
-  updatedAt   DateTime                    @default(now())
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @default(now())
 
   @@map("permission")
 }
@@ -896,7 +896,7 @@ model Faq {
   agent          Agent?         @relation(fields: [aiAgentId], references: [id])
   messages       Message[] // Link FAQ to messages (question/answer)
   createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  updatedAt      DateTime       @default(now())
   description    String?
 
   @@map("faq")
@@ -905,15 +905,15 @@ model Faq {
 // Update the Job model to include worker-related fields
 model Job {
   id          String    @id @default(uuid())
-  type        String    @default("backup") // backup, fine-tuning, extract, document, database, conversation, execute_tool, generate_prompt, etc.
-  status      String    @default("pending") // pending, processing, running, completed, failed, cancelled
-  payload     String?   @db.Text // JSON string for job data
-  result      String?   @db.Text // JSON string for job result/output
+  type        String    @default("backup")
+  status      String    @default("pending")
+  payload     String?   @db.Text
+  result      String?   @db.Text
   error       String?   @db.Text
-  priority    Int       @default(0) // Job priority (higher = more priority)
-  retries     Int       @default(0) // Number of retry attempts
-  maxRetries  Int       @default(3) // Maximum retry attempts
-  progress    Int       @default(0) // Job progress percentage (0-100)
+  priority    Int       @default(0)
+  retries     Int       @default(0)
+  maxRetries  Int       @default(3)
+  progress    Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   startedAt   DateTime?
@@ -921,28 +921,18 @@ model Job {
   description String?
   userId      String?
   user        User?     @relation(fields: [userId], references: [id])
-  
-  // Worker-specific fields
-  workerId    String?   // ID of the worker processing this job
-  queueName   String?   // RabbitMQ queue name (execute_tool, generate_prompt, backup)
-  timeout     Int?      @default(300000) // Job timeout in milliseconds (5 minutes default)
-  
-  // Metadata for different job types
-  metadata    String?   @db.Text // JSON metadata for job configuration
-  // Example for execute_tool: { "toolName": "update_permission", "parameters": {...} }
-  // Example for generate_prompt: { "agentId": "...", "prompt": "...", "context": {...} }
-  // Example for backup: { "backupType": "full", "entities": ["user", "role"], "destination": "/backups" }
 
-  // Link to at least one conversation
+  workerId  String?
+  queueName String?
+  timeout   Int?    @default(300000)
+
+  metadata String? @db.Text
+
   conversations JobConversation[]
-
-  // Link to at least one document
-  documents JobDocument[]
-
-  // Link to at least one database
-  databases JobDatabase[]
-
-  document Document?
+  documents     JobDocument[]
+  databases     JobDatabase[]
+  document      Document?
+  results       JobResult[] // Add this relation
 
   @@index([status])
   @@index([type])
@@ -952,50 +942,44 @@ model Job {
   @@map("job")
 }
 
-// Add JobQueue model for managing RabbitMQ queues
-model JobQueue {
-  id          String   @id @default(uuid())
-  name        String   @unique // Queue name (execute_tool, generate_prompt, backup)
-  description String?  @db.Text
-  isActive    Boolean  @default(true)
-  
-  // Queue configuration
-  maxConcurrency Int   @default(1) // Max concurrent jobs for this queue
-  maxRetries     Int   @default(3) // Default max retries for jobs in this queue
-  timeout        Int   @default(300000) // Default timeout in milliseconds
-  
-  // Queue statistics
-  totalJobs      Int   @default(0)
-  completedJobs  Int   @default(0)
-  failedJobs     Int   @default(0)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model JobResult {
+  id             String   @id @default(uuid())
+  jobId          String
+  job            Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status         String
+  result         String?  @db.Text
+  error          String?  @db.Text
+  processingTime Int?
+  metadata       String?  @db.Text
+  createdAt      DateTime @default(now())
 
-  @@map("job_queue")
+  @@index([jobId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("job_result")
 }
 
 // Add Worker model for tracking worker processes
 model Worker {
-  id          String    @id @default(uuid())
-  name        String    // Worker name/identifier
-  pid         Int?      // Process ID
-  hostname    String?   // Server hostname
-  status      String    @default("idle") // idle, busy, stopped, error
-  
+  id       String  @id @default(uuid())
+  name     String // Worker name/identifier
+  pid      Int? // Process ID
+  hostname String? // Server hostname
+  status   String  @default("idle") // idle, busy, stopped, error
+
   // Worker configuration
-  queues      String    @db.Text // JSON array of queue names this worker handles
-  maxJobs     Int       @default(10) // Max concurrent jobs
-  
+  queues  String @db.Text // JSON array of queue names this worker handles
+  maxJobs Int    @default(10) // Max concurrent jobs
+
   // Worker statistics
-  processedJobs Int     @default(0)
-  failedJobs    Int     @default(0)
-  
+  processedJobs Int @default(0)
+  failedJobs    Int @default(0)
+
   // Heartbeat
   lastHeartbeat DateTime?
   startedAt     DateTime  @default(now())
   stoppedAt     DateTime?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1007,8 +991,8 @@ model Worker {
 // Add JobLog model for detailed job execution logs
 model JobLog {
   id        String   @id @default(uuid())
-  jobId     String   // Reference to Job, but not a foreign key to allow independent cleanup
-  level     String   // info, warn, error, debug
+  jobId     String // Reference to Job, but not a foreign key to allow independent cleanup
+  level     String // info, warn, error, debug
   message   String   @db.Text
   metadata  String?  @db.Text // JSON metadata
   timestamp DateTime @default(now())

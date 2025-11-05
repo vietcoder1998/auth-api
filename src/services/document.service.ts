@@ -1,5 +1,5 @@
 import { PrismaClient, Document } from '@prisma/client';
-import { jobQueue } from './job.service';
+import { jobService } from './job.service';
 import * as XLSX from 'xlsx';
 import { BaseService } from './base.service';
 import { DocumentRepository } from '../repositories/document.repository';
@@ -106,7 +106,7 @@ export class DocumentService extends BaseService<any, DocumentDto, DocumentDto> 
 	async createChunkJob(documentId: string, fileContent: string, fileType: string, userId?: string) {
 		const chunks = await this.splitFileToChunks(fileContent, fileType);
 		// Call job service to process chunks
-		return jobQueue.addJob('extract', { documentId, chunks }, userId, `Chunk break for document ${documentId}`);
+		return jobService.addJob('extract', { documentId, chunks }, userId, `Chunk break for document ${documentId}`);
 	}
 }
 

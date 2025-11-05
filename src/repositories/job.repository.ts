@@ -3,8 +3,8 @@ import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
 
 export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, JobDro> {
-  constructor(model: typeof prisma.job) {
-    super(model);
+  constructor() {
+    super(prisma.job);
   }
 
   private get jobModel() {
@@ -326,4 +326,4 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
   }
 }
 
-export const jobRepository = new JobRepository(prisma.job);
+export const jobRepository = new JobRepository();
