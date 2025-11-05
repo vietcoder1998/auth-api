@@ -34,7 +34,15 @@ async function processJob(jobData) {
         const backupDir = path.resolve(__dirname, '../../backups');
         if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir);
         const backupFile = path.join(backupDir, `db-backup-${jobData.jobId}.json`);
-        fs.writeFileSync(backupFile, JSON.stringify(dbBackup, null, 2), 'utf8');
+        
+        // Handle BigInt serialization
+        const safeStringify = (obj) => {
+          return JSON.stringify(obj, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+          );
+        };
+        
+        fs.writeFileSync(backupFile, safeStringify(dbBackup, null, 2), 'utf8');
         process.send({ status: 'success', data: { backupFile } });
         break;
       }
