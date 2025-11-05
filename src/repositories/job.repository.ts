@@ -1,13 +1,14 @@
 import { Prisma } from '@prisma/client';
-import { JobDro, JobDto, JobFilter, JobStats, JobUpdateDto } from '../interfaces';
+import { JobDro, JobDto, JobFilter, JobModel, JobStats, JobUpdateDto } from '../interfaces';
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
+
 export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, JobDro> {
   constructor() {
     super(prisma.job);
   }
 
-  private get jobModel() {
+  private get jobModel(): JobModel {
     return this.model;
   }
   /**
@@ -20,7 +21,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       id: job.id ?? '',
       createdAt: job.createdAt ?? new Date(0),
       updatedAt: job.updatedAt ?? new Date(0),
-      priority: job.priority ?? 0,
+      priority: (job as any).priority ?? 0, // Safe access in case column doesn't exist yet
       payload: typeof job.payload === 'string' ? this.parseJson(job.payload) : job.payload,
       result: typeof job.result === 'string' ? this.parseJson(job.result) : job.result,
       metadata:
