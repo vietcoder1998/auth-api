@@ -53,7 +53,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       orderBy: { createdAt: 'desc' },
     });
 
-    return jobs.map((job) => this.toDro(job as JobDto));
+    return jobs.map((updatedJob) => this.toDro(updatedJob as JobDto));
   }
 
   /**
@@ -79,7 +79,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       orderBy: { createdAt: 'desc' },
     });
 
-    return jobs.map((job) => this.toDro(job as JobDto));
+    return jobs.map((updatedJob) => this.toDro(updatedJob as JobDto));
   }
 
   /**
@@ -91,7 +91,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       orderBy: { createdAt: 'desc' },
     });
 
-    return jobs.map((job) => this.toDro(job as JobDto));
+    return jobs.map((updatedJob) => this.toDro(updatedJob as JobDto));
   }
 
   /**
@@ -103,7 +103,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       orderBy: { createdAt: 'desc' },
     });
 
-    return jobs.map((job) => this.toDro(job as JobDto));
+    return jobs.map((updatedJob) => this.toDro(updatedJob as JobDto));
   }
 
   /**
@@ -115,7 +115,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       orderBy: { createdAt: 'desc' },
     });
 
-    return jobs.map((job) => this.toDro(job as JobDto));
+    return jobs.map((updatedJob) => this.toDro(updatedJob as JobDto));
   }
 
   /**
@@ -141,7 +141,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       orderBy: { createdAt: 'desc' },
     });
 
-    return jobs.map((job) => this.toDro(job as JobDto));
+    return jobs.map((updatedJob) => this.toDro(updatedJob as JobDto));
   }
 
   /**
@@ -158,14 +158,14 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       orderBy: { createdAt: 'asc' },
     });
 
-    return jobs.map((job) => this.toDro(job as JobDto));
+    return jobs.map((updatedJob) => this.toDro(updatedJob as JobDto));
   }
 
   /**
    * Increment retry count
    */
   async incrementRetries(id: string): Promise<JobDro> {
-    const job = await this.jobModel.update({
+    const updatedJob = await this.jobModel.update({
       where: { id },
       data: {
         retries: {
@@ -174,26 +174,26 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       },
     });
 
-    return this.toDro(job as JobDto);
+    return this.toDro(updatedJob as JobDto);
   }
 
   /**
    * Update job progress
    */
   async updateProgress(id: string, progress: number): Promise<JobDro> {
-    const job = await this.jobModel.update({
+    const updatedJob = await this.jobModel.update({
       where: { id },
       data: { progress },
     });
 
-    return this.toDro(job as JobDto);
+    return this.toDro(updatedJob as JobDto);
   }
 
   /**
    * Mark job as started
    */
   async markStarted(id: string, workerId: string): Promise<JobDro> {
-    const job = await this.jobModel.update({
+    const updatedJob = await this.jobModel.update({
       where: { id },
       data: {
         status: 'processing',
@@ -202,14 +202,14 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       },
     });
 
-    return this.toDro(job as JobDto);
+    return this.toDro(updatedJob as JobDto);
   }
 
   /**
    * Mark job as completed
    */
   async markCompleted(id: string, result?: any): Promise<JobDro> {
-    const job = await this.jobModel.update({
+    const updatedJob = await this.jobModel.update({
       where: { id },
       data: {
         status: 'completed',
@@ -219,14 +219,14 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       },
     });
 
-    return this.toDro(job as JobDto);
+    return this.toDro(updatedJob as JobDto);
   }
 
   /**
    * Mark job as failed
    */
   async markFailed(id: string, error: string): Promise<JobDro> {
-    const job = await this.jobModel.update({
+    const updatedJob = await this.jobModel.update({
       where: { id },
       data: {
         status: 'failed',
@@ -235,21 +235,21 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       },
     });
 
-    return this.toDro(job as JobDto);
+    return this.toDro(updatedJob as JobDto);
   }
 
   /**
    * Mark job as cancelled
    */
   async markCancelled(id: string): Promise<JobDro> {
-    const job = await this.jobModel.update({
+    const updatedJob = await this.jobModel.update({
       where: { id },
       data: {
         status: 'cancelled',
         finishedAt: new Date(),
       },
     });
-    return this.toDro(job as JobDto);
+    return this.toDro(updatedJob as JobDto);
   }
 
   /**
@@ -308,8 +308,8 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
           : ((data as JobDto).metadata as string | null | undefined),
     };
 
-    const job = await this.jobModel.create({ data: createJobData });
-    return this.toDro(job as JobDto) as R;
+    const updatedJob = await this.jobModel.create({ data: createJobData });
+    return this.toDro(updatedJob as JobDto) as R;
   }
 
   /**
@@ -329,8 +329,8 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
       updateData.metadata = JSON.stringify(updateData.metadata);
     }
 
-    const job = await super.update(id, updateData);
-    return this.toDro(job as JobDto) as Dro;
+    const updatedJob = await this.jobModel.update({ where: { id }, data: updateData });
+    return this.toDro(updatedJob as JobDto) as Dro;
   }
 
   /**

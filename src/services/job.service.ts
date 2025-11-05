@@ -241,47 +241,35 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   /**
    * Update job
    */
-  public async updateJob(
-    id: string,
-    data: Partial<{
-      status: string;
-      result: any;
-      error: string;
-      startedAt: Date;
-      finishedAt: Date;
-      progress: number;
-    }>,
-  ): Promise<JobDro> {
+  public async updateJob(id: string, data: Partial<JobUpdateDto>): Promise<JobDro> {
     try {
-      if (data.status === 'restart') {
-        const originalJob: JobDro | null = await this.jobRepository.findById(id);
-        const jobPayLoad: Record<string, any> = JSON.parse(originalJob?.payload || '{}');
-
-        if (!originalJob) {
-          throw new Error('Job not found');
-        }
-
-        const newJob: JobDro = await this.addJob(
-          originalJob.type,
-          jobPayLoad,
-          originalJob.userId ?? undefined,
-          originalJob.description || undefined,
-          undefined, // conversationIds
-          undefined, // documentIds
-          undefined, // databaseIds
-        );
-
-        return newJob;
-      }
-
+      let jobIdToUpdate: string = id;
+      const originalJob: JobDro | null = await this.jobRepository.findById(id);
+      const jobPayLoad: Record<string, any> = JSON.parse(data?.payload || '{}');
       const updateData = {
         ...data,
         finishedAt:
           data.status === 'completed' || data.status === 'failed' ? new Date() : data.finishedAt,
       };
+      
+      if (originalJob) {
+        const updatedJob: JobDro = await this.jobRepository.update(jobIdToUpdate, updateData);
 
-      const updatedJob: JobDro = await this.jobRepository.update(id, updateData);
-      return updatedJob;
+        return updatedJob;
+      }
+
+      if (!data.type) {
+        throw new Error('Job type is required to add a new job');
+      }
+
+      const newJob: JobDro = await this.addJob(
+        data.type,
+        jobPayLoad,
+        data.userId ?? undefined,
+        data.description || undefined,
+      );
+
+      return newJob;
     } catch (error) {
       logError('Failed to update job', { error, jobId: id });
       throw error;
