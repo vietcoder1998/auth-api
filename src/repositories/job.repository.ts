@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { JobDro, JobDto, JobFilter, JobStats } from '../interfaces';
+import { JobDro, JobDto, JobFilter, JobStats, JobUpdateDto } from '../interfaces';
 import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
 export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, JobDro> {
@@ -315,7 +315,7 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
   /**
    * Override update to handle JSON stringification
    */
-  override async update<Dto = JobDto, Dro = JobDro>(id: string, data: Partial<Dto>): Promise<Dro> {
+  override async update<Dto = JobUpdateDto, Dro = JobDro>(id: string, data: JobUpdateDto): Promise<Dro> {
     const updateData = { ...data } as any;
 
     // Stringify JSON fields if they are objects

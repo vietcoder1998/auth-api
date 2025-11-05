@@ -1,8 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
 
 export type JobModel = PrismaClient['job'];
 
-export interface JobDto extends JobModel{
+export interface JobDto extends JobModel {
   id?: string;
   type: string;
   status?: string;
@@ -25,7 +25,7 @@ export interface JobDto extends JobModel{
   updatedAt?: Date;
 }
 
-export interface JobDro extends JobDto{
+export interface JobDro extends JobDto {
   id: string;
   type: string;
   status: string;
@@ -67,16 +67,9 @@ export interface JobFilter {
   endDate?: Date;
 }
 
+export interface JobUpdateDto extends Partial<JobCreateDto> {}
 
-
-export interface JobUpdateDto extends Partial<JobDto> {
-  status?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'restart';
-  progress?: number;
-  result?: any;
-  error?: string;
-}
-
-export interface JobMQPayloadDto extends JobUpdateDto {
+export interface JobMQPayloadDto extends Partial<Omit<JobUpdateDto, 'payload'>> {
   jobId: string;
   type: string;
   payload: Record<string, any>;
@@ -87,7 +80,8 @@ export interface JobMQPayloadDto extends JobUpdateDto {
 export interface JobCreateDto extends Partial<JobDto> {
   id?: string;
   type: string;
-  payload?: Record<string, any>;
+  payload?: string;
   userId?: string;
   description?: string;
 }
+

@@ -1,3 +1,4 @@
+import { parentPort } from 'worker_threads';
 import { PrismaClient } from '@prisma/client';
 import { BaseInterface, SearchParams } from '../interfaces';
 import prisma from '../prisma';

@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { JobResultDro, JobResultDto } from '../interfaces/job-result.interface';
-import { JobCreateDto, JobDto, JobModel, JobMQPayloadDto } from '../interfaces/job.interface';
+import { JobDto, JobModel, JobMQPayloadDto } from '../interfaces/job.interface';
 import { logError, logInfo } from '../middlewares/logger.middle';
 import { JobResultRepository } from '../repositories/job-result.repository';
 import { JobRepository } from '../repositories/job.repository';
 import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
-import { JobDro } from './../interfaces/job.interface';
+import { JobDro, JobUpdateDto } from './../interfaces/job.interface';
 import { BaseService } from './base.service';
 
 export class JobService extends BaseService<JobModel, JobDto, JobDro> {
@@ -201,20 +201,21 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
       }
 
       const jobId: string = uuidv4();
-      const jobCreateDto: JobCreateDto = {
+      const jobCreateDto: JobUpdateDto = {
         id: jobId,
         type,
         status: 'pending',
-        payload,
         userId,
         description,
         queueName: this.getQueueNameForType(type),
+        payload: JSON.stringify(payload),
       };
-      const job: JobDto = await this.jobRepository.create(jobCreateDto);
 
       if (!jobId) {
         throw new Error('JobId is not found');
       }
+
+      const job: JobDto = await this.jobRepository.update(jobId, jobCreateDto);
 
       await this.sendToMQ({
         jobId: jobId,
@@ -389,7 +390,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         status: 'pending',
         retries: currentRetries + 1,
         error: null,
-        result: null,
+        result: undefined,
         startedAt: null,
         finishedAt: null,
         progress: 0,
