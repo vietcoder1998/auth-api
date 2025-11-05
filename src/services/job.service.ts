@@ -385,6 +385,76 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   }
 
   /**
+   * Retry a failed job
+   */
+  public async retryJob(id: string): Promise<any> {
+    try {
+      // Get the current job
+      const job = await this.prisma.job.findUnique({ 
+        where: { id },
+        include: {
+          user: true,
+        }
+      });
+
+      if (!job) {
+        throw new Error('Job not found');
+      }
+
+      // Check if job can be retried
+      if (job.status !== 'failed') {
+        throw new Error(`Job cannot be retried. Current status: ${job.status}`);
+      }
+
+      // Check retry count
+      const currentRetries = job.retries || 0;
+      const maxRetries = job.maxRetries || 3;
+
+      if (currentRetries >= maxRetries) {
+        throw new Error(`Maximum retry attempts (${maxRetries}) reached for this job`);
+      }
+
+      // Parse payload
+      const payload = job.payload ? JSON.parse(job.payload) : {};
+
+      // Increment retry count and reset job status
+      const updatedJob = await this.prisma.job.update({
+        where: { id },
+        data: {
+          status: 'pending',
+          retries: currentRetries + 1,
+          error: null,
+          result: null,
+          startedAt: null,
+          finishedAt: null,
+          progress: 0,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Resend to queue
+      await this.sendToMQ({
+        jobId: job.id,
+        type: job.type,
+        payload,
+        userId: job.userId || undefined,
+        priority: job.priority || 0,
+      });
+
+      logInfo('Job retry initiated', { 
+        jobId: id, 
+        retryCount: currentRetries + 1,
+        maxRetries 
+      });
+
+      return updatedJob;
+    } catch (error) {
+      logError('Failed to retry job', { error, jobId: id });
+      throw error;
+    }
+  }
+
+  /**
    * Ping RabbitMQ connection
    */
   public async pingRabbitMQ(): Promise<boolean> {

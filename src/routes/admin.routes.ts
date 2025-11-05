@@ -69,7 +69,7 @@ router.use('/sockets', socketRoutes);
 router.use('/documents', documentRouter);
 router.use('/faqs', faqRouter);
 router.use('/ui-config', uiConfigRouter);
-router.use('/jobs', jobRouter);
+router.use(jobRouter.path, jobRouter.routes);
 router.use('/tools', toolRouter);
 router.get('/search', searchAllEntities);
 router.use('/system', systemRouter);

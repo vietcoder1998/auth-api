@@ -7,14 +7,10 @@ import { CacheMiddleware, cacheMiddleware } from './cache.middleware';
 
 export class AuthMiddleware {
   private cacheMiddleware: CacheMiddleware;
-  private userService: UserService;
-  private tokenService: TokenService;
   public authService: AuthService;
 
   constructor() {
     this.cacheMiddleware = cacheMiddleware;
-    this.userService = userService;
-    this.tokenService = tokenService;
     this.authService = authService;
   }
   async redisTokenValidation(request: Request, response: Response, next: NextFunction) {
