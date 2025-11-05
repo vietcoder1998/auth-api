@@ -1,159 +1,210 @@
+import { JobDro, JobDto, JobFilter, JobModel, JobStats } from '../interfaces';
+import { prisma } from '../setup';
 import { BaseRepository } from './base.repository';
-import { PrismaClient } from '@prisma/client';
 
-export interface Job {
-  id: string;
-  type: string;
-  status: string;
-  queueName?: string;
-  workerId?: string;
-  payload?: string;
-  result?: string;
-  error?: string;
-  priority?: number;
-  retries?: number;
-  maxRetries?: number;
-  progress?: number;
-  timeout?: number;
-  metadata?: string;
-  userId?: string;
-  startedAt?: Date;
-  finishedAt?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, JobDro> {
+  constructor(model: typeof prisma.job) {
+    super(model);
+  }
 
-export class JobRepository extends BaseRepository<Job, Job, Job> {
-  constructor(prisma?: PrismaClient) {
-    const prismaInstance = prisma || (global as any).prisma;
-    if (!prismaInstance?.job) {
-      throw new Error('Prisma job model not available. Make sure to run migrations.');
+  private get jobModel() {
+    return this.model;
+  }
+  /**
+   * Transform model to DRO with parsed JSON fields
+   */
+  protected toDro(model: JobModel): JobDro {
+    return {
+      ...model,
+      createdAt: model.createdAt ?? new Date(0),
+      updatedAt: model.updatedAt ?? new Date(0),
+      priority: model.priority ?? 0,
+      payload: model.payload ? this.parseJson(model.payload) : null,
+      result: model.result ? this.parseJson(model.result) : null,
+      metadata: model.metadata ? this.parseJson(model.metadata) : null,
+      retries: model.retries ?? 0,
+      maxRetries: model.maxRetries ?? 0,
+      progress: model.progress ?? 0,
+    };
+  }
+
+  /**
+   * Helper to safely parse JSON
+   */
+  private parseJson(jsonString: string): any {
+    try {
+      return JSON.parse(jsonString);
+    } catch {
+      return jsonString;
     }
-    super(prismaInstance.job);
   }
 
   /**
    * Find jobs by status
    */
-  async findByStatus(status: string): Promise<Job[]> {
-    return this.model.findMany({
+  async findByStatus(status: string): Promise<JobDro[]> {
+    const jobs = (await this.jobModel?.findMany({
       where: { status },
       orderBy: { createdAt: 'desc' },
-    }) as Promise<Job[]>;
+    })) as JobModel[];
+
+    return jobs.map((job) => this.toDro(job));
   }
 
   /**
    * Find pending jobs
    */
-  async findPending(): Promise<Job[]> {
+  async findPending(): Promise<JobDro[]> {
     return this.findByStatus('pending');
   }
 
   /**
    * Find processing jobs
    */
-  async findProcessing(): Promise<Job[]> {
+  async findProcessing(): Promise<JobDro[]> {
     return this.findByStatus('processing');
   }
 
   /**
    * Find jobs by type
    */
-  async findByType(type: string): Promise<Job[]> {
-    return this.model.findMany({
+  async findByType(type: string): Promise<JobDro[]> {
+    const jobs = (await this.jobModel.findMany({
       where: { type },
       orderBy: { createdAt: 'desc' },
-    }) as Promise<Job[]>;
+    })) as JobModel[];
+
+    return jobs.map((job) => this.toDro(job));
   }
 
   /**
    * Find jobs by queue name
    */
-  async findByQueue(queueName: string): Promise<Job[]> {
-    return this.model.findMany({
+  async findByQueue(queueName: string): Promise<JobDro[]> {
+    const jobs = (await this.jobModel.findMany({
       where: { queueName },
       orderBy: { createdAt: 'desc' },
-    }) as Promise<Job[]>;
+    })) as JobModel[];
+
+    return jobs.map((job) => this.toDro(job));
   }
 
   /**
    * Find jobs by worker ID
    */
-  async findByWorker(workerId: string): Promise<Job[]> {
-    return this.model.findMany({
+  async findByWorker(workerId: string): Promise<JobDro[]> {
+    const jobs = (await this.jobModel.findMany({
       where: { workerId },
       orderBy: { createdAt: 'desc' },
-    }) as Promise<Job[]>;
+    })) as JobModel[];
+
+    return jobs.map((job) => this.toDro(job));
   }
 
   /**
    * Find jobs by user ID
    */
-  async findByUser(userId: string): Promise<Job[]> {
-    return this.model.findMany({
+  async findByUser(userId: string): Promise<JobDro[]> {
+    const jobs = (await this.jobModel.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-    }) as Promise<Job[]>;
+    })) as JobModel[];
+
+    return jobs.map((job) => this.toDro(job));
+  }
+
+  /**
+   * Find jobs with filters
+   */
+  async findByFilter(filter: JobFilter): Promise<JobDro[]> {
+    const where: any = {};
+
+    if (filter.type) where.type = filter.type;
+    if (filter.status) where.status = filter.status;
+    if (filter.queueName) where.queueName = filter.queueName;
+    if (filter.workerId) where.workerId = filter.workerId;
+    if (filter.userId) where.userId = filter.userId;
+
+    if (filter.startDate || filter.endDate) {
+      where.createdAt = {};
+      if (filter.startDate) where.createdAt.gte = filter.startDate;
+      if (filter.endDate) where.createdAt.lte = filter.endDate;
+    }
+
+    const jobs = (await this.jobModel.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    })) as JobModel[];
+
+    return jobs.map((job) => this.toDro(job));
   }
 
   /**
    * Find failed jobs that can be retried
    */
-  async findRetryable(): Promise<Job[]> {
-    return this.model.findMany({
+  async findRetryable(): Promise<JobDro[]> {
+    const jobs = (await this.jobModel.findMany({
       where: {
         status: 'failed',
         retries: {
-          lt: this.model.fields.maxRetries,
+          lt: 3, // Replace with your desired maxRetries value or make it configurable
         },
       },
       orderBy: { createdAt: 'asc' },
-    }) as Promise<Job[]>;
+    })) as JobModel[];
+
+    return jobs.map((job) => this.toDro(job));
   }
 
   /**
    * Increment retry count
    */
-  async incrementRetries(id: string): Promise<Job> {
-    return this.model.update({
+  async incrementRetries(id: string): Promise<JobDro> {
+    const job = (await this.jobModel.update({
       where: { id },
       data: {
         retries: {
           increment: 1,
         },
       },
-    }) as Promise<Job>;
+    })) as JobModel;
+
+    return this.toDro(job);
   }
 
   /**
    * Update job progress
    */
-  async updateProgress(id: string, progress: number): Promise<Job> {
-    return this.model.update({
+  async updateProgress(id: string, progress: number): Promise<JobDro> {
+    const job = (await this.jobModel.update({
       where: { id },
       data: { progress },
-    }) as Promise<Job>;
+    })) as JobModel;
+
+    return this.toDro(job);
   }
 
   /**
    * Mark job as started
    */
-  async markStarted(id: string, workerId: string): Promise<Job> {
-    return this.model.update({
+  async markStarted(id: string, workerId: string): Promise<JobDro> {
+    const job = (await this.jobModel.update({
       where: { id },
       data: {
         status: 'processing',
         workerId,
         startedAt: new Date(),
       },
-    }) as Promise<Job>;
+    })) as JobModel;
+
+    return this.toDro(job);
   }
 
   /**
    * Mark job as completed
    */
-  async markCompleted(id: string, result?: any): Promise<Job> {
-    return this.model.update({
+  async markCompleted(id: string, result?: any): Promise<JobDro> {
+    const job = (await this.jobModel.update({
       where: { id },
       data: {
         status: 'completed',
@@ -161,41 +212,118 @@ export class JobRepository extends BaseRepository<Job, Job, Job> {
         progress: 100,
         finishedAt: new Date(),
       },
-    }) as Promise<Job>;
+    })) as JobModel;
+
+    return this.toDro(job);
   }
 
   /**
    * Mark job as failed
    */
-  async markFailed(id: string, error: string): Promise<Job> {
-    return this.model.update({
+  async markFailed(id: string, error: string): Promise<JobDro> {
+    const job = (await this.jobModel.update({
       where: { id },
       data: {
         status: 'failed',
         error,
         finishedAt: new Date(),
       },
-    }) as Promise<Job>;
+    })) as JobModel;
+
+    return this.toDro(job);
+  }
+
+  /**
+   * Mark job as cancelled
+   */
+  async markCancelled(id: string): Promise<JobDro> {
+    const job = (await this.jobModel.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+        finishedAt: new Date(),
+      },
+    })) as JobModel;
+
+    return this.toDro(job);
   }
 
   /**
    * Get job statistics
    */
-  async getStats(): Promise<{
-    total: number;
-    pending: number;
-    processing: number;
-    completed: number;
-    failed: number;
-  }> {
-    const [total, pending, processing, completed, failed] = await Promise.all([
-      this.model.count(),
-      this.model.count({ where: { status: 'pending' } }),
-      this.model.count({ where: { status: 'processing' } }),
-      this.model.count({ where: { status: 'completed' } }),
-      this.model.count({ where: { status: 'failed' } }),
+  async getStats(): Promise<JobStats> {
+    const [total, pending, processing, completed, failed, cancelled] = await Promise.all([
+      this.jobModel.count(),
+      this.jobModel.count({ where: { status: 'pending' } }),
+      this.jobModel.count({ where: { status: 'processing' } }),
+      this.jobModel.count({ where: { status: 'completed' } }),
+      this.jobModel.count({ where: { status: 'failed' } }),
+      this.jobModel.count({ where: { status: 'cancelled' } }),
     ]);
 
-    return { total, pending, processing, completed, failed };
+    return { total, pending, processing, completed, failed, cancelled };
+  }
+
+  /**
+   * Delete old completed jobs
+   */
+  async deleteOldCompleted(olderThanDays: number): Promise<number> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+    const result = await this.jobModel.deleteMany({
+      where: {
+        status: 'completed',
+        finishedAt: {
+          lt: cutoffDate,
+        },
+      },
+    });
+
+    return result.count;
+  }
+
+  /**
+   * Override create to handle JSON stringification
+   */
+  override async create<T = any, R = any>(data: T): Promise<R> {
+    const jobData = data as any;
+
+    // Stringify JSON fields if they are objects
+    if (jobData.payload && typeof jobData.payload === 'object') {
+      jobData.payload = JSON.stringify(jobData.payload);
+    }
+    if (jobData.result && typeof jobData.result === 'object') {
+      jobData.result = JSON.stringify(jobData.result);
+    }
+    if (jobData.metadata && typeof jobData.metadata === 'object') {
+      jobData.metadata = JSON.stringify(jobData.metadata);
+    }
+
+    const job = await super.create(jobData);
+    return this.toDro(job as JobModel) as R;
+  }
+
+  /**
+   * Override update to handle JSON stringification
+   */
+  override async update<Dto = JobDto, Dro = JobDro>(id: string, data: Partial<Dto>): Promise<Dro> {
+    const updateData = { ...data } as any;
+
+    // Stringify JSON fields if they are objects
+    if (updateData.payload && typeof updateData.payload === 'object') {
+      updateData.payload = JSON.stringify(updateData.payload);
+    }
+    if (updateData.result && typeof updateData.result === 'object') {
+      updateData.result = JSON.stringify(updateData.result);
+    }
+    if (updateData.metadata && typeof updateData.metadata === 'object') {
+      updateData.metadata = JSON.stringify(updateData.metadata);
+    }
+
+    const job = await super.update(id, updateData);
+    return this.toDro(job as JobModel) as Dro;
   }
 }
+
+export const jobRepository = new JobRepository(prisma.job);
