@@ -902,13 +902,18 @@ model Faq {
   @@map("faq")
 }
 
+// Update the Job model to include worker-related fields
 model Job {
   id          String    @id @default(uuid())
-  type        String    @default("backup") // backup, fine-tuning, extract, document, database, conversation, etc.
-  status      String    @default("pending") // pending, running, completed, failed
+  type        String    @default("backup") // backup, fine-tuning, extract, document, database, conversation, execute_tool, generate_prompt, etc.
+  status      String    @default("pending") // pending, processing, running, completed, failed, cancelled
   payload     String?   @db.Text // JSON string for job data
   result      String?   @db.Text // JSON string for job result/output
   error       String?   @db.Text
+  priority    Int       @default(0) // Job priority (higher = more priority)
+  retries     Int       @default(0) // Number of retry attempts
+  maxRetries  Int       @default(3) // Maximum retry attempts
+  progress    Int       @default(0) // Job progress percentage (0-100)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   startedAt   DateTime?
@@ -916,6 +921,17 @@ model Job {
   description String?
   userId      String?
   user        User?     @relation(fields: [userId], references: [id])
+  
+  // Worker-specific fields
+  workerId    String?   // ID of the worker processing this job
+  queueName   String?   // RabbitMQ queue name (execute_tool, generate_prompt, backup)
+  timeout     Int?      @default(300000) // Job timeout in milliseconds (5 minutes default)
+  
+  // Metadata for different job types
+  metadata    String?   @db.Text // JSON metadata for job configuration
+  // Example for execute_tool: { "toolName": "update_permission", "parameters": {...} }
+  // Example for generate_prompt: { "agentId": "...", "prompt": "...", "context": {...} }
+  // Example for backup: { "backupType": "full", "entities": ["user", "role"], "destination": "/backups" }
 
   // Link to at least one conversation
   conversations JobConversation[]
@@ -928,7 +944,79 @@ model Job {
 
   document Document?
 
+  @@index([status])
+  @@index([type])
+  @@index([queueName])
+  @@index([workerId])
+  @@index([createdAt])
   @@map("job")
+}
+
+// Add JobQueue model for managing RabbitMQ queues
+model JobQueue {
+  id          String   @id @default(uuid())
+  name        String   @unique // Queue name (execute_tool, generate_prompt, backup)
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  
+  // Queue configuration
+  maxConcurrency Int   @default(1) // Max concurrent jobs for this queue
+  maxRetries     Int   @default(3) // Default max retries for jobs in this queue
+  timeout        Int   @default(300000) // Default timeout in milliseconds
+  
+  // Queue statistics
+  totalJobs      Int   @default(0)
+  completedJobs  Int   @default(0)
+  failedJobs     Int   @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("job_queue")
+}
+
+// Add Worker model for tracking worker processes
+model Worker {
+  id          String    @id @default(uuid())
+  name        String    // Worker name/identifier
+  pid         Int?      // Process ID
+  hostname    String?   // Server hostname
+  status      String    @default("idle") // idle, busy, stopped, error
+  
+  // Worker configuration
+  queues      String    @db.Text // JSON array of queue names this worker handles
+  maxJobs     Int       @default(10) // Max concurrent jobs
+  
+  // Worker statistics
+  processedJobs Int     @default(0)
+  failedJobs    Int     @default(0)
+  
+  // Heartbeat
+  lastHeartbeat DateTime?
+  startedAt     DateTime  @default(now())
+  stoppedAt     DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([lastHeartbeat])
+  @@map("worker")
+}
+
+// Add JobLog model for detailed job execution logs
+model JobLog {
+  id        String   @id @default(uuid())
+  jobId     String   // Reference to Job, but not a foreign key to allow independent cleanup
+  level     String   // info, warn, error, debug
+  message   String   @db.Text
+  metadata  String?  @db.Text // JSON metadata
+  timestamp DateTime @default(now())
+
+  @@index([jobId])
+  @@index([level])
+  @@index([timestamp])
+  @@map("job_log")
 }
 
 // Junction table for Job <-> Conversation (many-to-many)
