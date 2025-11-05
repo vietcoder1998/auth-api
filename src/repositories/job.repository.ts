@@ -324,6 +324,44 @@ export class JobRepository extends BaseRepository<typeof prisma.job, JobDto, Job
     const job = await super.update(id, updateData);
     return this.toDro(job as JobModel) as Dro;
   }
+
+  /**
+   * Find all jobs with user and results included
+   */
+  async findAllWithRelations(): Promise<any[]> {
+    return await this.jobModel.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: true,
+        results: true,
+      },
+    });
+  }
+
+  /**
+   * Find job by ID with user and results included
+   */
+  async findByIdWithRelations(id: string): Promise<any> {
+    return await this.jobModel.findUnique({
+      where: { id },
+      include: {
+        user: true,
+        results: true,
+      },
+    });
+  }
+
+  /**
+   * Find job by ID with user included
+   */
+  async findByIdWithUser(id: string): Promise<any> {
+    return await this.jobModel.findUnique({
+      where: { id },
+      include: {
+        user: true,
+      },
+    });
+  }
 }
 
 export const jobRepository = new JobRepository();

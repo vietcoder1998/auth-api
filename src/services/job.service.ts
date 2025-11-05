@@ -1,12 +1,13 @@
-import { BaseService } from './base.service';
-import { JobRepository } from '../repositories/job.repository';
-import { JobResultRepository } from '../repositories/job-result.repository';
-import { JobModel, JobDto, JobDro } from '../interfaces/job.interface';
-import { JobResultDto, JobResultDro } from '../interfaces/job-result.interface';
-import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
-import { logError, logInfo } from '../middlewares/logger.middle';
-import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
+import { JobResultDro, JobResultDto } from '../interfaces/job-result.interface';
+import { JobDto, JobModel } from '../interfaces/job.interface';
+import { logError, logInfo } from '../middlewares/logger.middle';
+import { JobResultRepository } from '../repositories/job-result.repository';
+import { JobRepository } from '../repositories/job.repository';
+import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
+import { JobDro } from './../interfaces/job.interface';
+import { BaseService } from './base.service';
 
 export interface JobMQPayloadDto {
   jobId: string;
@@ -26,7 +27,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
     jobRepository: JobRepository,
     jobResultRepository: JobResultRepository,
     rabbitMQRepository: RabbitMQRepository,
-    prisma: PrismaClient
+    prisma: PrismaClient,
   ) {
     super();
     this.jobRepository = jobRepository;
@@ -77,7 +78,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         {
           persistent: true,
           priority: jobMQPayloadDto.priority || 0,
-        }
+        },
       );
 
       logInfo('Job sent to queue', { jobId: job.id, type: jobMQPayloadDto.type, queue: queueName });
@@ -126,9 +127,10 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         result: jobResultDto.result,
         error: jobResultDto.error,
         progress: jobResultDto.status === 'completed' ? 100 : undefined,
-        finishedAt: jobResultDto.status === 'completed' || jobResultDto.status === 'failed' 
-          ? new Date() 
-          : undefined,
+        finishedAt:
+          jobResultDto.status === 'completed' || jobResultDto.status === 'failed'
+            ? new Date()
+            : undefined,
       });
 
       logInfo('Job result saved', { jobId: jobResultDto.jobId, status: jobResultDto.status });
@@ -179,18 +181,10 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   /**
    * Get job details with all relationships
    */
-  public async getJobDetail(id: string): Promise<any> {
+  public async getJobDetail(id: string): Promise<JobDro | null> {
     try {
-      return await this.prisma.job.findUnique({
-        where: { id },
-        include: {
-          conversations: { include: { conversation: true } },
-          documents: { include: { document: true } },
-          databases: { include: { database: true } },
-          user: true,
-          results: true,
-        },
-      });
+      const job: JobDro | null = await this.jobRepository.findById(id);
+      return job;
     } catch (error) {
       logError('Failed to get job details', { error, jobId: id });
       throw error;
@@ -207,8 +201,8 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
     description?: string,
     conversationIds?: string[],
     documentIds?: string[],
-    databaseIds?: string[]
-  ): Promise<any> {
+    databaseIds?: string[],
+  ): Promise<JobDro> {
     try {
       if (typeof payload !== 'object' || payload === null) {
         throw new Error('Payload must be an object');
@@ -216,25 +210,14 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
 
       const jobId = uuidv4();
 
-      const job = await this.prisma.job.create({
-        data: {
-          id: jobId,
-          type,
-          status: 'pending',
-          payload: JSON.stringify(payload),
-          userId,
-          description,
-          queueName: this.getQueueNameForType(type),
-          conversations: conversationIds && conversationIds.length
-            ? { create: conversationIds.map((id) => ({ conversationId: id })) }
-            : undefined,
-          documents: documentIds && documentIds.length
-            ? { create: documentIds.map((id) => ({ documentId: id })) }
-            : undefined,
-          databases: databaseIds && databaseIds.length
-            ? { create: databaseIds.map((id) => ({ databaseId: id })) }
-            : undefined,
-        },
+      const job = await this.jobRepository.create({
+        id: jobId,
+        type,
+        status: 'pending',
+        payload,
+        userId,
+        description,
+        queueName: this.getQueueNameForType(type),
       });
 
       await this.sendToMQ({
@@ -263,35 +246,36 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
       startedAt: Date;
       finishedAt: Date;
       progress: number;
-    }>
-  ): Promise<any> {
+    }>,
+  ): Promise<JobDro> {
     try {
       if (data.status === 'restart') {
-        const originalJob = await this.prisma.job.findUnique({ where: { id } });
+        const originalJob: JobDro | null = await this.jobRepository.findById(id);
+
         if (!originalJob) {
           throw new Error('Job not found');
         }
 
-        const payload = originalJob.payload ? JSON.parse(originalJob.payload) : {};
-        return await this.addJob(
+        const newJob: JobDro = await this.addJob(
           originalJob.type,
-          payload,
+          originalJob.payload,
           originalJob.userId ?? undefined,
-          originalJob.description || undefined
+          originalJob.description || undefined,
+          undefined, // conversationIds
+          undefined, // documentIds
+          undefined, // databaseIds
         );
+
+        return newJob
       }
 
-      const updatedJob = await this.prisma.job.update({
-        where: { id },
-        data: {
-          ...data,
-          result: data.result ? JSON.stringify(data.result) : undefined,
-          finishedAt: data.status === 'completed' || data.status === 'failed' 
-            ? new Date() 
-            : data.finishedAt,
-        },
-      });
+      const updateData = {
+        ...data,
+        finishedAt:
+          data.status === 'completed' || data.status === 'failed' ? new Date() : data.finishedAt,
+      };
 
+      const updatedJob: JobDro = await this.jobRepository.update(id, updateData);
       return updatedJob;
     } catch (error) {
       logError('Failed to update job', { error, jobId: id });
@@ -304,26 +288,16 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
    */
   public async deleteJob(id: string): Promise<void> {
     try {
-      await this.prisma.job.delete({ where: { id } });
+      await this.jobRepository.delete(id);
       logInfo('Job deleted', { jobId: id });
     } catch (error) {
       logError('Failed to delete job', { error, jobId: id });
       throw error;
     }
   }
-
-  /**
-   * Get all jobs
-   */
   public async getJobs(): Promise<any[]> {
     try {
-      return await this.prisma.job.findMany({ 
-        orderBy: { createdAt: 'desc' },
-        include: {
-          user: true,
-          results: true,
-        }
-      });
+      return await this.jobRepository.findAllWithRelations();
     } catch (error) {
       logError('Failed to get jobs', { error });
       throw error;
@@ -335,13 +309,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
    */
   public async getJob(id: string): Promise<any> {
     try {
-      return await this.prisma.job.findUnique({ 
-        where: { id },
-        include: {
-          user: true,
-          results: true,
-        }
-      });
+      return await this.jobRepository.findByIdWithRelations(id);
     } catch (error) {
       logError('Failed to get job', { error, jobId: id });
       throw error;
@@ -390,12 +358,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   public async retryJob(id: string): Promise<any> {
     try {
       // Get the current job
-      const job = await this.prisma.job.findUnique({ 
-        where: { id },
-        include: {
-          user: true,
-        }
-      });
+      const job = await this.jobRepository.findByIdWithUser(id);
 
       if (!job) {
         throw new Error('Job not found');
@@ -415,21 +378,18 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
       }
 
       // Parse payload
-      const payload = job.payload ? JSON.parse(job.payload) : {};
+      const payload = job.payload ? job.payload : {};
 
       // Increment retry count and reset job status
-      const updatedJob = await this.prisma.job.update({
-        where: { id },
-        data: {
-          status: 'pending',
-          retries: currentRetries + 1,
-          error: null,
-          result: null,
-          startedAt: null,
-          finishedAt: null,
-          progress: 0,
-          updatedAt: new Date(),
-        },
+      const updatedJob = await this.jobRepository.update(job.id, {
+        status: 'pending',
+        retries: currentRetries + 1,
+        error: null,
+        result: null,
+        startedAt: null,
+        finishedAt: null,
+        progress: 0,
+        updatedAt: new Date(),
       });
 
       // Resend to queue
@@ -441,10 +401,10 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         priority: job.priority || 0,
       });
 
-      logInfo('Job retry initiated', { 
-        jobId: id, 
+      logInfo('Job retry initiated', {
+        jobId: id,
         retryCount: currentRetries + 1,
-        maxRetries 
+        maxRetries,
       });
 
       return updatedJob;
@@ -470,5 +430,5 @@ export const jobService = new JobService(
   new JobRepository(),
   new JobResultRepository(),
   new RabbitMQRepository(),
-  new PrismaClient()
+  new PrismaClient(),
 );
