@@ -1,37 +1,29 @@
-import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
-import path from 'path';
 import http from 'http';
 import https from 'https';
-import { 
-  RestoreJobPayload, 
-  WorkerJobData, 
-  WorkerEnvironment,
-  WorkerResponse 
-} from '../interfaces/worker.interface';
-import { BaseWorker } from './base.worker';
+import path from 'path';
+import { RestoreJobPayload, WorkerJobData, WorkerResponse } from '../interfaces/worker.interface';
 import { prisma } from '../setup';
+import { BaseWorker } from './base.worker';
 
-
-class RestoreWorker extends BaseWorker<RestoreJobPayload> {
+export class RestoreWorker extends BaseWorker<RestoreJobPayload> {
+  static readonly restoreWorker = new RestoreWorker()
   constructor() {
     super(__filename);
   }
 
-  protected async handleJob(job: WorkerJobData<RestoreJobPayload>): Promise<void> {
-    await this.processJob(job);
-  }
-
   async processJob(job: WorkerJobData<RestoreJobPayload>) {
     try {
-      console.log('Starting restore job...', { jobId: job.payload.jobId, url: job.payload.backupUrl });
-      
+      console.log('Starting restore job...', {
+        jobId: job.payload.jobId,
+        url: job.payload.backupUrl,
+      });
+
       if (!job.payload.backupUrl) throw new Error('Backup URL is required');
 
       const tempFilePath = await this.downloadBackupFile(job.payload.backupUrl, job.payload.jobId);
 
-      if (job.payload.options?.validate !== false)
-        await this.validateBackupFile(tempFilePath);
+      if (job.payload.options?.validate !== false) await this.validateBackupFile(tempFilePath);
 
       const result = await this.restoreToDatabase(tempFilePath, job.payload);
       await this.cleanupTempFile(tempFilePath);
@@ -45,7 +37,7 @@ class RestoreWorker extends BaseWorker<RestoreJobPayload> {
             restoredRecords: result.recordsProcessed,
             tablesRestored: result.tablesRestored,
             duration: result.duration,
-            payload: job.payload
+            payload: job.payload,
           }),
           finishedAt: new Date(),
         },
@@ -58,11 +50,10 @@ class RestoreWorker extends BaseWorker<RestoreJobPayload> {
           type: job.payload.type,
           result: 'Restore completed successfully',
           details: result,
-          payload: job.payload
-        }
+          payload: job.payload,
+        },
       };
       process.send?.(response);
-
     } catch (error) {
       console.error('Restore job failed:', error);
 
@@ -78,7 +69,7 @@ class RestoreWorker extends BaseWorker<RestoreJobPayload> {
       const response: WorkerResponse = {
         success: false,
         data: { jobId: job.payload.jobId, type: job.payload.type },
-        error: String(error)
+        error: String(error),
       };
       process.send?.(response);
     } finally {
@@ -150,8 +141,8 @@ class RestoreWorker extends BaseWorker<RestoreJobPayload> {
     const content = fs.readFileSync(filePath, 'utf8');
     const sqlStatements = content
       .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0);
+      .map((stmt) => stmt.trim())
+      .filter((stmt) => stmt.length > 0);
 
     const batchSize = payload.options?.batchSize || 100;
 
@@ -168,7 +159,9 @@ class RestoreWorker extends BaseWorker<RestoreJobPayload> {
           if (String(error).includes('syntax error')) throw error;
         }
       }
-      console.log(`Processed batch ${Math.ceil((i + batchSize) / batchSize)} of ${Math.ceil(sqlStatements.length / batchSize)}`);
+      console.log(
+        `Processed batch ${Math.ceil((i + batchSize) / batchSize)} of ${Math.ceil(sqlStatements.length / batchSize)}`,
+      );
     }
 
     const duration = `${Date.now() - startTime}ms`;
@@ -182,5 +175,3 @@ class RestoreWorker extends BaseWorker<RestoreJobPayload> {
     }
   }
 }
-
-export const restoreWorker = new RestoreWorker();

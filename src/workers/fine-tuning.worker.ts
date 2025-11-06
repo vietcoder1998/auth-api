@@ -7,6 +7,10 @@ import {
 } from '../interfaces/worker.interface';
 
 export class FineTuningWorker extends BaseWorker<FineTuningJobPayload> {
+  public static readonly fineTuningWorker = new FineTuningWorker()
+  public constructor() {
+    super(__filename)
+  }
   public async processJob(job: WorkerJobData<FineTuningJobPayload>): Promise<void> {
     try {
       console.log(`Starting fine-tuning job ${job.payload.jobId}...`);
@@ -45,5 +49,3 @@ export class FineTuningWorker extends BaseWorker<FineTuningJobPayload> {
     }
   }
 }
-
-export const fineTunningWorker = new FineTuningWorker('./fine-tuning.worker.ts');

@@ -1,11 +1,10 @@
-// src/workers/base.worker.ts
 import { ChildProcess, fork } from 'child_process';
 import path from 'path';
-import { WorkerEnvironment, WorkerJobData, WorkerResponse } from '../interfaces/worker.interface';
+import { WorkerEnvironment, WorkerJobData, WorkerResponse } from '../interfaces';
 import { prisma } from '../setup';
 
 export class BaseWorker<T> {
-  private workerPath: string;
+  public readonly workerPath: string;
   private workerProcess: ChildProcess | null = null;
 
   constructor(workerPath: string) {
@@ -57,9 +56,9 @@ export class BaseWorker<T> {
     console.log(`🚀 Worker started: ${this.workerPath} (PID: ${this.workerProcess.pid})`);
 
     // base event listener
-    this.workerProcess.on('message', (msg) => this.onMessage(msg));
-    this.workerProcess.on('exit', (code) => this.onExit(code));
-    this.workerProcess.on('error', (err) => this.onError(err));
+    this.workerProcess.on('message', this.onMessage.bind(this));
+    this.workerProcess.on('exit', this.onExit.bind(this));
+    this.workerProcess.on('error', this.onError.bind(this));
   }
 
   /**
@@ -72,8 +71,10 @@ export class BaseWorker<T> {
   /**
    * 🧠 Base handler — override khi kế thừa
    */
-  protected onMessage(message: any): void {
+  protected onMessage(message: any, data: WorkerJobData<T>): void {
     console.log('📨 Message from worker:', message);
+
+    this.processJob(data);
   }
 
   protected onExit(code: number | null): void {

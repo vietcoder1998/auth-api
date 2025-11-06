@@ -1,32 +1,14 @@
-import { PrismaClient } from '@prisma/client';
-import { BaseWorker } from './base.worker';
 import path from 'path';
-import {
-  BackupJobPayload,
-  WorkerJobData,
-  WorkerEnvironment,
-  WorkerResponse,
-} from '../interfaces/worker.interface';
+import { BackupJobPayload, WorkerJobData, WorkerResponse } from '../interfaces/worker.interface';
 import { prisma } from '../setup';
+import { BaseWorker } from './base.worker';
 
 export class BackupWorker extends BaseWorker<BackupJobPayload> {
+  public static readonly backupWorker = new BackupWorker();
   constructor(workerPath?: string) {
     super(workerPath || path.resolve(__dirname, './backup.workers.ts'));
   }
 
-
-  /**
-   * Nhận job từ process.on('message')
-   */
-  protected override async onMessage(
-    job: WorkerJobData<BackupJobPayload>
-  ): Promise<void> {
-    await this.processJob(job);
-  }
-
-  /**
-   * Logic xử lý job chính (giữ nguyên logic bạn đang có)
-   */
   protected async processJob(job: WorkerJobData<BackupJobPayload>): Promise<void> {
     try {
       console.log('🚀 Starting backup job...');
@@ -82,5 +64,3 @@ export class BackupWorker extends BaseWorker<BackupJobPayload> {
     }
   }
 }
-
-export const backupWorker = new BackupWorker('./backup.worker.ts');

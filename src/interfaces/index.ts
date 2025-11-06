@@ -42,3 +42,4 @@ export * from './token.interface'
 export * from './role.interface'
 export * from './gemini.interface';
 export * from './job.interface';
+export * from './worker.interface';
