@@ -1,85 +1,49 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../setup';
+import { BaseWorker } from './base.worker';
 import { 
   FineTuningJobPayload, 
   WorkerJobData, 
-  WorkerEnvironment,
   WorkerResponse 
 } from '../interfaces/worker.interface';
 
-const prisma = new PrismaClient();
+export class FineTuningWorker extends BaseWorker<FineTuningJobPayload> {
+  public async processJob(job: WorkerJobData<FineTuningJobPayload>): Promise<void> {
+    try {
+      console.log(`Starting fine-tuning job ${job.payload.jobId}...`);
 
-// Get job data from environment variables if available
-const env: WorkerEnvironment = {
-  jobId: process.env.JOB_ID,
-  jobType: process.env.JOB_TYPE,
-  jobPayload: process.env.JOB_PAYLOAD,
-  workerId: process.env.WORKER_ID,
-  userId: process.env.USER_ID
-};
+      // Simulate fine-tuning logic
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-// If job data is in environment variables, process immediately
-if (env.jobId && env.jobType) {
-  const payload: FineTuningJobPayload = env.jobPayload ? JSON.parse(env.jobPayload) : {
-    jobId: env.jobId,
-    type: env.jobType,
-    workerId: env.workerId,
-    userId: env.userId
-  };
-  processJob({ jobId: env.jobId, type: env.jobType, payload });
-}
+      // ✅ Mark as completed
+      await this.updateJobStatus(job.payload.jobId, 'completed', {
+        result: { message: 'Fine-tuning job completed', payload: job.payload },
+      });
 
-// Handle messages from parent process
-process.on('message', async (job: WorkerJobData<FineTuningJobPayload>) => {
-  await processJob(job);
-});
+      const response: WorkerResponse = {
+        success: true,
+        data: {
+          jobId: job.payload.jobId,
+          type: job.payload.type,
+          result: 'Fine-tuning job completed',
+          payload: job.payload,
+        },
+      };
+      this.send(response);
 
-async function processJob(job: WorkerJobData<FineTuningJobPayload>) {
-  try {
-    // Example: perform fine-tuning logic here
-    console.log('Starting fine-tuning job...');
-    // Simulate fine-tuning work
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    } catch (error: any) {
+      // ❌ Mark as failed
+      await this.updateJobStatus(job.payload.jobId, 'failed', { error: String(error) });
 
-    // Update job status/result in DB
-    await prisma.job.update({
-      where: { id: job.payload.jobId },
-      data: {
-        status: 'completed',
-        result: JSON.stringify({ message: 'Fine-tuning job completed', payload: job.payload }),
-        finishedAt: new Date(),
-      },
-    });
-    
-    const response: WorkerResponse = {
-      success: true,
-      data: { 
-        jobId: job.payload.jobId,
-        type: job.payload.type,
-        result: 'Fine-tuning job completed',
-        payload: job.payload
-      }
-    };
-    process.send?.(response);
-  } catch (error) {
-    await prisma.job.update({
-      where: { id: job.payload.jobId },
-      data: {
-        status: 'failed',
+      const response: WorkerResponse = {
+        success: false,
+        data: { jobId: job.payload.jobId, type: job.payload.type },
         error: String(error),
-        finishedAt: new Date(),
-      },
-    });
-    
-    const response: WorkerResponse = {
-      success: false,
-      data: { 
-        jobId: job.payload.jobId,
-        type: job.payload.type
-      },
-      error: String(error)
-    };
-    process.send?.(response);
-  } finally {
-    await prisma.$disconnect();
+      };
+      this.sendResponse(response);
+    } finally {
+      await prisma.$disconnect();
+    }
   }
 }
+
+export const fineTunningWorker = new FineTuningWorker('./fine-tuning.worker.ts');

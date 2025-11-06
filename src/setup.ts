@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import * as rd from 'redis';
 import { REDIS_URL } from './env';
+import { DatabaseConnectionService } from './services/database-connection.service';
 import { checkRedisConnection } from './utils/validationUtils';
-import { databaseConnectionService } from './services/database-connection.service';
 
 type RedisClient = ReturnType<typeof rd.createClient>;
         
@@ -18,7 +18,7 @@ export class Setup {
   public _redisClient: any = redisClient;
   private _isConnected: boolean = false;
   private _connectionPromise: Promise<void> | null = null;
-  private databaseConnectionService = databaseConnectionService;
+  private databaseConnectionService = new DatabaseConnectionService();
   
   // Multi-connection storage
   private _multiPrismaConnections: Map<string, PrismaClient> = new Map();
