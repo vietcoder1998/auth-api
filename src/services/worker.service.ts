@@ -27,10 +27,10 @@ export class WorkerService {
   ];
 
   private readonly WORKER_PATHS: Record<string, string> = {
-    extract: require.resolve('../workers/extract.workers.ts'),
-    backup: require.resolve('../workers/backup.works.ts'),
-    'file-tuning': require.resolve('../workers/fine-tuning.workers.ts'),
-    restore: require.resolve('../workers/restore.worker.ts'),
+    extract: require.resolve('../workers/extract.workers'),
+    backup: require.resolve('../workers/backup.workers'),
+    'file-tuning': require.resolve('../workers/fine-tuning.workers'),
+    restore: require.resolve('../workers/restore.workers'),
   };
 
   constructor(
