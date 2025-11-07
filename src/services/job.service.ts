@@ -173,21 +173,18 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
    */
   public async updateJob(id: string, data: Partial<JobUpdateDto>): Promise<JobDro> {
     try {
-      let jobIdToUpdate: string = id;
-      let updatedJob: JobDro;
+      const jobIdToUpdate: string = id;
       const updateJobDto: Partial<JobDto> = {
         ...data,
         finishedAt:
           data.status === 'completed' || data.status === 'failed' ? new Date() : data.finishedAt,
         payload: typeof data.payload === 'object' ? JSON.stringify(data.payload) : data.payload,
       };
-
-      updatedJob = await this.jobRepository.upsert(
+      const updatedJob: JobDro = await this.jobRepository.upsert(
         { id: jobIdToUpdate },
         updateJobDto as JobUpdateDto,
         updateJobDto as Partial<JobUpdateDto>,
       );
-
       const jobMqPayload: JobMQPayloadDto = {
         jobId: jobIdToUpdate,
         type: updatedJob.type,
@@ -196,10 +193,13 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
             ? JSON.parse(updatedJob.payload)
             : (updatedJob.payload ?? {}), // Ensure payload is always an object
       };
+      const isSendedToMq: boolean = await this.sendToMQ(jobMqPayload);
+      const updateJobDro: JobDro = {
+        ...updatedJob,
+        isQueued: isSendedToMq,
+      };
 
-      await this.sendToMQ(jobMqPayload);
-
-      return updatedJob;
+      return updateJobDro;
     } catch (error) {
       logError('Failed to update job', { error, jobId: id });
       throw error;
