@@ -1,13 +1,13 @@
-import { BackupWorker, ExtractWorker, FineTuningWorker } from '../workers';
-import { Factory, Thread } from './../workers/factory.worker';
-import { RestoreWorker } from './../workers/restore.worker';
+import { Thread } from './../workers/factory.worker';
+import { JobPayload } from './../workers/job.worker';
 
 export class WorkerRepository {
-  public readonly factory: Factory;
-
+  private readonly thread: Thread;
   public constructor(threadId: string) {
-    const thread: Thread = new Thread(threadId, [], []);
-    this.factory = new Factory(thread);
+    this.thread = new Thread(threadId, [], []);
   }
 
+  public startNewThread(jobThreadPayload: JobPayload) {
+    return this.thread.addNewJobToWorker(jobThreadPayload);
+  }
 }

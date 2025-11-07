@@ -28,6 +28,7 @@ export interface JobPayload {
     workerId: string;
     threadId: string;
     jobType: string;
+    payload?: Record<string, any>
 }
 
 export class Job implements JobPayload{

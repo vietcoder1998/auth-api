@@ -3,7 +3,6 @@ import { BaseController } from './base.controller';
 import { JobModel, JobDto, JobDro } from '../interfaces/job.interface';
 import { JobService } from '../services/job.service';
 import { jobService, jobRepository } from '../services';
-import { workerService } from '../services/worker.service';
 
 export class JobController extends BaseController<JobModel, JobDto, JobDro> {
   private jobService: JobService;
@@ -179,9 +178,6 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
       }
 
       if (action === 'restart') {
-        // Stop existing worker if running
-        await workerService.stopJobWorker(jobId);
-        
         // Reset job status and restart
         const job = await this.jobService.updateJob(jobId, { 
           status: 'pending',
@@ -190,9 +186,6 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
           progress: 0,
           error: null
         });
-        
-        // Start new worker for this job
-        await workerService.startJobWorker(jobId, existingJob.type, existingJob.payload);
         
         this.sendSuccess(res, job, `Job ${jobId} restarted successfully`);
       } else {
@@ -206,9 +199,6 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
         const job = await this.jobService.updateJob(jobId, { 
           status: 'pending'
         });
-        
-        // Start new worker for this job
-        await workerService.startJobWorker(jobId, existingJob.type, existingJob.payload);
         
         this.sendSuccess(res, job, `Job ${jobId} started successfully`);
       }

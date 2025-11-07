@@ -5,19 +5,23 @@ import { logError, logInfo } from '../middlewares/logger.middle';
 import { JobResultRepository } from '../repositories/job-result.repository';
 import { JobRepository } from '../repositories/job.repository';
 import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
+import { WorkerRepository } from '../repositories/worker.repository';
 import { JobDro, JobUpdateDto } from './../interfaces/job.interface';
+import { JobPayload } from './../workers/job.worker';
 import { BaseService } from './base.service';
 
 export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   private readonly jobRepository: JobRepository;
   private readonly jobResultRepository: JobResultRepository;
   private readonly rabbitMQRepository: RabbitMQRepository;
+  private readonly workerRepository: WorkerRepository;
 
   constructor() {
     super();
     this.jobRepository = jobRepository;
     this.jobResultRepository = jobResultRepository;
     this.rabbitMQRepository = rabbitMQRepository;
+    this.workerRepository = new WorkerRepository('default-thread');
   }
 
   /**
@@ -217,11 +221,11 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
           ...payload,
           jobId,
           type,
-          userId
+          userId,
         } as any, // Temporary cast until we have better type handling
         userId,
       };
-      
+
       await this.sendToMQ(mqPayload);
 
       // Fetch the full job with createdAt and updatedAt
@@ -268,6 +272,20 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         data.userId ?? undefined,
         data.description || undefined,
       );
+
+      const jobDro: JobDro = newJob ?? originalJob
+
+      // start job after run load
+      if (jobPayLoad.status === 'restart' || data.status === 'start') {
+        const jobPayload: JobPayload = {
+          jobId: id,
+          jobType: jobDro?.type || 'default',
+          payload: jobDro,
+          workerId: jobDro?.workerId || 'default-worker',
+          threadId: 'default-thread',
+        };
+        this.workerRepository.startNewThread(jobPayload);
+      }
 
       return newJob;
     } catch (error) {
