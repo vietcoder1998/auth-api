@@ -22,11 +22,20 @@ export class JobErrorResult extends JobResult {
         super(jobId, data)
     }
 }
-export class Job {
+
+export interface JobPayload {
+    jobId: string;
+    workerId: string;
+    threadId: string;
+    jobType: string;
+}
+
+export class Job implements JobPayload{
     public jobResult: JobResult | undefined;
     public readonly jobId: string
     public readonly workerId: string;
     public readonly threadId: string;
+    public readonly jobType: string='backup';
 
     constructor(jobId: string,workerId: string,threadId: string) {
         this.jobId=jobId

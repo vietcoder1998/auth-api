@@ -1,4 +1,5 @@
-import { Job, JobErrorResult, JobResult, JobSuccessResult } from './job.worker';
+import path from 'path';
+import { Job, JobErrorResult, JobPayload, JobResult, JobSuccessResult } from './job.worker';
 import { ThreadWorker } from './thread.worker';
 
 export class Thread {
@@ -22,8 +23,9 @@ export class Thread {
     ) {
       const threadWorker: ThreadWorker = this.threadWorkers[threadWorkerIndex];
 
-      threadWorker.on('message', (message: string, job: Job) => {
+      threadWorker.on('message', (message: string, job: JobSuccessResult) => {
         // Handle messages from the worker
+        this.sendJobErrorResult(job);
         this.checkExitStatus();
       });
       threadWorker.on('error', (error) => {
@@ -52,9 +54,23 @@ export class Thread {
 
     return this.threadWorkers;
   }
-  public addNewJobToWorker(job: Job): Job[] {
-    this.jobList.push(job);
-    return this.jobList;
+  public addNewJobToWorker<T>(jobPayload: JobPayload): ThreadWorker[] {
+    switch (jobPayload.jobType) {
+      case 'backup':
+        const backupJobPath: string = './jobs/backup.job.ts';
+        const workerId: string = String(this.threadWorkers.length);
+        const job: Job = new Job(jobPayload.jobId, workerId, this.threadId);
+        const threadWorker = new ThreadWorker(path.resolve(__dirname, backupJobPath), {
+          workerData: job,
+        } as WorkerOptions);
+
+        this.threadWorkers.push(threadWorker);
+        break;
+
+      default:
+        break;
+    }
+    return this.start();
   }
   public removeThreadWorker(threadWorkerId: string): ThreadWorker[] {
     const index = this.threadWorkers.findIndex((tw) => tw.workerId === threadWorkerId);
@@ -94,6 +110,7 @@ export class Thread {
     }
   }
 }
+
 export class Factory {
   private readonly thread: Thread;
 
