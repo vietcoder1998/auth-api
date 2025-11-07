@@ -14,9 +14,9 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
 
   constructor() {
     super();
-    this.jobRepository = jobRepository;
-    this.jobResultRepository = jobResultRepository;
-    this.rabbitMQRepository = rabbitMQRepository;
+    this.jobRepository = new JobRepository();
+    this.jobResultRepository = new JobResultRepository();
+    this.rabbitMQRepository = new RabbitMQRepository();
   }
 
   /**
@@ -349,9 +349,5 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
     }
   }
 }
-
-export const jobRepository = new JobRepository();
-export const jobResultRepository = new JobResultRepository();
-export const rabbitMQRepository = new RabbitMQRepository();
 
 export const jobService = new JobService();

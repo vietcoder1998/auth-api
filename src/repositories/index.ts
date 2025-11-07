@@ -39,3 +39,5 @@ export * from './conversation.repository';
 export * from './token.repository';
 export * from './sso.repository';
 export * from './aimodel.repository';
+export * from './job.repository';
+export * from './rabbitmq.repository'
