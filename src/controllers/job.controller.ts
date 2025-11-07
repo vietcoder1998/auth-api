@@ -20,12 +20,12 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
       const documentId = req.params.id;
       const userId = req.user?.id;
       
-      const job = await this.jobService.addJob(
-        'extract',
-        { documentId },
+      const job = await this.jobService.create({
+        type: 'extract',
+        payload: { documentId },
         userId,
-        `Extract document ${documentId}`,
-      );
+        description: `Extract document ${documentId}`,
+      });
       
       this.sendSuccess(res, job);
     } catch (error) {
@@ -69,15 +69,15 @@ export class JobController extends BaseController<JobModel, JobDto, JobDro> {
         return;
       }
       
-      const job = await this.jobService.addJob(
-        type, 
-        payload, 
-        userId, 
+      const job = await this.jobService.create({
+        type,
+        payload,
+        userId,
         description,
         conversationIds,
         documentIds,
         databaseIds
-      );
+      });
       
       this.sendSuccess(res, job);
     } catch (error) {

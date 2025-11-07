@@ -5,23 +5,19 @@ import { logError, logInfo } from '../middlewares/logger.middle';
 import { JobResultRepository } from '../repositories/job-result.repository';
 import { JobRepository } from '../repositories/job.repository';
 import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
-import { WorkerRepository } from '../repositories/worker.repository';
 import { JobDro, JobUpdateDto } from './../interfaces/job.interface';
-import { JobPayload } from './../workers/job.worker';
 import { BaseService } from './base.service';
 
 export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   private readonly jobRepository: JobRepository;
   private readonly jobResultRepository: JobResultRepository;
   private readonly rabbitMQRepository: RabbitMQRepository;
-  private readonly workerRepository: WorkerRepository;
 
   constructor() {
     super();
     this.jobRepository = jobRepository;
     this.jobResultRepository = jobResultRepository;
     this.rabbitMQRepository = rabbitMQRepository;
-    this.workerRepository = new WorkerRepository('default-thread');
   }
 
   /**
@@ -180,109 +176,36 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   }
 
   /**
-   * Add a new job
-   */
-  public async addJob(
-    type: string,
-    payload: Record<string, any>,
-    userId?: string,
-    description?: string,
-    conversationIds?: string[],
-    documentIds?: string[],
-    databaseIds?: string[],
-  ): Promise<JobDro> {
-    try {
-      if (typeof payload !== 'object' || payload === null) {
-        throw new Error('Payload must be an object');
-      }
-
-      const jobId: string = uuidv4();
-      const jobCreateDto: JobUpdateDto = {
-        id: jobId,
-        type,
-        status: 'pending',
-        userId,
-        description,
-        queueName: this.getQueueNameForType(type),
-        payload: JSON.stringify(payload),
-      };
-
-      if (!jobId) {
-        throw new Error('JobId is not found');
-      }
-
-      const job: JobDto = await this.jobRepository.update(jobId, jobCreateDto);
-
-      // Create proper payload with required base fields
-      const mqPayload: JobMQPayloadDto = {
-        jobId: jobId,
-        type,
-        payload: {
-          ...payload,
-          jobId,
-          type,
-          userId,
-        } as any, // Temporary cast until we have better type handling
-        userId,
-      };
-
-      await this.sendToMQ(mqPayload);
-
-      // Fetch the full job with createdAt and updatedAt
-      const fullJob: JobDro | null = await this.jobRepository.findById(jobId);
-
-      if (!fullJob) {
-        throw new Error('Created job not found');
-      }
-
-      return fullJob;
-    } catch (error) {
-      logError('Failed to add job', { error, type });
-      throw error;
-    }
-  }
-
-  /**
    * Update job
    */
   public async updateJob(id: string, data: Partial<JobUpdateDto>): Promise<JobDro> {
     try {
       let jobIdToUpdate: string = id;
       let updatedJob: JobDro;
-      const originalJob: JobDro | null = await this.jobRepository.findById(id);
-      const jobPayLoad: Record<string, any> = JSON.parse(data?.payload || '{}');
-      const updateData = {
+      const updateJobDto: Partial<JobDto> = {
         ...data,
         finishedAt:
           data.status === 'completed' || data.status === 'failed' ? new Date() : data.finishedAt,
+        payload:
+          typeof data.payload === 'object'
+            ? JSON.stringify(data.payload)
+            : data.payload,
       };
 
-      if (!originalJob) {
-        updatedJob = await this.jobRepository.update(jobIdToUpdate, updateData);
-      }
+      updatedJob = await this.jobRepository.update(jobIdToUpdate, updateJobDto as JobUpdateDto);
 
-      const newJob: JobDro = await this.addJob(
-        data.type ?? originalJob?.type ?? 'unknown',
-        jobPayLoad,
-        data.userId ?? undefined,
-        data.description || undefined,
-      );
+            
+      const jobMqPayload: JobMQPayloadDto = {
+        jobId: jobIdToUpdate,
+        type: updatedJob.type,
+        payload: typeof updatedJob.payload === 'string'
+          ? JSON.parse(updatedJob.payload)
+          : updatedJob.payload ?? {}, // Ensure payload is always an object
+      };
 
-      const jobDro: JobDro = newJob;
+      await this.sendToMQ(jobMqPayload);
 
-      // start job after run load
-      if (jobPayLoad.status === 'restart' || data.status === 'start') {
-        const jobPayload: JobPayload = {
-          jobId: id,
-          jobType: jobDro?.type || 'default',
-          payload: jobDro,
-          workerId: jobDro?.workerId || 'default-worker',
-          threadId: 'default-thread',
-        };
-        this.workerRepository.startNewThread(jobPayload);
-      }
-
-      return newJob;
+      return updatedJob;
     } catch (error) {
       logError('Failed to update job', { error, jobId: id });
       throw error;
