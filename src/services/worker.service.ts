@@ -1,253 +1,227 @@
-import { ChildProcess, fork } from 'child_process';
-import { v4 as uuidv4 } from 'uuid';
-import { logError, logInfo } from '../middlewares/logger.middle';
-import { JobResultRepository } from '../repositories/job-result.repository';
-import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
-import { JobRepository } from '../repositories/job.repository';
-import { WorkerRepository } from '../repositories/worker.repository';
+// import { BaseWorker } from './../workers/base.worker';
+// import { ChildProcess } from 'child_process';
+// import { v4 as uuidv4 } from 'uuid';
+// import { logError, logInfo } from '../middlewares/logger.middle';
+// import { JobResultRepository } from '../repositories/job-result.repository';
+// import { JobRepository } from '../repositories/job.repository';
+// import { RabbitMQRepository } from '../repositories/rabbitmq.repository';
+// import { WorkerRepository } from '../repositories/worker.repository';
 
-export class WorkerService {
-  public readonly workerId: string = uuidv4();
+// export class WorkerService {
+//   public readonly workerId: string = uuidv4();
 
-  private readonly rabbitMQRepository = new RabbitMQRepository();
-  private readonly jobRepository = new JobRepository();
-  private readonly jobResultRepository = new JobResultRepository();
-  private readonly workerRepository = new WorkerRepository();
+//   private readonly rabbitMQRepository = new RabbitMQRepository();
+//   private readonly jobRepository = new JobRepository();
+//   private readonly jobResultRepository = new JobResultRepository();
+//   private readonly workerRepository = new WorkerRepository();
+//   public static readonly workerService = new WorkerService();
 
-  public static readonly workerService = new WorkerService();
+//   private isRunning = false;
+//   private runningWorkers: Map<string, ChildProcess> = new Map();
 
-  private isRunning = false;
-  private runningWorkers: Map<string, ChildProcess> = new Map();
+//   // 🧠 Define job types dynamically (if needed)
+//   private readonly JOB_TYPES = [
+//     'extract',
+//     'file-tuning',
+//     'backup',
+//     'restore',
+//     'execute_tool',
+//     'generate_prompt',
+//     'conversation',
+//     'document',
+//     'database',
+//   ];
 
-  // 🧠 Define job types dynamically (if needed)
-  private readonly JOB_TYPES = [
-    'extract',
-    'file-tuning',
-    'backup',
-    'restore',
-    'execute_tool',
-    'generate_prompt',
-    'conversation',
-    'document',
-    'database',
-  ];
+//   /**
+//    * Process jobs from message queue
+//    */
+//   public async processJobs(): Promise<void> {
+//     try {
+//       if (this.isRunning) {
+//         logInfo('Worker service already running', { workerId: this.workerId });
+//         return;
+//       }
 
-  /**
-   * Process jobs from message queue
-   */
-  public async processJobs(): Promise<void> {
-    try {
-      if (this.isRunning) {
-        logInfo('Worker service already running', { workerId: this.workerId });
-        return;
-      }
+//       this.isRunning = true;
+//       const queueNames = [...new Set(this.JOB_TYPES.map((type) => this.getQueueNameForType(type)))];
 
-      this.isRunning = true;
+//       for (const queueName of queueNames) {
+//         await this.rabbitMQRepository.consume(queueName, async (msg) => {
+//           if (!msg) return;
 
-      const queueNames = [
-        ...new Set(this.JOB_TYPES.map((type) => this.getQueueNameForType(type))),
-      ];
+//           try {
+//             const jobData = JSON.parse(msg.content.toString());
+//             const { jobId, type, payload } = jobData;
 
-      for (const queueName of queueNames) {
-        await this.rabbitMQRepository.consume(queueName, async (msg) => {
-          if (!msg) return;
+//             logInfo('Processing job from queue', {
+//               workerId: this.workerId,
+//               jobId,
+//               type,
+//               queue: queueName,
+//             });
 
-          try {
-            const jobData = JSON.parse(msg.content.toString());
-            const { jobId, type, payload } = jobData;
+//             await this.jobRepository.markStarted(jobId, this.workerId);
 
-            logInfo('Processing job from queue', {
-              workerId: this.workerId,
-              jobId,
-              type,
-              queue: queueName,
-            });
+//             // 🧩 Get the correct worker instance from the repository
+//             const workerInstance: BaseWorker<any> = this.workerRepository.getWorkerByJobType(type);
+//             if (!workerInstance) {
+//               throw new Error(`No worker found for job type: ${type}`);
+//             }
 
-            await this.jobRepository.markStarted(jobId, this.workerId);
+//             // 🧠 Fork the worker process using its built-in method
+//             const worker = BaseWorker.start(workerInstance);
 
-            const workerPath = this.getWorkerPathByType(type);
+//             // Track running worker
+//             this.runningWorkers.set(jobId, worker);
 
-            const worker = fork(workerPath, [], {
-              env: {
-                ...process.env,
-                JOB_ID: jobId,
-                JOB_TYPE: type,
-                JOB_PAYLOAD: JSON.stringify(payload),
-                WORKER_ID: this.workerId,
-              },
-            });
+//             // Send job data (optional)
+//             worker.send({ jobId, type, payload, workerId: this.workerId });
 
-            this.runningWorkers.set(jobId, worker);
+//             // Centralized worker event handling
+//             this.handleWorkerEvents(worker, jobId, type);
 
-            worker.send({
-              jobId,
-              type,
-              payload,
-              workerId: this.workerId,
-            });
+//             // Acknowledge MQ message
+//             await this.rabbitMQRepository.ack(msg);
+//           } catch (error) {
+//             logError('Error processing job message', { workerId: this.workerId, error });
+//             await this.rabbitMQRepository.nack(msg, false, false);
+//           }
+//         });
+//       }
 
-            this.handleWorkerEvents(worker, jobId, type);
+//       logInfo('Worker service started, listening to all queues', {
+//         workerId: this.workerId,
+//         queues: queueNames,
+//       });
+//     } catch (error) {
+//       this.isRunning = false;
+//       logError('Failed to start worker service', { workerId: this.workerId, error });
+//       throw error;
+//     }
+//   }
 
-            await this.rabbitMQRepository.ack(msg);
-          } catch (error) {
-            logError('Error processing job message', { workerId: this.workerId, error });
-            await this.rabbitMQRepository.nack(msg, false, false);
-          }
-        });
-      }
+//   /**
+//    * Handle messages and errors from a worker process
+//    */
+//   private handleWorkerEvents(worker: ChildProcess, jobId: string, jobType: string) {
+//     worker.on('message', async (result: any) => {
+//       try {
+//         await this.jobResultRepository.create({
+//           jobId,
+//           status: 'completed',
+//           result: result.data || result,
+//           processingTime: result.processingTime || 0,
+//           metadata: result.metadata || {},
+//         });
 
-      logInfo('Worker service started, listening to all queues', {
-        workerId: this.workerId,
-        queues: queueNames,
-      });
-    } catch (error) {
-      this.isRunning = false;
-      logError('Failed to start worker service', { workerId: this.workerId, error });
-      throw error;
-    }
-  }
+//         await this.jobRepository.update(jobId, {
+//           status: 'completed',
+//           result: result.data || result,
+//           progress: 100,
+//           finishedAt: new Date(),
+//         });
 
-  /**
-   * Get worker file path by job type
-   */
-  private getWorkerPathByType(type: string): string {
-    switch (type) {
-      case 'extract':
-        return this.workerRepository.extractWorker.workerPath;
-      case 'backup':
-        return this.workerRepository.backupWorker.workerPath;
-      case 'file-tuning':
-        return this.workerRepository.fineTunningWorker.workerPath;
-      case 'restore':
-        return this.workerRepository.restoreWorker.workerPath;
-      default:
-        logInfo('Using generic worker', { jobType: type });
-        return require.resolve('../workers/generic.job.worker');
-    }
-  }
+//         logInfo(`Worker finished successfully`, {
+//           workerId: this.workerId,
+//           jobId,
+//           type: jobType,
+//         });
 
-  /**
-   * Handle messages and errors from a worker process
-   */
-  private handleWorkerEvents(worker: ChildProcess, jobId: string, jobType: string) {
-    worker.on('message', async (result: any) => {
-      try {
-        await this.jobResultRepository.create({
-          jobId,
-          status: 'completed',
-          result: result.data || result,
-          processingTime: result.processingTime || 0,
-          metadata: result.metadata || {},
-        });
+//         this.runningWorkers.delete(jobId);
+//         worker.kill();
+//       } catch (error) {
+//         logError('Failed to save worker result', { workerId: this.workerId, jobId, error });
+//       }
+//     });
 
-        await this.jobRepository.update(jobId, {
-          status: 'completed',
-          result: result.data || result,
-          progress: 100,
-          finishedAt: new Date(),
-        });
+//     worker.on('error', async (error: any) => {
+//       try {
+//         await this.jobResultRepository.create({
+//           jobId,
+//           status: 'failed',
+//           error: error.message,
+//           processingTime: 0,
+//         });
 
-        logInfo(`Worker finished successfully`, {
-          workerId: this.workerId,
-          jobId,
-          type: jobType,
-        });
+//         await this.jobRepository.update(jobId, {
+//           status: 'failed',
+//           error: error.message,
+//           finishedAt: new Date(),
+//         });
 
-        this.runningWorkers.delete(jobId);
-        worker.kill();
-      } catch (error) {
-        logError('Failed to save worker result', { workerId: this.workerId, jobId, error });
-      }
-    });
+//         logError('Worker error', { workerId: this.workerId, jobId, jobType, error });
+//         this.runningWorkers.delete(jobId);
+//         worker.kill();
+//       } catch (saveError) {
+//         logError('Failed to save worker error', {
+//           workerId: this.workerId,
+//           jobId,
+//           error: saveError,
+//         });
+//       }
+//     });
 
-    worker.on('error', async (error: any) => {
-      try {
-        await this.jobResultRepository.create({
-          jobId,
-          status: 'failed',
-          error: error.message,
-          processingTime: 0,
-        });
+//     worker.on('exit', (code: number) => {
+//       this.runningWorkers.delete(jobId);
+//       if (code !== 0) {
+//         logError('Worker stopped with exit code', {
+//           workerId: this.workerId,
+//           jobId,
+//           exitCode: code,
+//         });
+//       }
+//     });
+//   }
 
-        await this.jobRepository.update(jobId, {
-          status: 'failed',
-          error: error.message,
-          finishedAt: new Date(),
-        });
+//   /**
+//    * Get queue name based on job type
+//    */
+//   private getQueueNameForType(type: string): string {
+//     const queueMap: Record<string, string> = {
+//       execute_tool: 'execute_tool',
+//       generate_prompt: 'generate_prompt',
+//       backup: 'backup',
+//       extract: 'extract',
+//       'file-tuning': 'file-tuning',
+//       restore: 'restore',
+//     };
+//     return queueMap[type] || 'job-queue';
+//   }
 
-        logError('Worker error', { workerId: this.workerId, jobId, jobType, error });
-        this.runningWorkers.delete(jobId);
-        worker.kill();
-      } catch (saveError) {
-        logError('Failed to save worker error', {
-          workerId: this.workerId,
-          jobId,
-          error: saveError,
-        });
-      }
-    });
+//   /**
+//    * Start worker service
+//    */
+//   public async start(): Promise<void> {
+//     if (this.isRunning) {
+//       logInfo('Worker service already running', { workerId: this.workerId });
+//       return;
+//     }
+//     await this.rabbitMQRepository.connect();
+//     await this.processJobs();
+//     logInfo('Worker service started successfully', { workerId: this.workerId });
+//   }
 
-    worker.on('exit', (code: number) => {
-      this.runningWorkers.delete(jobId);
-      if (code !== 0) {
-        logError('Worker stopped with exit code', {
-          workerId: this.workerId,
-          jobId,
-          exitCode: code,
-        });
-      }
-    });
-  }
+//   /**
+//    * Stop all workers
+//    */
+//   public async stopAllWorkers(): Promise<void> {
+//     const jobIds = Array.from(this.runningWorkers.keys());
+//     await Promise.all(jobIds.map((jobId) => this.stopJobWorker(jobId)));
+//     logInfo('All workers stopped', { workerId: this.workerId });
+//   }
 
-  /**
-   * Get queue name based on job type
-   */
-  private getQueueNameForType(type: string): string {
-    const queueMap: Record<string, string> = {
-      execute_tool: 'execute_tool',
-      generate_prompt: 'generate_prompt',
-      backup: 'backup',
-      extract: 'extract',
-      'file-tuning': 'file-tuning',
-      restore: 'restore',
-    };
-    return queueMap[type] || 'job-queue';
-  }
-
-  /**
-   * Start worker service
-   */
-  public async start(): Promise<void> {
-    if (this.isRunning) {
-      logInfo('Worker service already running', { workerId: this.workerId });
-      return;
-    }
-    await this.rabbitMQRepository.connect();
-    await this.processJobs();
-    logInfo('Worker service started successfully', { workerId: this.workerId });
-  }
-
-  /**
-   * Stop all workers
-   */
-  public async stopAllWorkers(): Promise<void> {
-    const jobIds = Array.from(this.runningWorkers.keys());
-    await Promise.all(jobIds.map((jobId) => this.stopJobWorker(jobId)));
-    logInfo('All workers stopped', { workerId: this.workerId });
-  }
-
-  /**
-   * Stop a specific worker for a job
-   */
-  public async stopJobWorker(jobId: string): Promise<void> {
-    const worker = this.runningWorkers.get(jobId);
-    if (!worker) return;
-    worker.kill();
-    this.runningWorkers.delete(jobId);
-    await this.jobRepository.update(jobId, {
-      status: 'cancelled',
-      finishedAt: new Date(),
-    });
-    logInfo('Job worker stopped', { workerId: this.workerId, jobId });
-  }
-}
+//   /**
+//    * Stop a specific worker for a job
+//    */
+//   public async stopJobWorker(jobId: string): Promise<void> {
+//     const worker = this.runningWorkers.get(jobId);
+//     if (!worker) return;
+//     worker.kill();
+//     this.runningWorkers.delete(jobId);
+//     await this.jobRepository.update(jobId, {
+//       status: 'cancelled',
+//       finishedAt: new Date(),
+//     });
+//     logInfo('Job worker stopped', { workerId: this.workerId, jobId });
+//   }
+// }
