@@ -248,6 +248,7 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
   public async updateJob(id: string, data: Partial<JobUpdateDto>): Promise<JobDro> {
     try {
       let jobIdToUpdate: string = id;
+      let updatedJob: JobDro;
       const originalJob: JobDro | null = await this.jobRepository.findById(id);
       const jobPayLoad: Record<string, any> = JSON.parse(data?.payload || '{}');
       const updateData = {
@@ -256,24 +257,18 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
           data.status === 'completed' || data.status === 'failed' ? new Date() : data.finishedAt,
       };
 
-      if (originalJob) {
-        const updatedJob: JobDro = await this.jobRepository.update(jobIdToUpdate, updateData);
-
-        return updatedJob;
-      }
-
-      if (!data.type) {
-        throw new Error('Job type is required to add a new job');
+      if (!originalJob) {
+        updatedJob = await this.jobRepository.update(jobIdToUpdate, updateData);
       }
 
       const newJob: JobDro = await this.addJob(
-        data.type,
+        data.type ?? originalJob?.type ?? 'unknown',
         jobPayLoad,
         data.userId ?? undefined,
         data.description || undefined,
       );
 
-      const jobDro: JobDro = newJob ?? originalJob
+      const jobDro: JobDro = newJob;
 
       // start job after run load
       if (jobPayLoad.status === 'restart' || data.status === 'start') {
