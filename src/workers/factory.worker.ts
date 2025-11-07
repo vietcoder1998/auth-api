@@ -52,6 +52,10 @@ export class Thread {
 
     return this.threadWorkers;
   }
+  public addNewJobToWorker(job: Job): Job[] {
+    this.jobList.push(job);
+    return this.jobList;
+  }
   public removeThreadWorker(threadWorkerId: string): ThreadWorker[] {
     const index = this.threadWorkers.findIndex((tw) => tw.workerId === threadWorkerId);
 

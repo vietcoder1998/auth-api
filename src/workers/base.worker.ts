@@ -39,7 +39,7 @@ export class BaseWorker<T> extends Worker {
   }
 
   protected async processJob(job: WorkerJobData<T>): Promise<void> {
-    return;
+    return; 
   }
 
   protected async onJobError(jobId: string, error: Error): Promise<void> {

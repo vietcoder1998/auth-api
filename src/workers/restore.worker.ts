@@ -7,11 +7,6 @@ import { prisma } from '../setup';
 import { BaseWorker } from './base.worker';
 
 export class RestoreWorker extends BaseWorker<RestoreJobPayload> {
-  static readonly restoreWorker = new RestoreWorker()
-  constructor() {
-    super(__filename);
-  }
-
   async processJob(job: WorkerJobData<RestoreJobPayload>) {
     try {
       console.log('Starting restore job...', {
