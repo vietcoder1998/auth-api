@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import { JobResultDro, JobResultDto } from '../interfaces/job-result.interface';
 import { JobDto, JobModel, JobMQPayloadDto } from '../interfaces/job.interface';
 import { logError, logInfo } from '../middlewares/logger.middle';
@@ -39,23 +38,13 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
    * @param jobMQPayloadDto - The job payload to send to queue
    * @returns JobDto
    */
-  public async sendToMQ(jobMQPayloadDto: JobMQPayloadDto): Promise<JobDto> {
+  public async sendToMQ(jobMQPayloadDto: JobMQPayloadDto): Promise<boolean> {
     try {
-      const job = await this.jobRepository.create({
-        id: jobMQPayloadDto.jobId || uuidv4(),
-        type: jobMQPayloadDto.type,
-        status: 'pending',
-        queueName: this.getQueueNameForType(jobMQPayloadDto.type),
-        payload: jobMQPayloadDto.payload,
-        userId: jobMQPayloadDto.userId,
-        priority: jobMQPayloadDto.priority || 0,
-      });
-
       const queueName = this.getQueueNameForType(jobMQPayloadDto.type);
-      await this.rabbitMQRepository.publishToQueue(
+      const rabbitMqQueueResult = await this.rabbitMQRepository.publishToQueue(
         queueName,
         {
-          jobId: job.id,
+          jobId: jobMQPayloadDto.jobId,
           type: jobMQPayloadDto.type,
           payload: jobMQPayloadDto.payload,
         },
@@ -65,9 +54,13 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         },
       );
 
-      logInfo('Job sent to queue', { jobId: job.id, type: jobMQPayloadDto.type, queue: queueName });
+      logInfo('Job sent to queue', {
+        jobId: jobMQPayloadDto.jobId,
+        type: jobMQPayloadDto.type,
+        queue: queueName,
+      });
 
-      return job as JobDto;
+      return rabbitMqQueueResult as boolean;
     } catch (error) {
       logError('Failed to send job to queue', { error, jobType: jobMQPayloadDto.type });
       throw error;
@@ -186,21 +179,22 @@ export class JobService extends BaseService<JobModel, JobDto, JobDro> {
         ...data,
         finishedAt:
           data.status === 'completed' || data.status === 'failed' ? new Date() : data.finishedAt,
-        payload:
-          typeof data.payload === 'object'
-            ? JSON.stringify(data.payload)
-            : data.payload,
+        payload: typeof data.payload === 'object' ? JSON.stringify(data.payload) : data.payload,
       };
 
-      updatedJob = await this.jobRepository.update(jobIdToUpdate, updateJobDto as JobUpdateDto);
+      updatedJob = await this.jobRepository.upsert(
+        { id: jobIdToUpdate },
+        updateJobDto as JobUpdateDto,
+        updateJobDto as Partial<JobUpdateDto>,
+      );
 
-            
       const jobMqPayload: JobMQPayloadDto = {
         jobId: jobIdToUpdate,
         type: updatedJob.type,
-        payload: typeof updatedJob.payload === 'string'
-          ? JSON.parse(updatedJob.payload)
-          : updatedJob.payload ?? {}, // Ensure payload is always an object
+        payload:
+          typeof updatedJob.payload === 'string'
+            ? JSON.parse(updatedJob.payload)
+            : (updatedJob.payload ?? {}), // Ensure payload is always an object
       };
 
       await this.sendToMQ(jobMqPayload);
