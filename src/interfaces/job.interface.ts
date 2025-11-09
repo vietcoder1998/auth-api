@@ -1,13 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { 
-  AnyJobPayload, 
-  BaseWorkerPayload,
-  BackupJobPayload,
-  ExtractJobPayload, 
-  FineTuningJobPayload,
-  RestoreJobPayload,
-  GenericJobPayload 
-} from './worker.interface';
+import { AnyJobPayload } from './worker.interface';
 
 export type JobModel = PrismaClient['job'];
 
@@ -57,8 +49,6 @@ export interface JobDro extends JobDto {
   updatedAt: Date;
 }
 
-
-
 export interface JobStats {
   total: number;
   pending: number;
@@ -95,4 +85,3 @@ export interface JobCreateDto extends Partial<JobDto> {
   userId?: string;
   description?: string;
 }
-
