@@ -1,4 +1,3 @@
-import { authMiddleware } from './middlewares/auth.middleware';
 import cors from 'cors';
 import express from 'express';
 import path from 'path';
@@ -6,17 +5,18 @@ import swaggerUi from 'swagger-ui-express';
 import * as env from './env';
 import { ResponseMiddleware } from './middlewares';
 import { apiKeyValidation } from './middlewares/apiKey.middleware';
+import { authMiddleware } from './middlewares/auth.middleware';
 import { CacheMiddleware } from './middlewares/cache.middleware';
 import { logError, loggerMiddleware, logInfo } from './middlewares/logger.middle';
 import { rbacMiddleware } from './middlewares/rbac.middleware';
 import { ssoKeyValidation } from './middlewares/sso.middleware';
+import { jobRepository, rabbitMqRepository } from './repositories';
 import adminRouter from './routes/admin.routes';
 import authRouter from './routes/auth.routes';
 import configRouter from './routes/config.routes';
 import publicBlogRouter from './routes/publicBlog.routes';
 import ssoAuthRouter from './routes/ssoAuth.routes';
 import { configService } from './services/config.service';
-import { jobRepository } from './services/job.service';
 import { setup } from './setup';
 import {
   getChildProcessInfo,
@@ -27,7 +27,7 @@ import {
   getRedisStatus,
 } from './utils/healthUtils';
 import { loadSwaggerDocument } from './utils/swaggerUtils';
-import { checkRedisConnection, getDisk } from './utils/validationUtils';
+import { getDisk } from './utils/validationUtils';
 
 const swaggerDocument = loadSwaggerDocument(__dirname);
 const app = express();
@@ -70,6 +70,7 @@ app.get(
         getDatabaseStatus(setup.prisma),
         getRedisStatus(setup.redis),
       ]);
+      console.log('rabbitMQRepository', rabbitMqRepository.isConnected());
       const memory = getMemoryStatus();
       const { cpu, cpuLoad } = getCpuStatus();
       const jobs = await jobRepository.findAllWithRelations();
@@ -90,6 +91,7 @@ app.get(
         port: env.PORT,
         os: osStatus,
         childProcess: childProcessInfo,
+        rabbitMqConnected: rabbitMqRepository.isConnected(),
       };
       getDisk((disk: string | null) => {
         healthStatus.disk = disk;
@@ -159,7 +161,11 @@ const cacheMiddlewareInstance = new CacheMiddleware({
   },
 });
 
-app.use('/api/admin', cacheMiddlewareInstance.getMiddleware.bind(cacheMiddlewareInstance), adminRouter);
+app.use(
+  '/api/admin',
+  cacheMiddlewareInstance.getMiddleware.bind(cacheMiddlewareInstance),
+  adminRouter,
+);
 // Serve admin GUI at /admin
 app.use('/admin', express.static(path.join(__dirname, 'gui')));
 app.get('/', (req: express.Request, res: express.Response) => res.json({ status: 'ok' }));

@@ -54,4 +54,4 @@ export * from './user.service';
 export * from './command.service';
 export * from './token.service';
 export * from './auth.service';
-export * from './worker.service';
+// export * from './worker.service';

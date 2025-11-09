@@ -1,85 +1,66 @@
-import { PrismaClient } from '@prisma/client';
-import { 
-  BackupJobPayload, 
-  WorkerJobData, 
-  WorkerEnvironment,
-  WorkerResponse 
-} from '../interfaces/worker.interface';
+import path from 'path';
+import { BackupJobPayload, WorkerJobData, WorkerResponse } from '../interfaces/worker.interface';
+import { prisma } from '../setup';
+import { BaseWorker } from './base.worker';
 
-const prisma = new PrismaClient();
+export class BackupWorker extends BaseWorker<BackupJobPayload> {
+  public static readonly backupWorker = new BackupWorker();
+  constructor(workerPath?: string) {
+    super(workerPath || path.resolve(__dirname, './backup.workers.ts'));
+  }
 
-// Get job data from environment variables if available
-const env: WorkerEnvironment = {
-  jobId: process.env.JOB_ID,
-  jobType: process.env.JOB_TYPE,
-  jobPayload: process.env.JOB_PAYLOAD,
-  workerId: process.env.WORKER_ID,
-  userId: process.env.USER_ID
-};
+  protected async processJob(job: WorkerJobData<BackupJobPayload>): Promise<void> {
+    try {
+      console.log('🚀 Starting backup job...');
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
-// If job data is in environment variables, process immediately
-if (env.jobId && env.jobType) {
-  const payload: BackupJobPayload = env.jobPayload ? JSON.parse(env.jobPayload) : {
-    jobId: env.jobId,
-    type: env.jobType,
-    workerId: env.workerId,
-    userId: env.userId
-  };
-  processJob({ jobId: env.jobId, type: env.jobType, payload });
-}
+      await prisma.job.update({
+        where: { id: job.payload.jobId },
+        data: {
+          status: 'completed',
+          result: JSON.stringify({
+            message: 'Backup job completed',
+            payload: job.payload,
+          }),
+          finishedAt: new Date(),
+        },
+      });
 
-// Handle messages from parent process
-process.on('message', async (job: WorkerJobData<BackupJobPayload>) => {
-  await processJob(job);
-});
+      const response: WorkerResponse = {
+        success: true,
+        data: {
+          jobId: job.payload.jobId,
+          type: job.payload.type,
+          result: 'Backup job completed',
+          payload: job.payload,
+        },
+      };
 
-async function processJob(job: WorkerJobData<BackupJobPayload>) {
-  try {
-    // Example: perform backup logic here
-    console.log('Starting backup job...');
-    // Simulate backup work
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+      process.send?.(response);
+      console.log(`✅ Backup completed for job ${job.payload.jobId}`);
+    } catch (error) {
+      await prisma.job.update({
+        where: { id: job.payload.jobId },
+        data: {
+          status: 'failed',
+          error: String(error),
+          finishedAt: new Date(),
+        },
+      });
 
-    // Update job status/result in DB
-    await prisma.job.update({
-      where: { id: job.payload.jobId },
-      data: {
-        status: 'completed',
-        result: JSON.stringify({ message: 'Backup job completed', payload: job.payload }),
-        finishedAt: new Date(),
-      },
-    });
-    
-    const response: WorkerResponse = {
-      success: true,
-      data: { 
-        jobId: job.payload.jobId,
-        type: job.payload.type,
-        result: 'Backup job completed',
-        payload: job.payload
-      }
-    };
-    process.send?.(response);
-  } catch (error) {
-    await prisma.job.update({
-      where: { id: job.payload.jobId },
-      data: {
-        status: 'failed',
+      const response: WorkerResponse = {
+        success: false,
+        data: {
+          jobId: job.payload.jobId,
+          type: job.payload.type,
+        },
         error: String(error),
-        finishedAt: new Date(),
-      },
-    });
-    
-    const response: WorkerResponse = {
-      success: false,
-      data: { 
-        jobId: job.payload.jobId,
-        type: job.payload.type
-      },
-      error: String(error)
-    };
-    process.send?.(response);
-  } finally {
-    await prisma.$disconnect();
+      };
+
+      process.send?.(response);
+      console.error(`❌ Backup failed for job ${job.payload.jobId}`, error);
+    } finally {
+      await prisma.$disconnect();
+    }
   }
 }

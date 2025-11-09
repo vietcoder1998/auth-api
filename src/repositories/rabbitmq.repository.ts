@@ -366,7 +366,7 @@ export class RabbitMQRepository {
   /**
    * Check if connected
    */
-  isConnected(): boolean {
+  public isConnected(): boolean {
     return this.connection !== null && this.channel !== null;
   }
 }

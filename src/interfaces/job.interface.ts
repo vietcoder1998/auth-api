@@ -45,6 +45,7 @@ export interface JobDro extends JobDto {
   description?: string | null;
   startedAt?: Date | null;
   finishedAt?: Date | null;
+  isQueued: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
