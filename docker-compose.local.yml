@@ -1,27 +1,18 @@
 services:
-  redis:
-    image: redis:7.2
+  admin-api:
+    build: .
+    container_name: vtec_admin_api_local
     ports:
-      - '6379:6379'
-  db:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: auth_db
-      MYSQL_USER: devuser
-      MYSQL_PASSWORD: devuser_password
-    ports:
-      - '33060:3306'
+      - '3000:3000'
+    env_file:
+      - .env.local
     volumes:
-      - db_data:/var/lib/mysql
-      - ./mysql-init:/docker-entrypoint-initdb.d
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - '5672:5672'
-      - '15672:15672'
-    environment:
-      RABBITMQ_DEFAULT_USER: devuser
-      RABBITMQ_DEFAULT_PASS: devpass
-volumes:
-  db_data:
+      - .:/app
+    networks:
+      - local_network
+
+networks:
+  local_network:
+    external: true
+    name: infra-service_local_network
+
