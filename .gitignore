@@ -9,3 +9,5 @@ coverage/
 logs/*
 uploads
 backups/*
+.env.test
+.env.prod
