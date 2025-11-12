@@ -9,8 +9,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: auth_db
-      MYSQL_USER: devuser
-      MYSQL_PASSWORD: devuser_password
+      MYSQL_USER: admin_user
+      MYSQL_PASSWORD: admin_password
     ports:
       - '33060:3306'
     volumes:
